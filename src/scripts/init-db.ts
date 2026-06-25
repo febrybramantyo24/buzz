@@ -1,3 +1,6 @@
+import { loadEnvConfig } from '@next/env';
+loadEnvConfig(process.cwd());
+
 import { pool } from '../lib/db';
 import * as fs from 'fs';
 import * as path from 'path';
