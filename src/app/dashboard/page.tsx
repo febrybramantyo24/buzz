@@ -200,7 +200,7 @@ export default function UserDashboard() {
       
       if (data && data.length > 0) {
         setServices(data);
-        const uniqueCategories = Array.from(new Set(data.map((s: Service) => s.category)));
+        const uniqueCategories = Array.from(new Set(data.map((s: Service) => s.category))) as string[];
         setCategories(uniqueCategories);
         if (uniqueCategories.length > 0) {
           setSelectedCategory(uniqueCategories[0]);
@@ -209,7 +209,7 @@ export default function UserDashboard() {
         // Fallback Mock services if empty or no tables
         const mock = getMockServices();
         setServices(mock);
-        const uniqueCategories = Array.from(new Set(mock.map(s => s.category)));
+        const uniqueCategories = Array.from(new Set(mock.map(s => s.category))) as string[];
         setCategories(uniqueCategories);
         if (uniqueCategories.length > 0) {
           setSelectedCategory(uniqueCategories[0]);
@@ -219,7 +219,7 @@ export default function UserDashboard() {
       console.error(err);
       const mock = getMockServices();
       setServices(mock);
-      const uniqueCategories = Array.from(new Set(mock.map(s => s.category)));
+      const uniqueCategories = Array.from(new Set(mock.map(s => s.category))) as string[];
       setCategories(uniqueCategories);
       if (uniqueCategories.length > 0) {
         setSelectedCategory(uniqueCategories[0]);
