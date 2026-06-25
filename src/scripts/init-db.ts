@@ -22,7 +22,7 @@ async function initDb() {
     console.log('Tables created successfully.');
 
     // Check if admin user exists, if not create one
-    const adminEmail = 'admin@sosialbuzz.com';
+    const adminEmail = 'admin@buzzify.com';
     const adminCheck = await pool.query('SELECT id FROM users WHERE email = $1', [adminEmail]);
 
     if (adminCheck.rows.length === 0) {
@@ -44,7 +44,7 @@ async function initDb() {
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [userId, adminEmail, 'admin', 'Administrator', 'admin', '081234567890', 10000000.00]
       );
-      console.log('Admin user seeded (Email: admin@sosialbuzz.com, Password: adminpassword)');
+      console.log('Admin user seeded (Email: admin@buzzify.com, Password: adminpassword)');
     }
 
     // Check if services are empty, seed them if they are

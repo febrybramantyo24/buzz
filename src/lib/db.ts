@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 const connectionString = process.env.DATABASE_URL;
 
 export const pool = new Pool({
-  connectionString: connectionString || 'postgresql://postgres:postgres@localhost:5432/sosialbuzz',
+  connectionString: connectionString || 'postgresql://postgres:postgres@localhost:5432/buzzify',
   ssl: process.env.NODE_ENV === 'production' && !connectionString?.includes('localhost')
     ? { rejectUnauthorized: false }
     : false

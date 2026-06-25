@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         secure: true,
       },
       customer_details: {
-        email: email || 'customer@sosialbuzz.com',
+        email: email || 'customer@buzzify.com',
       },
     };
 

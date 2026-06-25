@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const profile = profileQuery.rows[0] || { role: 'user', username: '' };
 
     // 6. Generate JWT Token
-    const jwtSecret = process.env.JWT_SECRET || 'sosialbuzz_secret_key_1234567890';
+    const jwtSecret = process.env.JWT_SECRET || 'buzzify_secret_key_1234567890';
     const token = jwt.sign(
       { 
         userId: user.id, 

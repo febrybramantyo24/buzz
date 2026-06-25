@@ -315,7 +315,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold">Atur Ulang Password</h2>
             <p className="text-slate-400 text-xs mt-1.5 font-light">
-              Masukkan password baru Anda untuk mengamankan akun SosialBuzz Anda.
+              Masukkan password baru Anda untuk mengamankan akun Buzzify Anda.
             </p>
           </div>
 
@@ -462,14 +462,14 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="font-extrabold text-xl tracking-tight">
-              Sosial<span className="text-indigo-400">Buzz</span>
+              Buzz<span className="text-indigo-400">ify</span>
             </span>
           </Link>
           <h2 className="text-2xl font-bold text-center">
             {isRegister ? 'Buat Akun Baru' : (isAdminFlow ? 'Masuk ke Panel Admin' : 'Masuk ke Dashboard')}
           </h2>
           <p className="text-slate-400 text-xs mt-1 text-center font-light">
-            {isRegister ? 'Mulai kelola kebutuhan buzzer sosial media Anda' : (isAdminFlow ? 'Kelola layanan, pesanan, dan pengguna SosialBuzz' : 'Kelola pesanan, riwayat, dan info rekomendasi')}
+            {isRegister ? 'Mulai kelola kebutuhan buzzer sosial media Anda' : (isAdminFlow ? 'Kelola layanan, pesanan, dan pengguna Buzzify' : 'Kelola pesanan, riwayat, dan info rekomendasi')}
           </p>
         </div>
 
@@ -610,7 +610,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                   >
                     Syarat & Ketentuan
                   </button>{' '}
-                  serta kebijakan privasi SosialBuzz.
+                  serta kebijakan privasi Buzzify.
                 </label>
               </div>
             </div>
@@ -734,7 +734,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
 
             <div className="overflow-y-auto pr-2 text-slate-300 text-xs font-light space-y-4 leading-relaxed scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
               <p>
-                Selamat datang di <strong>SosialBuzz</strong>. Dengan mendaftar dan menggunakan layanan kami, Anda menyatakan telah membaca, memahami, dan menyetujui semua aturan dan ketentuan yang berlaku di bawah ini:
+                Selamat datang di <strong>Buzzify</strong>. Dengan mendaftar dan menggunakan layanan kami, Anda menyatakan telah membaca, memahami, dan menyetujui semua aturan dan ketentuan yang berlaku di bawah ini:
               </p>
 
               <div>
@@ -751,7 +751,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                 <ul className="list-disc list-inside space-y-1 pl-1">
                   <li>Pembayaran top-up saldo diproses menggunakan sistem QRIS / Transfer Bank otomatis secara aman via Midtrans.</li>
                   <li>Saldo akun yang telah dibeli/di-top-up <strong>tidak dapat diuangkan kembali (non-refundable)</strong> atau ditarik ke rekening pribadi.</li>
-                  <li>Saldo hanya dapat digunakan untuk melakukan transaksi pembelian jasa buzzer/sosial media di dalam platform SosialBuzz.</li>
+                  <li>Saldo hanya dapat digunakan untuk melakukan transaksi pembelian jasa buzzer/sosial media di dalam platform Buzzify.</li>
                 </ul>
               </div>
 
@@ -759,7 +759,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                 <h4 className="font-bold text-slate-200 mb-1">3. Kebijakan Privasi & Keamanan</h4>
                 <ul className="list-disc list-inside space-y-1 pl-1">
                   <li>Kami menjaga kerahasiaan data pribadi, email, nomor WhatsApp, serta data pesanan Anda dengan aman.</li>
-                  <li>SosialBuzz tidak pernah meminta password akun sosial media Anda. Kami hanya membutuhkan link/URL target publik untuk pengerjaan jasa buzzer.</li>
+                  <li>Buzzify tidak pernah meminta password akun sosial media Anda. Kami hanya membutuhkan link/URL target publik untuk pengerjaan jasa buzzer.</li>
                 </ul>
               </div>
             </div>

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     }
 
     // 2. Verify token
-    const jwtSecret = process.env.JWT_SECRET || 'sosialbuzz_secret_key_1234567890';
+    const jwtSecret = process.env.JWT_SECRET || 'buzzify_secret_key_1234567890';
     let decoded: any;
     try {
       decoded = jwt.verify(token, jwtSecret);

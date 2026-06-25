@@ -904,7 +904,7 @@ export default function UserDashboard() {
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="font-extrabold text-lg tracking-tight">
-              Sosial<span className="text-indigo-400">Buzz</span>
+              Buzz<span className="text-indigo-400">ify</span>
             </span>
           </div>
 

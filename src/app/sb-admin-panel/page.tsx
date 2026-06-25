@@ -193,7 +193,7 @@ export default function AdminDashboard() {
             const balanceVal = localStorage.getItem(`balance_${userId}`);
             mockProfilesMap[userId] = {
               id: userId,
-              email: userId === 'admin' ? 'admin@sosialbuzz.com' : `user-${userId.slice(0, 4)}@sosialbuzz.com`,
+              email: userId === 'admin' ? 'admin@buzzify.com' : `user-${userId.slice(0, 4)}@buzzify.com`,
               role: 'user',
               balance: balanceVal ? Number(balanceVal) : 100000,
               created_at: new Date().toISOString()
@@ -243,7 +243,7 @@ export default function AdminDashboard() {
             const balanceVal = localStorage.getItem(`balance_${userId}`);
             mockProfilesMap[userId] = {
               id: userId,
-              email: userId === 'admin' ? 'admin@sosialbuzz.com' : `user-${userId.slice(0, 4)}@sosialbuzz.com`,
+              email: userId === 'admin' ? 'admin@buzzify.com' : `user-${userId.slice(0, 4)}@buzzify.com`,
               role: 'user',
               balance: balanceVal ? Number(balanceVal) : 100000,
               created_at: new Date().toISOString()
@@ -641,7 +641,7 @@ export default function AdminDashboard() {
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="font-extrabold text-lg tracking-tight">
-              Sosial<span className="text-indigo-400">Buzz</span> <span className="text-xs bg-indigo-500 text-white font-extrabold px-1.5 py-0.5 rounded-md uppercase ml-1">Admin</span>
+              Buzz<span className="text-indigo-400">ify</span> <span className="text-xs bg-indigo-500 text-white font-extrabold px-1.5 py-0.5 rounded-md uppercase ml-1">Admin</span>
             </span>
           </div>
 

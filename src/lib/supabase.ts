@@ -40,7 +40,7 @@ class SupabaseQueryBuilder {
     return this.execute();
   }
 
-  insert(data: any) {
+  insert(data: any): any {
     this.method = 'POST';
     this.body = data;
     return {
@@ -54,7 +54,7 @@ class SupabaseQueryBuilder {
     };
   }
 
-  upsert(data: any) {
+  upsert(data: any): any {
     this.method = 'POST';
     this.body = data;
     return {

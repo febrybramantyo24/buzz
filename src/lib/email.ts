@@ -8,7 +8,7 @@ interface SendEmailParams {
 
 export async function sendEmail({ to, subject, html }: SendEmailParams) {
   const resendApiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.SMTP_FROM || 'SosialBuzz <noreply@sosialbuzz.com>';
+  const fromEmail = process.env.SMTP_FROM || 'Buzzify <noreply@buzzify.com>';
 
   // 1. Try Resend via REST API if API Key is configured
   if (resendApiKey) {

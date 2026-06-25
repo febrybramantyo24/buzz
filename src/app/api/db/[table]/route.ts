@@ -18,7 +18,7 @@ async function getSessionUser(request: Request) {
   if (!token) return null;
 
   try {
-    const jwtSecret = process.env.JWT_SECRET || 'sosialbuzz_secret_key_1234567890';
+    const jwtSecret = process.env.JWT_SECRET || 'buzzify_secret_key_1234567890';
     const decoded: any = jwt.verify(token, jwtSecret);
     return decoded;
   } catch (e) {

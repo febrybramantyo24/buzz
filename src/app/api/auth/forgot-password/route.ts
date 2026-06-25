@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; rounded: 10px;">
         <h2 style="color: #4f46e5; text-align: center;">Atur Ulang Password Anda</h2>
         <p>Halo,</p>
-        <p>Kami menerima permintaan untuk mengatur ulang password akun SosialBuzz Anda. Silakan klik tombol di bawah ini untuk melanjutkan:</p>
+        <p>Kami menerima permintaan untuk mengatur ulang password akun Buzzify Anda. Silakan klik tombol di bawah ini untuk melanjutkan:</p>
         <p style="text-align: center; margin: 30px 0;">
           <a href="${resetUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Atur Ulang Password</a>
         </p>
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
     await sendEmail({
       to: email,
-      subject: 'Atur Ulang Password SosialBuzz Anda',
+      subject: 'Atur Ulang Password Buzzify Anda',
       html: emailHtml
     });
 

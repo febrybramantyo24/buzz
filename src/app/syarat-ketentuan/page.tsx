@@ -19,7 +19,7 @@ export default function TermsPage() {
                 <Zap className="w-6 h-6 text-white animate-pulse" />
               </div>
               <span className="font-extrabold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-400">
-                Sosial<span className="text-indigo-400">Buzz</span>
+                Buzz<span className="text-indigo-400">ify</span>
               </span>
             </Link>
           </div>
@@ -57,7 +57,7 @@ export default function TermsPage() {
         <div className="mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-semibold mb-4">
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Dokumen Resmi SosialBuzz</span>
+            <span>Dokumen Resmi Buzzify</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
             Syarat & <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">Ketentuan Layanan</span>
@@ -70,7 +70,7 @@ export default function TermsPage() {
         {/* Card */}
         <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 p-8 sm:p-10 rounded-3xl shadow-xl space-y-8 text-slate-300 text-sm font-light leading-relaxed">
           <p>
-            Selamat datang di <strong>SosialBuzz</strong>. Dengan mendaftar, mengakses, atau menggunakan layanan kami, Anda menyatakan telah membaca, memahami, dan menyetujui semua aturan, syarat, dan ketentuan yang berlaku di bawah ini. Jika Anda tidak menyetujui bagian apa pun dari ketentuan ini, Anda tidak diperkenankan menggunakan layanan kami.
+            Selamat datang di <strong>Buzzify</strong>. Dengan mendaftar, mengakses, atau menggunakan layanan kami, Anda menyatakan telah membaca, memahami, dan menyetujui semua aturan, syarat, dan ketentuan yang berlaku di bawah ini. Jika Anda tidak menyetujui bagian apa pun dari ketentuan ini, Anda tidak diperkenankan menggunakan layanan kami.
           </p>
 
           <hr className="border-slate-800" />
@@ -84,7 +84,7 @@ export default function TermsPage() {
               <h3 className="text-base sm:text-lg font-bold text-slate-100">1. Ketentuan Umum</h3>
             </div>
             <p className="pl-9">
-              SosialBuzz adalah platform penyedia optimasi media sosial (buzzer) yang membantu meningkatkan interaksi akun Anda (followers, likes, views, subscriber, dan sejenisnya). Layanan kami semata-mata digunakan untuk tujuan promosi dan pengembangan visual media sosial Anda secara sah.
+              Buzzify adalah platform penyedia optimasi media sosial (buzzer) yang membantu meningkatkan interaksi akun Anda (followers, likes, views, subscriber, dan sejenisnya). Layanan kami semata-mata digunakan untuk tujuan promosi dan pengembangan visual media sosial Anda secara sah.
             </p>
           </div>
 
@@ -135,9 +135,9 @@ export default function TermsPage() {
             <ul className="list-disc list-outside pl-13 space-y-2">
               <li>Top-up saldo dilakukan secara otomatis dan instan menggunakan QRIS / Transfer Bank melalui gerbang pembayaran Midtrans Sandbox.</li>
               <li>
-                <strong>Ketentuan Non-Refundable:</strong> Saldo akun yang sudah di-top-up <strong>tidak dapat diuangkan kembali</strong> atau ditransfer ke rekening pribadi/bank pihak ketiga. Saldo hanya dapat digunakan untuk pembelian layanan di dalam platform SosialBuzz.
+                <strong>Ketentuan Non-Refundable:</strong> Saldo akun yang sudah di-top-up <strong>tidak dapat diuangkan kembali</strong> atau ditransfer ke rekening pribadi/bank pihak ketiga. Saldo hanya dapat digunakan untuk pembelian layanan di dalam platform Buzzify.
               </li>
-              <li>Jika terjadi kegagalan pemesanan sistem (misalnya sistem error atau server overload), dana pembelian pesanan tersebut akan dikembalikan secara otomatis 100% ke <strong>Saldo Akun SosialBuzz</strong> Anda, bukan ke rekening asal Anda.</li>
+              <li>Jika terjadi kegagalan pemesanan sistem (misalnya sistem error atau server overload), dana pembelian pesanan tersebut akan dikembalikan secara otomatis 100% ke <strong>Saldo Akun Buzzify</strong> Anda, bukan ke rekening asal Anda.</li>
             </ul>
           </div>
 
@@ -150,7 +150,7 @@ export default function TermsPage() {
               <h3 className="text-base sm:text-lg font-bold text-slate-100">5. Batasan Tanggung Jawab</h3>
             </div>
             <ul className="list-disc list-outside pl-13 space-y-2">
-              <li>SosialBuzz tidak bertanggung jawab atas tindakan penghapusan postingan, pemblokiran akun, atau suspend yang dilakukan oleh platform media sosial (seperti Instagram, TikTok, YouTube) terhadap akun Anda.</li>
+              <li>Buzzify tidak bertanggung jawab atas tindakan penghapusan postingan, pemblokiran akun, atau suspend yang dilakukan oleh platform media sosial (seperti Instagram, TikTok, YouTube) terhadap akun Anda.</li>
               <li>Kami tidak menjamin pengikut (followers) baru akan berinteraksi aktif secara berkelanjutan dengan postingan Anda di kemudian hari.</li>
             </ul>
           </div>
@@ -173,7 +173,7 @@ export default function TermsPage() {
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 py-8 text-center text-xs text-slate-500 relative z-10">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>&copy; {new Date().getFullYear()} SosialBuzz. All Rights Reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Buzzify. All Rights Reserved.</p>
           <div className="flex gap-4">
             <Link href="/" className="hover:text-indigo-400 transition-colors">Beranda</Link>
             <Link href="/login" className="hover:text-indigo-400 transition-colors">Masuk</Link>

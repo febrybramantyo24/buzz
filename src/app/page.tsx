@@ -149,7 +149,7 @@ export default function LandingPage() {
               <Zap className="w-6 h-6 text-white animate-pulse" />
             </div>
             <span className="font-extrabold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-400">
-              Sosial<span className="text-indigo-400">Buzz</span>
+              Buzz<span className="text-indigo-400">ify</span>
             </span>
           </div>
 
@@ -189,7 +189,7 @@ export default function LandingPage() {
         </h1>
         
         <p className="mt-6 text-lg sm:text-xl text-slate-400 max-w-2xl font-light">
-          SosialBuzz menyediakan layanan optimasi media sosial terbaik. Followers, Likes, Views, dan Subscribers berkualitas tinggi dengan harga termurah.
+          Buzzify menyediakan layanan optimasi media sosial terbaik. Followers, Likes, Views, dan Subscribers berkualitas tinggi dengan harga termurah.
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center w-full max-w-md">
@@ -233,7 +233,7 @@ export default function LandingPage() {
       <section id="features" className="py-20 border-t border-slate-900 bg-slate-950/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold">Mengapa Memilih SosialBuzz?</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold">Mengapa Memilih Buzzify?</h2>
             <p className="text-slate-400 mt-4 font-light">Kami mengutamakan kualitas, kecepatan, keamanan, dan kepuasan Anda dalam setiap transaksi.</p>
           </div>
 
@@ -369,7 +369,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 py-8 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>&copy; {new Date().getFullYear()} SosialBuzz. All Rights Reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Buzzify. All Rights Reserved.</p>
           <div className="flex gap-4">
             <Link href="/syarat-ketentuan" className="hover:text-indigo-400 transition-colors">
               Syarat & Ketentuan
