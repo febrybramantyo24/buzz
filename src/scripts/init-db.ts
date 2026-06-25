@@ -1,12 +1,14 @@
 import { loadEnvConfig } from '@next/env';
 loadEnvConfig(process.cwd());
 
-import { pool } from '../lib/db';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as bcrypt from 'bcrypt';
 
 async function initDb() {
+  // Dynamically import to ensure environment variables are loaded first
+  const { pool } = await import('../lib/db');
+  
   console.log('Initializing database...');
   
   try {
