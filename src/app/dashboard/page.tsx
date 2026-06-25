@@ -155,7 +155,7 @@ export default function UserDashboard() {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       
-      const dbTxs = (txData || []).filter(t => t.status !== 'failed');
+      const dbTxs = (txData || []).filter((t: any) => t.status !== 'failed');
       const storedTx = localStorage.getItem(`transactions_${userId}`);
       const localTxs = (storedTx ? JSON.parse(storedTx) : []).filter((t: any) => t.status !== 'failed');
 
