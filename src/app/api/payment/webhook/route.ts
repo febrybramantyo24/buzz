@@ -115,10 +115,17 @@ export async function POST(request: Request) {
           // Update profile balance
           await query('UPDATE profiles SET balance = $1 WHERE id = $2', [newBalance, tx.user_id]);
 
-          // Update transaction log amount to reflect final credited amount (including bonus)
-          await query('UPDATE transactions SET amount = $1 WHERE id = $2', [creditedAmount, actualTxId]);
-          
-          console.log(`Successfully credited Rp ${creditedAmount} (Base: ${baseAmount}, Bonus applied: ${creditedAmount > baseAmount}) to user ${tx.user_id}. New balance: Rp ${newBalance}`);
+          // Keep transactions.amount as the baseAmount (gross_amount) paid by the user.
+          // Update transaction description to show the deposit breakdown (Base + Bonus).
+          const bonusAmount = creditedAmount - baseAmount;
+          const txDesc = bonusAmount > 0 
+            ? `Top Up Saldo Akun. Deposit: Rp ${baseAmount.toLocaleString('id-ID')} + Bonus ${bonusPercent}% (Rp ${bonusAmount.toLocaleString('id-ID')}) -> Saldo Didapat: Rp ${creditedAmount.toLocaleString('id-ID')}`
+            : `Top Up Saldo Akun. Saldo Didapat: Rp ${baseAmount.toLocaleString('id-ID')}`;
+
+          await query(
+            'UPDATE transactions SET description = $1 WHERE id = $2',
+            [txDesc, actualTxId]
+          );
         }
       }
 

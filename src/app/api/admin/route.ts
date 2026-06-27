@@ -118,7 +118,69 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { action, orderId, status, startCount, refundAmount } = body;
+    const { action, orderId, status, startCount, refundAmount, targetUserId, adjustmentType, amount, reason } = body;
+
+    if (action === 'update_user_balance') {
+      if (!targetUserId || !adjustmentType || amount === undefined) {
+        return NextResponse.json({ error: 'Data tidak lengkap untuk penyesuaian saldo' }, { status: 400 });
+      }
+
+      const nominal = parseFloat(amount);
+      if (isNaN(nominal) || nominal < 0) {
+        return NextResponse.json({ error: 'Nominal saldo tidak valid' }, { status: 400 });
+      }
+
+      // Check if target user profile exists
+      const userRes = await query('SELECT balance, email FROM profiles WHERE id = $1', [targetUserId]);
+      if (userRes.rows.length === 0) {
+        return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 });
+      }
+
+      const startBalance = parseFloat(userRes.rows[0].balance || '0');
+      let endBalance = startBalance;
+
+      if (adjustmentType === 'add') {
+        endBalance = startBalance + nominal;
+      } else if (adjustmentType === 'subtract') {
+        endBalance = startBalance - nominal;
+        if (endBalance < 0) {
+          return NextResponse.json({ error: 'Saldo akhir tidak boleh negatif' }, { status: 400 });
+        }
+      } else if (adjustmentType === 'set') {
+        endBalance = nominal;
+      } else {
+        return NextResponse.json({ error: 'Tipe penyesuaian saldo tidak dikenal' }, { status: 400 });
+      }
+
+      const diff = endBalance - startBalance;
+      if (diff === 0) {
+        return NextResponse.json({ error: 'Tidak ada perubahan nominal saldo' }, { status: 400 });
+      }
+
+      // Update user balance
+      await query('UPDATE profiles SET balance = $1 WHERE id = $2', [endBalance, targetUserId]);
+
+      // Record transaction log
+      const formattedDiff = Math.abs(diff).toLocaleString('id-ID');
+      const actionSymbol = diff > 0 ? '+' : '-';
+      const defaultReason = diff > 0 ? 'Topup manual oleh Admin' : 'Penyesuaian saldo (dikurangi) oleh Admin';
+      const logNote = `${reason || defaultReason}. Penyesuaian: ${actionSymbol}Rp ${formattedDiff}. Saldo awal: Rp ${startBalance.toLocaleString('id-ID')} -> Saldo akhir: Rp ${endBalance.toLocaleString('id-ID')}`;
+      
+      const txType = diff >= 0 ? 'topup' : 'order_payment';
+
+      await query(
+        `INSERT INTO transactions (user_id, amount, type, status, payment_method, reference_id, description) 
+         VALUES ($1, $2, $3, 'success', 'manual', $4, $5)`,
+        [targetUserId, Math.abs(diff), txType, `manual-${Date.now()}`, logNote]
+      );
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Saldo user berhasil diperbarui', 
+        oldBalance: startBalance, 
+        newBalance: endBalance 
+      });
+    }
 
     if (action === 'retry_provider') {
       if (!orderId) {

@@ -34,8 +34,23 @@ import {
   User,
   Tag,
   Hash,
-  Star
+  Star,
+  MessageSquare,
+  Send,
+  Upload
 } from 'lucide-react';
+
+const formatNumberWithDots = (num: number | string | null | undefined): string => {
+  if (num === null || num === undefined || num === 0 || num === '0' || num === '') return '';
+  const clean = String(num).replace(/\D/g, '');
+  if (!clean) return '';
+  return new Intl.NumberFormat('id-ID').format(parseInt(clean, 10));
+};
+
+const parseNumberFromDots = (str: string): number => {
+  const clean = str.replace(/\D/g, '');
+  return parseInt(clean, 10) || 0;
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -81,8 +96,17 @@ export default function AdminDashboard() {
   const [submittingService, setSubmittingService] = useState(false);
   const [submittingAnn, setSubmittingAnn] = useState(false);
 
+  // User Balance Modification Modal State
+  const [showBalanceModal, setShowBalanceModal] = useState(false);
+  const [selectedUserForBalance, setSelectedUserForBalance] = useState<any>(null);
+  const [adjustmentAmount, setAdjustmentAmount] = useState<number>(0);
+  const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract' | 'set'>('add');
+  const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [submittingBalance, setSubmittingBalance] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
+
   // Navigation tab
-  const [activeTab, setActiveTab] = useState<'orders' | 'services' | 'announcements' | 'transactions' | 'landing'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'services' | 'announcements' | 'transactions' | 'landing' | 'tickets'>('orders');
 
   // Service Form State
   const [serviceCategory, setServiceCategory] = useState('Instagram');
@@ -107,6 +131,11 @@ export default function AdminDashboard() {
   const [providerSearch, setProviderSearch] = useState('');
   const [providerCategorySearch, setProviderCategorySearch] = useState('');
   const [providerCategoryFilter, setProviderCategoryFilter] = useState('all');
+  const [isAdminCategoryDropdownOpen, setIsAdminCategoryDropdownOpen] = useState(false);
+  const [isAdminCategorySearch, setIsAdminCategorySearch] = useState('');
+  const [isProviderCategoryDropdownOpen, setIsProviderCategoryDropdownOpen] = useState(false);
+  const [isProviderServiceDropdownOpen, setIsProviderServiceDropdownOpen] = useState(false);
+  const [providerServiceSearchQuery, setProviderServiceSearchQuery] = useState('');
   const [providerBalance, setProviderBalance] = useState<string | null>(null);
   const [medanpediaBalance, setMedanpediaBalance] = useState<string | null>(null);
 
@@ -223,6 +252,19 @@ export default function AdminDashboard() {
   const [annContent, setAnnContent] = useState('');
   const [annBadge, setAnnBadge] = useState('INFO');
   const [annImageUrl, setAnnImageUrl] = useState('');
+  const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
+
+  // Support Ticket System States
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
+  const [newTicketMessage, setNewTicketMessage] = useState('');
+  const [newTicketMessageImage, setNewTicketMessageImage] = useState('');
+  const [sendingTicketMessage, setSendingTicketMessage] = useState(false);
+  const [ticketSearchType, setTicketSearchType] = useState('id');
+  const [ticketSearchQuery, setTicketSearchQuery] = useState('');
+  const [ticketStatusFilter, setTicketStatusFilter] = useState('all');
+  const [showImageZoom, setShowImageZoom] = useState<string | null>(null);
 
   // Order start count updating helper
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
@@ -339,7 +381,8 @@ export default function AdminDashboard() {
       await Promise.all([
         fetchAdminData(),
         fetchServices(),
-        fetchAnnouncements()
+        fetchAnnouncements(),
+        fetchTickets()
       ]);
       setLoading(false);
     }
@@ -474,6 +517,86 @@ export default function AdminDashboard() {
       }).filter(Boolean);
       finalFallbackTxs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setTransactions(finalFallbackTxs as Transaction[]);
+    }
+  };
+
+  const fetchTickets = async () => {
+    try {
+      const res = await fetch('/api/tickets');
+      const data = await res.json();
+      if (data.success) {
+        setTickets(data.tickets || []);
+      }
+    } catch (err) {
+      console.error('Error fetching tickets:', err);
+    }
+  };
+
+  const fetchTicketDetails = async (ticketId: number) => {
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`);
+      const data = await res.json();
+      if (data.success) {
+        setSelectedTicket(data.ticket);
+        setTicketMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error('Error fetching ticket details:', err);
+    }
+  };
+
+  const handleSendTicketMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTicketMessage.trim() || !selectedTicket) return;
+
+    setSendingTicketMessage(true);
+    try {
+      const res = await fetch(`/api/tickets/${selectedTicket.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: newTicketMessage,
+          image_url: newTicketMessageImage || null
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNewTicketMessage('');
+        setNewTicketMessageImage('');
+        await fetchTicketDetails(selectedTicket.id);
+        fetchTickets();
+      } else {
+        alert(data.error || 'Gagal mengirim pesan');
+      }
+    } catch (err) {
+      console.error('Error replying to ticket:', err);
+      alert('Terjadi kesalahan jaringan');
+    } finally {
+      setSendingTicketMessage(false);
+    }
+  };
+
+  const handleCloseTicket = async (ticketId: number) => {
+    if (!confirm('Apakah Anda yakin ingin menutup tiket ini?')) return;
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Closed' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Tiket berhasil ditutup!');
+        if (selectedTicket?.id === ticketId) {
+          setSelectedTicket((prev: any) => prev ? { ...prev, status: 'Closed' } : null);
+        }
+        fetchTickets();
+      } else {
+        alert(data.error || 'Gagal menutup tiket');
+      }
+    } catch (err) {
+      console.error('Error closing ticket:', err);
+      alert('Terjadi kesalahan jaringan');
     }
   };
 
@@ -665,24 +788,35 @@ export default function AdminDashboard() {
     };
 
     try {
-      const { error } = await supabase.from('announcements').insert(payload);
-      if (error) throw error;
+      if (editingAnnId) {
+        const { error } = await supabase.from('announcements').update(payload).eq('id', editingAnnId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('announcements').insert(payload);
+        if (error) throw error;
+      }
 
       setAnnTitle('');
       setAnnContent('');
       setAnnImageUrl('');
+      setEditingAnnId(null);
       await fetchAnnouncements();
     } catch (err) {
       console.error('Error saving announcement:', err);
-      const newMockAnn = {
-        id: Math.random().toString(36).substring(2, 9),
-        ...payload,
-        created_at: new Date().toISOString()
-      };
-      setAnnouncements([newMockAnn, ...announcements]);
+      if (editingAnnId) {
+        setAnnouncements(announcements.map(a => a.id === editingAnnId ? { ...a, ...payload } : a));
+      } else {
+        const newMockAnn = {
+          id: Math.random().toString(36).substring(2, 9),
+          ...payload,
+          created_at: new Date().toISOString()
+        };
+        setAnnouncements([newMockAnn, ...announcements]);
+      }
       setAnnTitle('');
       setAnnContent('');
       setAnnImageUrl('');
+      setEditingAnnId(null);
     } finally {
       setSubmittingAnn(false);
     }
@@ -838,6 +972,59 @@ export default function AdminDashboard() {
     });
   };
 
+  const handleUpdateBalance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserForBalance) return;
+    if (adjustmentAmount <= 0) {
+      setBalanceError('Nominal saldo harus lebih besar dari 0');
+      return;
+    }
+    if (!adjustmentReason.trim()) {
+      setBalanceError('Alasan penyesuaian wajib diisi untuk catatan transaksi');
+      return;
+    }
+
+    setSubmittingBalance(true);
+    setBalanceError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Sesi login admin tidak ditemukan.');
+      }
+
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          action: 'update_user_balance',
+          targetUserId: selectedUserForBalance.id,
+          adjustmentType,
+          amount: adjustmentAmount,
+          reason: adjustmentReason
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal mengubah saldo');
+      }
+
+      setShowBalanceModal(false);
+      setSelectedUserForBalance(null);
+      setAdjustmentAmount(0);
+      setAdjustmentReason('');
+      await fetchAdminData();
+    } catch (err: any) {
+      setBalanceError(err.message || 'Terjadi kesalahan sistem');
+    } finally {
+      setSubmittingBalance(false);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
@@ -890,7 +1077,8 @@ export default function AdminDashboard() {
   const filteredOrders = orders.filter(o => {
     const matchesSearch = o.service_name.toLowerCase().includes(orderSearch.toLowerCase()) || 
                           o.target_url.toLowerCase().includes(orderSearch.toLowerCase()) || 
-                          o.id.toLowerCase().includes(orderSearch.toLowerCase());
+                          o.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
+                          (o.order_id ? String(o.order_id).includes(orderSearch.trim()) : false);
 
     const matchesStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter;
 
@@ -901,6 +1089,7 @@ export default function AdminDashboard() {
 
   const filteredTransactions = transactions.filter(t => 
     t.id.toLowerCase().includes(searchTermTransactions.toLowerCase()) || 
+    (t.tx_id ? String(t.tx_id).includes(searchTermTransactions.toLowerCase().replace('trx-', '').trim()) : false) ||
     (t.profiles?.email || '').toLowerCase().includes(searchTermTransactions.toLowerCase()) ||
     t.user_id.toLowerCase().includes(searchTermTransactions.toLowerCase())
   );
@@ -1063,6 +1252,20 @@ export default function AdminDashboard() {
           >
             <Award className="w-4 h-4 text-purple-400" />
             <span>Landing Page</span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('tickets');
+              fetchTickets();
+            }}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === 'tickets'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4 text-emerald-450" />
+            <span>Tiket Bantuan ({tickets.filter(t => t.status === 'Pending').length})</span>
           </button>
         </div>
 
@@ -1227,9 +1430,16 @@ export default function AdminDashboard() {
                               </div>
                             </td>
                             <td className="py-4 px-3">
-                              <span className="font-mono text-slate-350 font-bold bg-slate-950 border border-slate-850 px-2 py-0.5 rounded-lg text-[9px] w-fit flex items-center gap-1">
-                                {order.id.slice(0, 8)}
-                              </span>
+                              <button
+                                onClick={() => {
+                                  const idToCopy = order.order_id ? String(order.order_id) : order.id;
+                                  navigator.clipboard.writeText(idToCopy);
+                                }}
+                                className="font-mono text-slate-350 hover:text-indigo-400 font-bold bg-slate-950 border border-slate-850 px-2 py-0.5 rounded-lg text-[9px] w-fit flex items-center gap-1 transition-colors cursor-pointer"
+                                title="Salin ID"
+                              >
+                                {order.order_id ? String(order.order_id) : order.id.slice(0, 8)}
+                              </button>
                               <div className="flex gap-1 mt-1.5">
                                 {/* Payment Status badge */}
                                 <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider border ${
@@ -1455,26 +1665,65 @@ export default function AdminDashboard() {
               <form onSubmit={handleSaveService} className="space-y-5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Kategori</label>
-                  <div className="flex gap-2">
-                    <select
-                      value={serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X' ? serviceCategory : 'Kustom'}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === 'Kustom') {
-                          setServiceCategory('');
-                        } else {
-                          setServiceCategory(val);
-                        }
+                  <div className="relative">
+                    {/* Custom Admin Category Selector Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAdminCategoryDropdownOpen(!isAdminCategoryDropdownOpen);
                       }}
-                      className="bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs flex-1"
+                      className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs text-left cursor-pointer"
                     >
-                      <option value="Instagram">Instagram</option>
-                      <option value="TikTok">TikTok</option>
-                      <option value="YouTube">YouTube</option>
-                      <option value="Twitter/X">Twitter/X</option>
-                      <option value="Kustom">Kategori Baru (Kustom)...</option>
-                    </select>
+                      <span className="truncate">
+                        {serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X' 
+                          ? serviceCategory 
+                          : serviceCategory === '' 
+                            ? 'Pilih Kategori / Tulis Kustom' 
+                            : `${serviceCategory} (Kustom)`
+                        }
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isAdminCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Custom Admin Category Dropdown List */}
+                    {isAdminCategoryDropdownOpen && (
+                      <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 border border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[260px] flex flex-col">
+                        <div className="p-2.5 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                          <input
+                            type="text"
+                            placeholder="Cari atau filter Kategori..."
+                            value={isAdminCategorySearch}
+                            onChange={(e) => setIsAdminCategorySearch(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-1.5 rounded-xl outline-none text-[11px]"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
+                          {['Instagram', 'TikTok', 'YouTube', 'Twitter/X', 'Kustom']
+                            .filter(cat => cat.toLowerCase().includes(isAdminCategorySearch.toLowerCase()))
+                            .map(cat => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => {
+                                  if (cat === 'Kustom') {
+                                    setServiceCategory('');
+                                  } else {
+                                    setServiceCategory(cat);
+                                  }
+                                  setIsAdminCategoryDropdownOpen(false);
+                                  setIsAdminCategorySearch('');
+                                }}
+                                className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-indigo-650/15 hover:text-indigo-400 transition-colors"
+                              >
+                                {cat === 'Kustom' ? 'Kategori Baru (Kustom)...' : cat}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                   {!(serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X') && (
                     <input
                       type="text"
@@ -1513,11 +1762,12 @@ export default function AdminDashboard() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Harga per 1.000 (1K)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     required
-                    value={servicePrice || ''}
-                    onChange={(e) => setServicePrice(parseInt(e.target.value) || 0)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    value={formatNumberWithDots(servicePrice)}
+                    onChange={(e) => setServicePrice(parseNumberFromDots(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs font-semibold"
                   />
                 </div>
 
@@ -1612,21 +1862,59 @@ export default function AdminDashboard() {
                                   }}
                                   className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
                                 />
-                              </div>
-                              <div>
+                                                           <div>
                                 <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kategori Pusat</label>
-                                <select
-                                  value={providerCategoryFilter}
-                                  onChange={(e) => setProviderCategoryFilter(e.target.value)}
-                                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
-                                >
-                                  <option value="all">Semua Kategori</option>
-                                  {uniqueProviderCategories
-                                    .filter(cat => cat.toLowerCase().includes(providerCategorySearch.toLowerCase()))
-                                    .map(cat => (
-                                      <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
+                                <div className="relative">
+                                  {/* Custom Category Selector Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsProviderCategoryDropdownOpen(!isProviderCategoryDropdownOpen);
+                                      setIsProviderServiceDropdownOpen(false);
+                                    }}
+                                    className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px] text-left cursor-pointer"
+                                  >
+                                    <span className="truncate">{providerCategoryFilter === 'all' ? 'Semua Kategori' : providerCategoryFilter}</span>
+                                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isProviderCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                                  </button>
+
+                                  {/* Custom Category Dropdown List */}
+                                  {isProviderCategoryDropdownOpen && (
+                                    <div className="absolute left-0 right-0 mt-1 bg-slate-950 border border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[220px] flex flex-col">
+                                      <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setProviderCategoryFilter('all');
+                                            setIsProviderCategoryDropdownOpen(false);
+                                          }}
+                                          className={`w-full text-left px-3 py-2 text-[11px] hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors ${
+                                            providerCategoryFilter === 'all' ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-350'
+                                          }`}
+                                        >
+                                          Semua Kategori
+                                        </button>
+                                        {uniqueProviderCategories
+                                          .filter(cat => cat.toLowerCase().includes(providerCategorySearch.toLowerCase()))
+                                          .map(cat => (
+                                            <button
+                                              key={cat}
+                                              type="button"
+                                              onClick={() => {
+                                                setProviderCategoryFilter(cat);
+                                                setIsProviderCategoryDropdownOpen(false);
+                                              }}
+                                              className={`w-full text-left px-3 py-2 text-[11px] hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors ${
+                                                providerCategoryFilter === cat ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-350'
+                                              }`}
+                                            >
+                                              {cat}
+                                            </button>
+                                          ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
@@ -1647,69 +1935,111 @@ export default function AdminDashboard() {
                                   </button>
                                 )}
                               </div>
-                              <select
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (!val) return;
-                                  const selected = providerServicesList.find(s => String(s.id) === val);
-                                  if (selected) {
-                                    setProviderServiceId(String(selected.id));
-                                    setProviderPrice(parseFloat(selected.price));
-                                    setServiceName(selected.name);
-                                    setServicePrice(Math.round(parseFloat(selected.price) * 1.5)); // Default markup +50%
-                                    setServiceMin(selected.min);
-                                    setServiceMax(selected.max);
-                                    let rawDesc = selected.note || selected.description || selected.desc || selected.details || '';
-                                    
-                                    // Memperbaiki masalah enkoding karakter emoji (double-encoded UTF-8 seperti "å" menjadi emoji asli)
-                                    try {
-                                      rawDesc = decodeURIComponent(escape(rawDesc));
-                                    } catch (e) {
-                                      // Abaikan jika gagal
+                              <div className="relative">
+                                {/* Custom Service Selector Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsProviderServiceDropdownOpen(!isProviderServiceDropdownOpen);
+                                    setIsProviderCategoryDropdownOpen(false);
+                                  }}
+                                  className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs text-left cursor-pointer min-w-0"
+                                >
+                                  <span className="truncate">
+                                    {providerServiceId 
+                                      ? (() => {
+                                          const found = providerServicesList.find(s => String(s.id) === providerServiceId);
+                                          return found ? `[${found.id}] ${found.category} - ${found.name} (Rp ${parseFloat(found.price).toLocaleString()})` : `-- Klik untuk memilih --`;
+                                        })()
+                                      : '-- Klik untuk memilih --'
                                     }
+                                  </span>
+                                  <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isProviderServiceDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
 
-                                    // Bersihkan tag HTML agar menjadi teks biasa yang rapi
-                                    rawDesc = rawDesc
-                                      .replace(/<br\s*\/?>/gi, '\n')
-                                      .replace(/<\/p>/gi, '\n')
-                                      .replace(/<p[^>]*>/gi, '')
-                                      .replace(/<[^>]*>/g, '')
-                                      .replace(/&nbsp;/g, ' ')
-                                      .replace(/&amp;/g, '&')
-                                      .replace(/&lt;/g, '<')
-                                      .replace(/&gt;/g, '>')
-                                      .replace(/\n\s*\n+/g, '\n\n') // Satukan newline berlebih
-                                      .trim();
-                                    setServiceDescription(rawDesc);
-                                    
-                                    // Auto set average duration if returned by provider
-                                    const avgTime = selected.average_time || selected.average_duration || selected.time;
-                                    if (avgTime) {
-                                      setAverageDuration(avgTime);
-                                    } else {
-                                      setAverageDuration('15 Menit');
-                                    }
-                                    // Auto set category if matches
-                                    if (selected.category) {
-                                      const catLower = selected.category.toLowerCase();
-                                      if (catLower.includes('instagram')) setServiceCategory('Instagram');
-                                      else if (catLower.includes('tiktok')) setServiceCategory('TikTok');
-                                      else if (catLower.includes('youtube')) setServiceCategory('YouTube');
-                                      else if (catLower.includes('twitter') || catLower.includes('x')) setServiceCategory('Twitter/X');
-                                      else setServiceCategory(selected.category);
-                                    }
-                                  }
-                                }}
-                                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
-                              >
-                                <option value="">-- Klik untuk memilih --</option>
-                                {filteredProviderServices.slice(0, 100).map((ps: any) => (ps && (
-                                  <option key={ps.id} value={ps.id}>
-                                    [{ps.id}] {ps.category} - {ps.name} (Rp {parseFloat(ps.price).toLocaleString()})
-                                  </option>
-                                )))}
-                              </select>
-                            </div>
+                                {/* Custom Service Dropdown List */}
+                                {isProviderServiceDropdownOpen && (
+                                  <div className="absolute left-0 right-0 mt-1 bg-slate-950 border border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                                    <div className="p-3 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                                      <input
+                                        type="text"
+                                        placeholder="Cari Layanan Provider..."
+                                        value={providerServiceSearchQuery}
+                                        onChange={(e) => setProviderServiceSearchQuery(e.target.value)}
+                                        className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
+                                        autoFocus
+                                      />
+                                    </div>
+                                    <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
+                                      {filteredProviderServices
+                                        .filter((ps: any) => ps && (ps.name || '').toLowerCase().includes(providerServiceSearchQuery.toLowerCase()))
+                                        .map((ps: any) => (
+                                          <button
+                                            key={ps.id}
+                                            type="button"
+                                            onClick={() => {
+                                              setProviderServiceId(String(ps.id));
+                                              setProviderPrice(parseFloat(ps.price));
+                                              setServiceName(ps.name);
+                                              setServicePrice(Math.round(parseFloat(ps.price) * 1.5)); // Default markup +50%
+                                              setServiceMin(ps.min);
+                                              setServiceMax(ps.max);
+                                              let rawDesc = ps.note || ps.description || ps.desc || ps.details || '';
+                                              
+                                              try {
+                                                rawDesc = decodeURIComponent(escape(rawDesc));
+                                              } catch (e) {}
+
+                                              rawDesc = rawDesc
+                                                .replace(/<br\s*\/?>/gi, '\n')
+                                                .replace(/<\/p>/gi, '\n')
+                                                .replace(/<p[^>]*>/gi, '')
+                                                .replace(/<[^>]*>/g, '')
+                                                .replace(/&nbsp;/g, ' ')
+                                                .replace(/&amp;/g, '&')
+                                                .replace(/&lt;/g, '<')
+                                                .replace(/&gt;/g, '>')
+                                                .replace(/\n\s*\n+/g, '\n\n')
+                                                .trim();
+                                              setServiceDescription(rawDesc);
+                                              
+                                              const avgTime = ps.average_time || ps.average_duration || ps.time;
+                                              if (avgTime) {
+                                                setAverageDuration(avgTime);
+                                              } else {
+                                                setAverageDuration('15 Menit');
+                                              }
+                                              
+                                              if (ps.category) {
+                                                const catLower = ps.category.toLowerCase();
+                                                if (catLower.includes('instagram')) setServiceCategory('Instagram');
+                                                else if (catLower.includes('tiktok')) setServiceCategory('TikTok');
+                                                else if (catLower.includes('youtube')) setServiceCategory('YouTube');
+                                                else if (catLower.includes('twitter') || catLower.includes('x')) setServiceCategory('Twitter/X');
+                                                else setServiceCategory(ps.category);
+                                              }
+
+                                              setIsProviderServiceDropdownOpen(false);
+                                              setProviderServiceSearchQuery('');
+                                            }}
+                                            className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors flex flex-col gap-0.5 ${
+                                              providerServiceId === String(ps.id) ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-350'
+                                            }`}
+                                          >
+                                            <span className="block truncate">[{ps.id}] {ps.name}</span>
+                                            <span className="text-[10px] text-slate-500 font-mono">
+                                              Kategori: {ps.category} | Rp {parseFloat(ps.price).toLocaleString()}
+                                            </span>
+                                          </button>
+                                        ))}
+                                      {filteredProviderServices.length === 0 && (
+                                        <div className="px-4 py-3 text-xs text-slate-500 text-center">Layanan tidak ditemukan</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>     </div>
                           </div>
                         );
                       })()}
@@ -2131,7 +2461,7 @@ export default function AdminDashboard() {
             <div className="bg-slate-900/40 border border-slate-800/80 p-6 sm:p-8 rounded-3xl backdrop-blur-md">
               <h3 className="font-bold text-base text-slate-200 mb-6 flex items-center gap-2">
                 <Megaphone className="w-4 h-4 text-indigo-400" />
-                <span>Buat Info Rekomendasi</span>
+                <span>{editingAnnId ? 'Edit Info Rekomendasi' : 'Buat Info Rekomendasi'}</span>
               </h3>
 
               <form onSubmit={handleSaveAnnouncement} className="space-y-5">
@@ -2165,11 +2495,11 @@ export default function AdminDashboard() {
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Deskripsi / Detail Konten</label>
                   <textarea
                     required
-                    rows={4}
+                    rows={10}
                     placeholder="Masukkan pesan info detail rekomendasi di sini..."
                     value={annContent}
                     onChange={(e) => setAnnContent(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs resize-none"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   />
                 </div>
 
@@ -2216,14 +2546,31 @@ export default function AdminDashboard() {
                   )}
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={submittingAnn}
-                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3 rounded-2xl transition-all text-xs flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Kirim Informasi</span>
-                </button>
+                <div className="flex gap-3">
+                  {editingAnnId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingAnnId(null);
+                        setAnnTitle('');
+                        setAnnContent('');
+                        setAnnBadge('INFO');
+                        setAnnImageUrl('');
+                      }}
+                      className="flex-1 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold py-3 rounded-2xl transition-all text-xs text-center cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={submittingAnn}
+                    className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3 rounded-2xl transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {editingAnnId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    <span>{editingAnnId ? 'Simpan Perubahan' : 'Kirim Informasi'}</span>
+                  </button>
+                </div>
               </form>
             </div>
 
@@ -2236,7 +2583,7 @@ export default function AdminDashboard() {
                 ) : (
                   announcements.map(ann => (
                     <div key={ann.id} className="py-4 flex justify-between items-start gap-4">
-                      <div className="text-xs">
+                      <div className="text-xs text-left">
                         <div className="flex items-center gap-2">
                           {ann.badge && (
                             <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
@@ -2248,12 +2595,28 @@ export default function AdminDashboard() {
                         <p className="text-slate-400 mt-1 font-light leading-relaxed">{ann.content}</p>
                       </div>
 
-                      <button
-                        onClick={() => handleDeleteAnn(ann.id)}
-                        className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => {
+                            setEditingAnnId(ann.id);
+                            setAnnBadge(ann.badge || 'INFO');
+                            setAnnTitle(ann.title);
+                            setAnnContent(ann.content);
+                            setAnnImageUrl(ann.image_url || '');
+                          }}
+                          className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-xl cursor-pointer"
+                          title="Edit Info"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAnn(ann.id)}
+                          className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl cursor-pointer"
+                          title="Hapus Info"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -2310,9 +2673,25 @@ export default function AdminDashboard() {
                               <span className="font-bold text-slate-250 block truncate">{prof.email}</span>
                               <span className="text-[10px] text-slate-550 font-mono block mt-0.5">{prof.id.slice(0, 8)}</span>
                             </div>
-                            <div className="text-right shrink-0">
-                              <span className="font-extrabold text-indigo-400 block">{formatPrice(prof.balance || 0)}</span>
-                              <span className="text-[9px] text-slate-500 uppercase tracking-wider block mt-0.5">{prof.role}</span>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <div className="text-right">
+                                <span className="font-extrabold text-indigo-400 block">{formatPrice(prof.balance || 0)}</span>
+                                <span className="text-[9px] text-slate-500 uppercase tracking-wider block mt-0.5">{prof.role}</span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedUserForBalance(prof);
+                                  setAdjustmentAmount(0);
+                                  setAdjustmentType('add');
+                                  setAdjustmentReason('');
+                                  setBalanceError(null);
+                                  setShowBalanceModal(true);
+                                }}
+                                className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 transition-all cursor-pointer"
+                                title="Kelola Saldo"
+                              >
+                                <Wallet className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -2388,7 +2767,9 @@ export default function AdminDashboard() {
                             <tr key={tx.id} className="hover:bg-slate-900/20 transition-colors">
                               <td className="py-3 px-3">
                                 <span className="font-semibold text-slate-250 block max-w-[150px] truncate">{tx.profiles?.email || 'User/Simulated'}</span>
-                                <span className="text-[9px] text-slate-555 font-mono block mt-0.5">{tx.id.slice(0, 8)}</span>
+                                <span className="text-[9px] text-slate-555 font-mono block mt-0.5">
+                                  {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 8)}
+                                </span>
                               </td>
                               <td className="py-3 px-3">
                                 {tx.type === 'topup' ? (
@@ -2686,11 +3067,12 @@ export default function AdminDashboard() {
                     <div>
                       <label className="block text-xs font-semibold text-slate-450 uppercase tracking-wider mb-2">Minimal Deposit untuk Bonus (Rp)</label>
                       <input
-                        type="number"
-                        value={landingSettings.deposit_bonus_min || ''}
-                        onChange={(e) => setLandingSettings(prev => ({ ...prev, deposit_bonus_min: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
-                        placeholder="Contoh: 10000"
+                        type="text"
+                        inputMode="numeric"
+                        value={formatNumberWithDots(landingSettings.deposit_bonus_min)}
+                        onChange={(e) => setLandingSettings(prev => ({ ...prev, deposit_bonus_min: String(parseNumberFromDots(e.target.value)) }))}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs font-semibold"
+                        placeholder="Contoh: 10.000"
                       />
                     </div>
 
@@ -2720,6 +3102,430 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
+
+        {/* Tab: Tickets Bantuan Management */}
+        {activeTab === 'tickets' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Filter controls */}
+            <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md">
+              <h3 className="font-bold text-sm text-slate-200 mb-4 uppercase tracking-wider">Kelola Tiket Bantuan</h3>
+              
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Search query */}
+                <div className="flex gap-2 w-full md:w-auto">
+                  <select
+                    value={ticketSearchType}
+                    onChange={(e) => setTicketSearchType(e.target.value)}
+                    className="bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
+                  >
+                    <option value="id">ID</option>
+                    <option value="subject">Subjek</option>
+                    <option value="username">Username</option>
+                  </select>
+                  <div className="relative flex-1 md:w-64">
+                    <input
+                      type="text"
+                      placeholder="Cari..."
+                      value={ticketSearchQuery}
+                      onChange={(e) => setTicketSearchQuery(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none text-xs"
+                    />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  </div>
+                </div>
+
+                {/* Status filter pills */}
+                <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+                  {['all', 'Pending', 'Answered', 'Closed'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setTicketStatusFilter(status)}
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
+                        ticketStatusFilter === status
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15'
+                          : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      }`}
+                    >
+                      {status === 'all' ? 'Semua' : status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Tickets table list */}
+            <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6">
+              <div className="overflow-x-auto rounded-2xl border border-slate-850">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="bg-slate-950 border-b border-slate-850 text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                      <th className="py-4 px-6">ID</th>
+                      <th className="py-4 px-6">User</th>
+                      <th className="py-4 px-6">Subjek</th>
+                      <th className="py-4 px-6">Status</th>
+                      <th className="py-4 px-6">Pembaruan</th>
+                      <th className="py-4 px-6 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850">
+                    {(() => {
+                      const filtered = tickets.filter(t => {
+                        // status check
+                        if (ticketStatusFilter !== 'all' && t.status !== ticketStatusFilter) return false;
+                        
+                        // search check
+                        const q = ticketSearchQuery.toLowerCase().trim();
+                        if (!q) return true;
+                        if (ticketSearchType === 'id') {
+                          return String(t.id).includes(q);
+                        } else if (ticketSearchType === 'subject') {
+                          return String(t.subject).toLowerCase().includes(q);
+                        } else {
+                          return String(t.username || '').toLowerCase().includes(q) || String(t.full_name || '').toLowerCase().includes(q);
+                        }
+                      });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                              Tidak ada tiket bantuan yang ditemukan.
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return filtered.map(t => (
+                        <tr key={t.id} className="hover:bg-slate-900/20 text-xs text-slate-300">
+                          <td className="py-4 px-6 font-mono font-bold text-slate-500">#{t.id}</td>
+                          <td className="py-4 px-6">
+                            <div className="font-bold text-slate-200">{t.full_name || 'User'}</div>
+                            <div className="text-[10px] text-slate-500">@{t.username || 'username'}</div>
+                          </td>
+                          <td className="py-4 px-6 font-semibold text-indigo-400">
+                            {t.subject}
+                            {t.status === 'Pending' && (
+                              <span className="ml-2 px-1.5 py-0.5 rounded text-[8px] font-black bg-rose-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-widest">NEW</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                              t.status === 'Answered' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                              t.status === 'Closed' ? 'bg-slate-500/10 text-slate-400 border border-slate-500/20' :
+                              'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
+                              {t.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 font-medium text-slate-500">
+                            {new Date(t.updated_at).toLocaleString('id-ID', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short'
+                            })}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => fetchTicketDetails(t.id)}
+                                className="px-3 py-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-700 text-white text-[10px] font-extrabold transition-all cursor-pointer"
+                              >
+                                Balas / Detail
+                              </button>
+                              {t.status !== 'Closed' && (
+                                <button
+                                  onClick={() => handleCloseTicket(t.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-705 text-slate-350 text-[10px] font-bold transition-all cursor-pointer"
+                                >
+                                  Tutup Tiket
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* Admin Ticket Detail Chat Modal */}
+      {selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white text-zinc-900 border border-zinc-200 p-6 sm:p-8 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            
+            {/* Header */}
+            <div className="flex justify-between items-start border-b border-zinc-100 pb-4 mb-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-200/50">
+                    Tiket #{selectedTicket.id}
+                  </span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                    selectedTicket.status === 'Answered' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50' :
+                    selectedTicket.status === 'Closed' ? 'bg-slate-550 text-slate-500 border border-slate-200/50' :
+                    'bg-amber-50 text-amber-600 border border-amber-200/50'
+                  }`}>
+                    {selectedTicket.status}
+                  </span>
+                </div>
+                <h3 className="text-lg font-extrabold text-zinc-955 tracking-tight">Subjek: {selectedTicket.subject}</h3>
+                {selectedTicket.subject === 'Pesanan' && selectedTicket.order_id && (
+                  <div className="mt-1.5 text-xs text-zinc-550 font-bold flex flex-wrap gap-x-4 gap-y-1">
+                    <span>order_id: <span className="font-mono text-zinc-800 bg-zinc-100 px-1.5 py-0.5 rounded">{selectedTicket.order_id}</span></span>
+                    {selectedTicket.request_type && <span>Permintaan: <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-black">{selectedTicket.request_type}</span></span>}
+                  </div>
+                )}
+                {selectedTicket.subject === 'Deposit' && selectedTicket.deposit_id && (
+                  <div className="mt-1.5 text-xs text-zinc-550 font-bold">
+                    <span>ID Deposit: <span className="font-mono text-zinc-800 bg-zinc-100 px-1.5 py-0.5 rounded">{selectedTicket.deposit_id}</span></span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedTicket(null)}
+                className="text-zinc-400 hover:text-zinc-650 p-1.5 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Chat Body */}
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-6 scrollbar-thin scrollbar-thumb-zinc-200">
+              {ticketMessages.map((msg) => {
+                const isUser = msg.sender_role === 'user';
+                return (
+                  <div 
+                    key={msg.id} 
+                    className={`flex flex-col ${isUser ? 'items-start' : 'items-end'}`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[9px] text-zinc-400 font-bold mb-1 px-1">
+                      <span>{isUser ? `Pengguna (${msg.full_name || 'User'})` : 'Anda (Admin)'}</span>
+                      <span>•</span>
+                      <span>{new Date(msg.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                    </div>
+
+                    <div className={`max-w-[85%] p-3.5 rounded-2xl text-xs sm:text-sm font-light leading-relaxed whitespace-pre-wrap shadow-sm text-left ${
+                      isUser 
+                        ? 'bg-zinc-100 text-zinc-800 rounded-tl-none border border-zinc-200/50' 
+                        : 'bg-indigo-600 text-white rounded-tr-none'
+                    }`}>
+                      {msg.message}
+
+                      {msg.image_url && (
+                        <div 
+                          className="mt-3 relative rounded-xl overflow-hidden border border-black/10 cursor-zoom-in max-h-48"
+                          onClick={() => {
+                            setShowImageZoom(msg.image_url);
+                          }}
+                        >
+                          <img src={msg.image_url} alt="Attachment" className="max-h-48 w-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Reply Input Form */}
+            {selectedTicket.status !== 'Closed' ? (
+              <form onSubmit={handleSendTicketMessage} className="border-t border-zinc-150 pt-4 space-y-3">
+                <div className="flex items-end gap-2 bg-zinc-50 border border-zinc-200 rounded-2xl p-2 focus-within:border-indigo-500 transition-all">
+                  <textarea
+                    value={newTicketMessage}
+                    onChange={(e) => setNewTicketMessage(e.target.value)}
+                    placeholder="Tulis balasan pesan Anda ke pengguna..."
+                    rows={2}
+                    className="flex-1 bg-transparent border-none outline-none resize-none text-xs sm:text-sm text-zinc-800 pl-2 pt-1"
+                  />
+                  
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setNewTicketMessageImage(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="admin-reply-image-upload"
+                    />
+                    <label
+                      htmlFor="admin-reply-image-upload"
+                      className="p-2 hover:bg-zinc-200 rounded-xl text-zinc-500 hover:text-zinc-700 cursor-pointer transition-colors"
+                      title="Lampirkan Gambar"
+                    >
+                      <Upload className="w-4 h-4" />
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={sendingTicketMessage || !newTicketMessage.trim()}
+                      className="bg-indigo-600 hover:bg-indigo-750 text-white p-2.5 rounded-xl transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-indigo-650/10 flex items-center justify-center shrink-0"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {newTicketMessageImage && (
+                  <div className="relative inline-block rounded-xl overflow-hidden border border-zinc-200 bg-zinc-50 p-1">
+                    <img src={newTicketMessageImage} alt="Reply Attachment" className="h-16 w-16 object-cover rounded-lg" />
+                    <button
+                      type="button"
+                      onClick={() => setNewTicketMessageImage('')}
+                      className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-650 text-white p-1 rounded-full shadow-md scale-75 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </form>
+            ) : (
+              <div className="border-t border-zinc-150 pt-4 text-center text-xs text-zinc-400 italic">
+                Tiket ini telah ditutup.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Zoom Overlay in Admin Panel */}
+      {showImageZoom && (
+        <div 
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 animate-in fade-in duration-200 cursor-zoom-out"
+          onClick={() => setShowImageZoom(null)}
+        >
+          <button 
+            className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full backdrop-blur-md border border-white/10 transition-all cursor-pointer"
+            onClick={() => setShowImageZoom(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img 
+            src={showImageZoom} 
+            alt="Zoomed Banner" 
+            className="max-w-[92%] max-h-[90vh] object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200"
+          />
+        </div>
+      )}
+      {/* User Balance Modification Modal */}
+      {showBalanceModal && selectedUserForBalance && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => {
+                setShowBalanceModal(false);
+                setSelectedUserForBalance(null);
+              }}
+              className="absolute right-4 top-4 p-1.5 rounded-lg bg-slate-950/50 border border-slate-800 hover:bg-slate-900 text-slate-400 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4">
+              <Wallet className="w-6 h-6" />
+            </div>
+
+            <h4 className="text-sm font-bold text-slate-200 mb-1">Kelola Saldo User</h4>
+            <p className="text-xs text-slate-400 mb-4 font-light">
+              Sesuaikan saldo untuk <span className="font-semibold text-slate-200">{selectedUserForBalance.email}</span>
+            </p>
+
+            <div className="bg-slate-950/50 border border-slate-850 p-3 rounded-2xl mb-4 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-light">Saldo Saat Ini:</span>
+              <span className="font-mono font-bold text-indigo-400">{formatPrice(selectedUserForBalance.balance || 0)}</span>
+            </div>
+
+            <form onSubmit={handleUpdateBalance} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Tindakan</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'add', label: 'Tambah (+)', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' },
+                    { value: 'subtract', label: 'Kurangi (-)', color: 'border-rose-500/30 text-rose-400 bg-rose-500/5' },
+                    { value: 'set', label: 'Atur Baru (=)', color: 'border-blue-500/30 text-blue-400 bg-blue-500/5' }
+                  ].map(type => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setAdjustmentType(type.value as any)}
+                      className={`py-2 px-3 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer ${
+                        adjustmentType === type.value
+                          ? `${type.color} ring-1 ring-offset-0 ring-indigo-500`
+                          : 'border-slate-800 text-slate-400 bg-slate-950/40 hover:bg-slate-900/60'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Nominal Saldo (Rp)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  value={formatNumberWithDots(adjustmentAmount)}
+                  onChange={(e) => setAdjustmentAmount(parseNumberFromDots(e.target.value))}
+                  placeholder="Contoh: 50.000"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-mono font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Alasan / Catatan</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={adjustmentReason}
+                  onChange={(e) => setAdjustmentReason(e.target.value)}
+                  placeholder="Tulis alasan penyesuaian (misal: Manual topup via transfer WA, refund order #123, dll)"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs resize-none"
+                />
+              </div>
+
+              {balanceError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{balanceError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBalanceModal(false);
+                    setSelectedUserForBalance(null);
+                  }}
+                  className="flex-1 bg-slate-950 hover:bg-slate-900 text-slate-350 border border-slate-800 py-3 rounded-xl text-xs font-semibold transition-all active:scale-98 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingBalance}
+                  className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-650 hover:to-purple-700 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-500/10 active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {submittingBalance ? 'Memproses...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Premium confirmation modal for admin panel */}
       {confirmModal.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-200">

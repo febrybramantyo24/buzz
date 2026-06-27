@@ -28,6 +28,7 @@ import {
   ArrowDownRight,
   CreditCard,
   X,
+  XCircle,
   Tag,
   Play,
   ChevronDown,
@@ -36,9 +37,26 @@ import {
   Printer,
   FileText,
   ThumbsUp,
-  Megaphone
+  Megaphone,
+  Copy,
+  Layers,
+  MessageSquare,
+  Send,
+  Upload
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+const formatNumberWithDots = (num: number | string | null | undefined): string => {
+  if (num === null || num === undefined || num === 0 || num === '0' || num === '') return '';
+  const clean = String(num).replace(/\D/g, '');
+  if (!clean) return '';
+  return new Intl.NumberFormat('id-ID').format(parseInt(clean, 10));
+};
+
+const parseNumberFromDots = (str: string): number => {
+  const clean = str.replace(/\D/g, '');
+  return parseInt(clean, 10) || 0;
+};
 
 export default function UserDashboard() {
   const router = useRouter();
@@ -62,11 +80,13 @@ export default function UserDashboard() {
   // History State
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [orderYearFilter, setOrderYearFilter] = useState('all');
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   
   // UI states
   const [loading, setLoading] = useState(true);
   const [submittingOrder, setSubmittingOrder] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'tickets'>('dashboard');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -93,8 +113,45 @@ export default function UserDashboard() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null);
   const [selectedInvoiceDetail, setSelectedInvoiceDetail] = useState<any | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showImageZoom, setShowImageZoom] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [profileUsername, setProfileUsername] = useState('');
+  const [profileFullName, setProfileFullName] = useState('');
+  const [profileWhatsApp, setProfileWhatsApp] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changePasswordError, setChangePasswordError] = useState('');
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState('');
+
+  // Support Ticket System States
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [ticketSearchType, setTicketSearchType] = useState('id');
+  const [ticketSearchQuery, setTicketSearchQuery] = useState('');
+  const [showCreateTicket, setShowCreateTicket] = useState(false);
+  const [ticketSubject, setTicketSubject] = useState('');
+  const [ticketOrderId, setTicketOrderId] = useState('');
+  const [ticketRequestType, setTicketRequestType] = useState('');
+  const [ticketDepositId, setTicketDepositId] = useState('');
+  const [ticketMessage, setTicketMessage] = useState('');
+  const [ticketImage, setTicketImage] = useState('');
+  const [submittingTicket, setSubmittingTicket] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
+  const [selectedTicketOrders, setSelectedTicketOrders] = useState<any[]>([]);
+  const [newTicketMessage, setNewTicketMessage] = useState('');
+  const [newTicketMessageImage, setNewTicketMessageImage] = useState('');
+  const [sendingTicketMessage, setSendingTicketMessage] = useState(false);
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
+  const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [chartDataType, setChartDataType] = useState<'spending' | 'orders'>('spending');
   const itemsPerPage = 10;
 
@@ -104,7 +161,7 @@ export default function UserDashboard() {
 
   useEffect(() => {
     setOrdersPage(1);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, orderYearFilter]);
 
   // Refetch data automatically on tab navigation
   useEffect(() => {
@@ -219,7 +276,8 @@ export default function UserDashboard() {
         fetchAnnouncements(),
         fetchOrders(session.user.id),
         fetchProfileAndTransactions(session.user.id),
-        fetchSiteSettings()
+        fetchSiteSettings(),
+        fetchTickets()
       ]);
       setLoading(false);
     }
@@ -237,6 +295,7 @@ export default function UserDashboard() {
       
       if (profile) {
         setBalance(Number(profile.balance || 0));
+        setUserProfile(profile);
       }
 
       const { data: txData } = await supabase
@@ -318,6 +377,103 @@ export default function UserDashboard() {
     }
   };
 
+  const fetchTickets = async () => {
+    try {
+      const res = await fetch('/api/tickets');
+      const data = await res.json();
+      if (data.success) {
+        setTickets(data.tickets || []);
+      }
+    } catch (err) {
+      console.error('Error fetching tickets:', err);
+    }
+  };
+
+  const fetchTicketDetails = async (ticketId: number) => {
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`);
+      const data = await res.json();
+      if (data.success) {
+        setSelectedTicket(data.ticket);
+        setTicketMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error('Error fetching ticket details:', err);
+    }
+  };
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticketSubject || !ticketMessage) return;
+
+    setSubmittingTicket(true);
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: ticketSubject,
+          message: ticketMessage,
+          image_url: ticketImage || null,
+          order_id: ticketSubject === 'Pesanan' ? ticketOrderId : null,
+          request_type: ticketSubject === 'Pesanan' ? ticketRequestType : null,
+          deposit_id: ticketSubject === 'Deposit' ? ticketDepositId : null
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Tiket berhasil dikirim!', 'success');
+        setTicketSubject('');
+        setTicketOrderId('');
+        setTicketRequestType('');
+        setTicketDepositId('');
+        setTicketMessage('');
+        setTicketImage('');
+        setShowCreateTicket(false);
+        await fetchTickets();
+      } else {
+        showToast(data.error || 'Gagal mengirim tiket', 'error');
+      }
+    } catch (err: any) {
+      console.error('Error creating ticket:', err);
+      showToast('Terjadi kesalahan jaringan', 'error');
+    } finally {
+      setSubmittingTicket(false);
+    }
+  };
+
+  const handleSendTicketMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTicketMessage.trim() || !selectedTicket) return;
+
+    setSendingTicketMessage(true);
+    try {
+      const res = await fetch(`/api/tickets/${selectedTicket.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: newTicketMessage,
+          image_url: newTicketMessageImage || null
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNewTicketMessage('');
+        setNewTicketMessageImage('');
+        await fetchTicketDetails(selectedTicket.id);
+        // refresh list in background
+        fetchTickets();
+      } else {
+        showToast(data.error || 'Gagal mengirim pesan', 'error');
+      }
+    } catch (err) {
+      console.error('Error replying to ticket:', err);
+      showToast('Terjadi kesalahan jaringan', 'error');
+    } finally {
+      setSendingTicketMessage(false);
+    }
+  };
+
   const fetchOrders = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -352,6 +508,7 @@ export default function UserDashboard() {
       setTotalPrice(0);
     }
   }, [selectedService, quantity]);
+
 
   // Order validation and submission (via Balance)
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -500,6 +657,93 @@ export default function UserDashboard() {
     }
   };
 
+  // Pay multiple unpaid orders in bulk via wallet balance
+  const handleBulkPayOrders = async () => {
+    const unpaidSelectedOrders = orders.filter(o => selectedOrderIds.includes(o.id) && o.payment_status === 'unpaid');
+    if (unpaidSelectedOrders.length === 0) {
+      showToast('Tidak ada orderan terpilih yang belum dibayar!', 'info');
+      return;
+    }
+
+    const totalBulkPrice = unpaidSelectedOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
+    if (balance < totalBulkPrice) {
+      showToast(`Saldo Anda tidak mencukupi untuk membayar semua orderan terpilih. Total harga: ${formatPrice(totalBulkPrice)}.`, 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const newBalance = balance - totalBulkPrice;
+      
+      // Update local storage balance immediately
+      localStorage.setItem(`balance_${user.id}`, String(newBalance));
+      setBalance(newBalance);
+
+      // We perform all supabase mutations
+      const transactionLogs = unpaidSelectedOrders.map(order => ({
+        user_id: user.id,
+        amount: -order.total_price,
+        type: 'order_payment',
+        status: 'success',
+        reference_id: order.id,
+        payment_method: 'wallet'
+      }));
+
+      // 1. Update DB profile balance
+      await supabase
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('id', user.id);
+
+      // 2. Create transaction logs
+      await supabase
+        .from('transactions')
+        .insert(transactionLogs);
+
+      // 3. Update Orders to paid
+      const orderIdsToUpdate = unpaidSelectedOrders.map(o => o.id);
+      for (const orderId of orderIdsToUpdate) {
+        await supabase
+          .from('orders')
+          .update({ payment_status: 'paid', payment_method: 'wallet', status: 'pending' })
+          .eq('id', orderId);
+      }
+
+      // Update local state
+      const updatedOrders = orders.map(o => {
+        if (orderIdsToUpdate.includes(o.id)) {
+          return { ...o, payment_status: 'paid', payment_method: 'wallet', status: 'pending' as const };
+        }
+        return o;
+      });
+      setOrders(updatedOrders as Order[]);
+      localStorage.setItem(`orders_${user.id}`, JSON.stringify(updatedOrders));
+
+      // Append local transaction logs to state
+      const localTxs = unpaidSelectedOrders.map(order => ({
+        id: `TX-${Math.random().toString(36).substring(2, 9)}`,
+        user_id: user.id,
+        amount: -order.total_price,
+        type: 'order_payment' as const,
+        status: 'success' as const,
+        reference_id: order.id,
+        payment_method: 'wallet',
+        created_at: new Date().toISOString()
+      }));
+      const updatedTxs = [...localTxs, ...transactions];
+      setTransactions(updatedTxs);
+      localStorage.setItem(`transactions_${user.id}`, JSON.stringify(updatedTxs));
+
+      setSelectedOrderIds([]);
+      showToast(`${unpaidSelectedOrders.length} orderan berhasil dibayar massal!`, 'success');
+    } catch (err) {
+      console.error('Bulk payment error:', err);
+      showToast('Gagal membayar orderan secara massal. Silakan coba lagi.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Pay unpaid order via wallet balance
   const handlePayOrderWithBalance = async (order: Order) => {
     if (balance < order.total_price) {
@@ -581,6 +825,36 @@ export default function UserDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCopySelectedOrderIds = () => {
+    if (selectedOrderIds.length === 0) {
+      showToast('Pilih minimal satu ID pesanan terlebih dahulu!', 'info');
+      return;
+    }
+    const idsToCopy = orders
+      .filter(o => selectedOrderIds.includes(o.id))
+      .map(o => o.order_id ? String(o.order_id) : o.id);
+    navigator.clipboard.writeText(idsToCopy.join(', '));
+    showToast(`${selectedOrderIds.length} ID Pesanan berhasil disalin!`, 'success');
+  };
+
+  const handleToggleSelectAll = (filteredList: any[]) => {
+    const allFilteredIds = filteredList.map(o => o.id);
+    const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedOrderIds.includes(id));
+    if (isAllSelected) {
+      // Remove all filtered IDs from selectedOrderIds
+      setSelectedOrderIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+    } else {
+      // Add all filtered IDs to selectedOrderIds without duplicates
+      setSelectedOrderIds(prev => Array.from(new Set([...prev, ...allFilteredIds])));
+    }
+  };
+
+  const handleToggleSelectOrder = (orderId: string) => {
+    setSelectedOrderIds(prev => 
+      prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
+    );
   };
 
   // Top Up Wallet via Midtrans
@@ -856,6 +1130,86 @@ export default function UserDashboard() {
     router.push('/');
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setChangePasswordError('Konfirmasi password baru tidak cocok.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setChangePasswordError('Password baru minimal harus 6 karakter.');
+      return;
+    }
+    setChangePasswordLoading(true);
+    setChangePasswordError('');
+    setChangePasswordSuccess('');
+
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setChangePasswordError(data.error || 'Gagal mengubah password.');
+      } else {
+        setChangePasswordSuccess(data.message || 'Password berhasil diperbarui!');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (err) {
+      setChangePasswordError('Terjadi kesalahan koneksi.');
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileLoading(true);
+    setProfileError('');
+    setProfileSuccess('');
+
+    try {
+      const res = await fetch('/api/auth/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: profileUsername,
+          fullName: profileFullName,
+          whatsapp: profileWhatsApp
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setProfileError(data.error || 'Gagal memperbarui profil.');
+      } else {
+        setProfileSuccess(data.message || 'Profil berhasil diperbarui!');
+        // Refresh local state profile
+        if (user) {
+          fetchProfileAndTransactions(user.id);
+        }
+      }
+    } catch (err) {
+      setProfileError('Terjadi kesalahan koneksi.');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  // Sync profile values when modal opens
+  useEffect(() => {
+    if (showProfileModal && userProfile) {
+      setProfileUsername(userProfile.username || '');
+      setProfileFullName(userProfile.full_name || '');
+      setProfileWhatsApp(userProfile.whatsapp || '');
+      setProfileError('');
+      setProfileSuccess('');
+    }
+  }, [showProfileModal, userProfile]);
+
   const toggleFavorite = (serviceId: string) => {
     if (!user) return;
     let newFavs = [...favorites];
@@ -868,6 +1222,40 @@ export default function UserDashboard() {
     }
     setFavorites(newFavs);
     localStorage.setItem(`favorites_${user.id}`, JSON.stringify(newFavs));
+  };
+
+  const handleReorder = (order: Order) => {
+    // 1. Set tab to 'order'
+    setActiveTab('order');
+    
+    // 2. Set Category
+    setSelectedCategory(order.category);
+    
+    // 3. Find matching service from services list and set it
+    const matchingService = services.find(s => s.id === order.service_id);
+    if (matchingService) {
+      setSelectedService(matchingService);
+    } else {
+      // Fallback service placeholder if service is no longer active/found
+      setSelectedService({
+        id: order.service_id,
+        category: order.category,
+        name: order.service_name,
+        price_per_k: order.price_per_k,
+        min_order: 10,
+        max_order: 100000,
+        is_active: true,
+        created_at: new Date().toISOString()
+      });
+    }
+
+    // 4. Fill form fields
+    setTargetUrl(order.target_url);
+    setQuantity(order.quantity);
+    setTotalPrice(order.total_price);
+    
+    // 5. Show toast notify
+    showToast('Form order berhasil diisi otomatis!', 'success');
   };
 
   const getChartData = () => {
@@ -982,20 +1370,34 @@ export default function UserDashboard() {
     ];
   }
 
-  // Filter & Search Logic
   const filteredOrders = orders.filter(o => {
-    const matchesSearch = o.service_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          o.target_url.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          o.id.toLowerCase().includes(searchTerm.toLowerCase());
+    let matchesSearch = false;
+    if (searchTerm.includes(',')) {
+      const searchIds = searchTerm.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+      matchesSearch = searchIds.some(searchId => 
+        o.id.toLowerCase().includes(searchId) || 
+        (o.order_id ? String(o.order_id).includes(searchId) : false)
+      );
+    } else {
+      matchesSearch = o.service_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                      o.target_url.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                      o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      (o.order_id ? String(o.order_id).includes(searchTerm.trim()) : false);
+    }
     
     const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    let matchesYear = true;
+    if (orderYearFilter !== 'all') {
+      const year = new Date(o.created_at).getFullYear().toString();
+      matchesYear = year === orderYearFilter;
+    }
+    
+    return matchesSearch && matchesStatus && matchesYear;
   });
 
   const filteredTxs = transactions.filter(tx => {
-    // Show both topup and refund transactions in Deposit/Transaction History
-    if (tx.type !== 'topup' && tx.type !== 'refund') return false;
+    // Show all transactions (topup, refund, order_payment, etc.) for full audit transparency
 
     // Status filter
     if (txStatusFilter !== 'all') {
@@ -1033,7 +1435,10 @@ export default function UserDashboard() {
     if (txSearchQuery.trim() !== '') {
       const queryLower = txSearchQuery.toLowerCase().trim();
       if (txSearchType === 'id') {
-        if (!tx.id.toLowerCase().includes(queryLower)) return false;
+        const queryClean = queryLower.replace('trx-', '');
+        const matchesId = tx.id.toLowerCase().includes(queryLower) ||
+                          (tx.tx_id ? String(tx.tx_id).includes(queryClean) : false);
+        if (!matchesId) return false;
       } else if (txSearchType === 'amount') {
         if (!tx.amount.toString().includes(queryLower)) return false;
       }
@@ -1055,7 +1460,7 @@ export default function UserDashboard() {
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white overflow-x-hidden">
       
       {/* Header */}
-      <header className="border-b border-slate-900 bg-slate-950/80 sticky top-0 z-30 backdrop-blur-md">
+      <header className="border-b border-slate-900 bg-slate-950/80 sticky top-0 z-30 backdrop-blur-md print:hidden">
         <div className="w-full max-w-[96%] xl:max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2 rounded-lg">
@@ -1068,10 +1473,21 @@ export default function UserDashboard() {
 
           <div className="flex items-center gap-4">
             <PremiumThemeToggle />
-            <div className="hidden sm:flex items-center gap-2 bg-slate-900 px-3.5 py-1.5 rounded-xl border border-slate-800 text-xs">
+            <button 
+              onClick={() => {
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setChangePasswordError('');
+                setChangePasswordSuccess('');
+                setShowProfileModal(true);
+              }}
+              className="flex items-center gap-2 bg-slate-900 hover:bg-slate-850 px-3 py-2 sm:px-3.5 sm:py-1.5 rounded-xl border border-slate-800 text-xs text-slate-300 hover:text-slate-100 transition-all cursor-pointer"
+              title="Buka Profil & Ganti Password"
+            >
               <User className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-slate-300 font-medium">{user?.email}</span>
-            </div>
+              <span className="font-medium hidden sm:inline">{user?.email}</span>
+            </button>
             <button 
               onClick={handleLogout}
               className="flex items-center gap-1.5 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3.5 py-2 rounded-xl transition-all border border-red-500/20"
@@ -1084,7 +1500,7 @@ export default function UserDashboard() {
       </header>
 
       {/* Main Container */}
-      <main className="w-full max-w-[96%] xl:max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 lg:pb-8">
+      <main className="w-full max-w-[96%] xl:max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 lg:pb-8 print:hidden">
 
         {/* Wallet and Stats Cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
@@ -1160,6 +1576,7 @@ export default function UserDashboard() {
             <ShoppingBag className="w-4 h-4" />
             <span>Buat Pesanan</span>
           </button>
+
           <button
             onClick={() => {
               setActiveTab('history');
@@ -1186,7 +1603,21 @@ export default function UserDashboard() {
             }`}
           >
             <CreditCard className="w-4 h-4" />
-            <span>Riwayat Deposit</span>
+            <span>Riwayat Transaksi</span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('tickets');
+              fetchTickets();
+            }}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 cursor-pointer ${
+              activeTab === 'tickets'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-250 hover:bg-slate-100 dark:hover:bg-slate-900/60'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>Tiket Bantuan</span>
           </button>
         </div>
 
@@ -1471,7 +1902,7 @@ export default function UserDashboard() {
                   const favoriteServices = services.filter(s => favorites.includes(s.id));
                   if (favoriteServices.length === 0) return null;
                   return (
-                    <div className="bg-slate-950/40 border border-slate-850 p-4 rounded-2xl">
+                    <div className="hidden sm:block bg-slate-950/40 border border-slate-850 p-4 rounded-2xl">
                       <span className="text-[10px] font-bold text-slate-450 dark:text-slate-400 uppercase tracking-wider block mb-2.5 flex items-center gap-1">
                         <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                         <span>Layanan Favorit Anda</span>
@@ -1486,13 +1917,13 @@ export default function UserDashboard() {
                               setSelectedService(fav);
                               showToast(`Layanan '${fav.name}' dipilih.`, 'info');
                             }}
-                            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 cursor-pointer ${
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 cursor-pointer w-full sm:w-auto text-left ${
                               selectedService?.id === fav.id
                                 ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20'
                                 : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
                             }`}
                           >
-                            {fav.name}
+                            <span className="block w-full whitespace-normal break-words text-left leading-relaxed">{fav.name}</span>
                           </button>
                         ))}
                       </div>
@@ -1500,60 +1931,81 @@ export default function UserDashboard() {
                   );
                 })()}
 
-                <div className="grid sm:grid-cols-2 gap-6">
+                <div className="grid sm:grid-cols-2 gap-6 min-w-0">
                   {/* Category Selection */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Kategori</label>
-                      <input
-                        type="text"
-                        placeholder="Cari Kategori..."
-                        value={categorySearchQuery}
-                        onChange={(e) => {
-                          const query = e.target.value;
-                          setCategorySearchQuery(query);
-                          // Pilih otomatis item pertama yang cocok
-                          const matched = categories.find(cat => cat.toLowerCase().includes(query.toLowerCase()));
-                          if (matched) {
-                            setSelectedCategory(matched);
-                          }
-                        }}
-                        className="bg-slate-950 border border-slate-850 focus:border-indigo-500 text-slate-200 px-2.5 py-1 rounded-xl outline-none text-[11px] max-w-[130px] transition-colors"
-                      />
-                    </div>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm"
+                  <div className="space-y-2 relative min-w-0">
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Kategori</label>
+                    
+                    {/* Custom Category Selector Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
+                        setIsServiceDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm text-left cursor-pointer min-w-0 max-w-full"
                     >
-                      {categories
-                        .filter(cat => cat.toLowerCase().includes(categorySearchQuery.toLowerCase()))
-                        .map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                    </select>
+                      <span className="truncate block w-full">{selectedCategory || 'Pilih Kategori...'}</span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Custom Category Dropdown List */}
+                    {isCategoryDropdownOpen && (
+                      <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 border border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                        <div className="p-3 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                          <input
+                            type="text"
+                            placeholder="Cari Kategori..."
+                            value={categorySearchQuery}
+                            onChange={(e) => setCategorySearchQuery(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
+                          {categories
+                            .filter(cat => cat.toLowerCase().includes(categorySearchQuery.toLowerCase()))
+                            .map(cat => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedCategory(cat);
+                                  setIsCategoryDropdownOpen(false);
+                                  setCategorySearchQuery('');
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors ${
+                                  selectedCategory === cat ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-355'
+                                }`}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          {categories.filter(cat => cat.toLowerCase().includes(categorySearchQuery.toLowerCase())).length === 0 && (
+                            <div className="px-4 py-3 text-xs text-slate-500 text-center">Kategori tidak ditemukan</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Service Selection */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Layanan</label>
-                    <div className="flex gap-2">
-                      <select
-                        value={selectedService?.id || ''}
-                        onChange={(e) => {
-                          const found = services.find(s => s.id === e.target.value);
-                          setSelectedService(found || null);
+                  <div className="space-y-2 relative min-w-0">
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Layanan</label>
+                    <div className="flex gap-2 min-w-0 w-full">
+                      {/* Custom Service Selector Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsServiceDropdownOpen(!isServiceDropdownOpen);
+                          setIsCategoryDropdownOpen(false);
                         }}
-                        className="flex-1 bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm min-w-0"
+                        className="flex-1 flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm text-left cursor-pointer min-w-0 max-w-[calc(100vw-140px)] sm:max-w-none"
                       >
-                        {services
-                          .filter(s => s.category === selectedCategory)
-                          .map(service => (
-                            <option key={service.id} value={service.id}>
-                              {service.name}
-                            </option>
-                          ))}
-                      </select>
+                        <span className="truncate block w-full">{selectedService?.name || 'Pilih Layanan...'}</span>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isServiceDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
                       {selectedService && (
                         <button
                           type="button"
@@ -1569,6 +2021,48 @@ export default function UserDashboard() {
                         </button>
                       )}
                     </div>
+
+                    {/* Custom Service Dropdown List */}
+                    {isServiceDropdownOpen && (
+                      <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 border border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                        <div className="p-3 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                          <input
+                            type="text"
+                            placeholder="Cari Layanan..."
+                            value={serviceSearchQuery}
+                            onChange={(e) => setServiceSearchQuery(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
+                          {services
+                            .filter(s => s.category === selectedCategory && s.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()))
+                            .map(service => (
+                              <button
+                                key={service.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedService(service);
+                                  setIsServiceDropdownOpen(false);
+                                  setServiceSearchQuery('');
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors flex flex-col gap-0.5 ${
+                                  selectedService?.id === service.id ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-355'
+                                }`}
+                              >
+                                <span className="block truncate">{service.name}</span>
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  {formatPrice(service.price_per_k)} / 1K | Min: {service.min_order.toLocaleString()} - Max: {service.max_order.toLocaleString()}
+                                </span>
+                              </button>
+                            ))}
+                          {services.filter(s => s.category === selectedCategory && s.name.toLowerCase().includes(serviceSearchQuery.toLowerCase())).length === 0 && (
+                            <div className="px-4 py-3 text-xs text-slate-500 text-center">Layanan tidak ditemukan</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1590,14 +2084,13 @@ export default function UserDashboard() {
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Jumlah Pesanan</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       required
-                      min={selectedService?.min_order || 1}
-                      max={selectedService?.max_order || 1000000}
-                      value={quantity || ''}
-                      onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                      placeholder="Contoh: 1000"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm"
+                      value={formatNumberWithDots(quantity)}
+                      onChange={(e) => setQuantity(parseNumberFromDots(e.target.value))}
+                      placeholder="Contoh: 1.000"
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm font-semibold"
                     />
                   </div>
 
@@ -1618,10 +2111,10 @@ export default function UserDashboard() {
 
                 {/* Validation helper info */}
                 {selectedService && (
-                  <div className="space-y-4">
+                  <div className="space-y-4 w-full max-w-full overflow-hidden break-words">
                     {/* Category specific warning */}
                     {selectedCategory && (siteSettings[`warning_title_${selectedCategory.toLowerCase()}`] || siteSettings[`warning_desc_${selectedCategory.toLowerCase()}`]) && (
-                      <div className="p-4 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/5 border border-indigo-500/10 dark:border-indigo-500/10 text-xs text-slate-300 dark:text-slate-300">
+                      <div className="p-4 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/5 border border-indigo-500/10 dark:border-indigo-500/10 text-xs text-slate-300 dark:text-slate-300 w-full max-w-full overflow-hidden break-words">
                         <div className="flex flex-col gap-3">
                           {siteSettings[`warning_title_${selectedCategory.toLowerCase()}`] && (
                             <div className="flex gap-2 items-center">
@@ -1633,7 +2126,7 @@ export default function UserDashboard() {
                           )}
                           
                           <div className="flex flex-col md:flex-row gap-4 items-start">
-                            <div className="flex-1 space-y-1">
+                            <div className="flex-1 space-y-1 w-full max-w-full overflow-hidden break-words">
                               {siteSettings[`warning_desc_${selectedCategory.toLowerCase()}`] && renderWarningContent(siteSettings[`warning_desc_${selectedCategory.toLowerCase()}`])}
                               
                               {siteSettings[`warning_video_url_${selectedCategory.toLowerCase()}`] && (
@@ -1672,21 +2165,21 @@ export default function UserDashboard() {
                     )}
 
                     {selectedService.description && (
-                      <div className="relative overflow-hidden p-4 rounded-2xl bg-slate-950/40 border border-indigo-500/20 dark:border-indigo-500/30 text-xs shadow-md">
+                      <div className="relative overflow-hidden p-4 rounded-2xl bg-slate-950/40 border border-indigo-500/20 dark:border-indigo-500/30 text-xs shadow-md w-full max-w-full break-words">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-xl pointer-events-none" />
                         <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-slate-850">
                           <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                           <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider">Deskripsi Layanan</span>
                         </div>
                         <div 
-                          className="text-slate-200 leading-relaxed font-normal text-xs pl-0.5 whitespace-pre-wrap select-text [&_a]:text-indigo-400 [&_a]:underline [&_a]:hover:text-indigo-300 tracking-wide font-sans"
+                          className="text-slate-200 leading-relaxed font-normal text-xs pl-0.5 whitespace-pre-wrap select-text [&_a]:text-indigo-400 [&_a]:underline [&_a]:hover:text-indigo-300 tracking-wide font-sans break-words"
                           dangerouslySetInnerHTML={{ __html: selectedService.description }}
                         />
                       </div>
                     )}
 
                     {selectedService.average_duration && (
-                      <div className="relative overflow-hidden p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-xs shadow-md">
+                      <div className="relative overflow-hidden p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-xs shadow-md w-full max-w-full break-words">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 blur-xl pointer-events-none" />
                         <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-rose-500/10">
                           <Zap className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
@@ -1701,9 +2194,9 @@ export default function UserDashboard() {
                       </div>
                     )}
                     
-                    <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-xs text-slate-400 flex items-start gap-2.5">
+                    <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-xs text-slate-400 flex items-start gap-2.5 w-full max-w-full break-words">
                       <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                      <div>
+                      <div className="w-full min-w-0">
                         <p>Aturan batas order untuk layanan ini:</p>
                         <ul className="list-disc list-inside mt-1 space-y-0.5">
                           <li>Minimal Order: <strong className="text-slate-200">{selectedService.min_order.toLocaleString()}</strong></li>
@@ -1964,38 +2457,144 @@ export default function UserDashboard() {
           </div>
         )}
 
+
         {/* History Order List Tab */}
         {activeTab === 'history' && (
           <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-md">
             
             {/* Table Filters */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <div className="relative flex-1 max-w-md">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+              <div className="relative w-full lg:max-w-md">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
                   type="text"
                   placeholder="Cari berdasarkan ID, Layanan, atau URL Target..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 pl-11 pr-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                  className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 pl-11 pr-4 py-2.5 rounded-xl outline-none transition-colors text-sm shadow-sm"
                 />
               </div>
 
-              {/* Status selectors */}
-              <div className="flex flex-wrap gap-1.5">
-                {['all', 'pending', 'processing', 'inprogress', 'success', 'partial', 'failed'].map(status => (
+              {/* Action & Filter Selects */}
+              {/* Desktop layout */}
+              <div className="hidden sm:flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                <button
+                  onClick={handleCopySelectedOrderIds}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 hover:shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy ID Pesanan</span>
+                </button>
+
+                {selectedOrderIds.length > 0 && orders.filter(o => selectedOrderIds.includes(o.id) && o.payment_status === 'unpaid').length > 0 && (
                   <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                      statusFilter === status
-                        ? 'bg-indigo-600 text-white border border-indigo-500 shadow-md shadow-indigo-600/10'
-                        : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200/60 dark:border-transparent'
-                    }`}
+                    onClick={handleBulkPayOrders}
+                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/15 hover:shadow-emerald-600/25 active:scale-95 cursor-pointer whitespace-nowrap animate-in zoom-in-95 duration-150"
                   >
-                    {status === 'all' ? 'Semua' : (status === 'failed' ? 'error' : status)}
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Bayar Terpilih ({orders.filter(o => selectedOrderIds.includes(o.id) && o.payment_status === 'unpaid').length})</span>
                   </button>
-                ))}
+                )}
+
+                <select
+                  value={orderYearFilter}
+                  onChange={(e) => setOrderYearFilter(e.target.value)}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 font-semibold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
+                >
+                  <option value="all">Semua Tahun</option>
+                  <option value="2026">2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2024">2024</option>
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 text-slate-700 dark:text-slate-300 font-semibold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="pending">PENDING</option>
+                  <option value="processing">PROCESSING</option>
+                  <option value="inprogress">INPROGRESS</option>
+                  <option value="success">SUCCESS</option>
+                  <option value="partial">PARTIAL</option>
+                  <option value="failed">ERROR</option>
+                </select>
+              </div>
+
+              {/* Mobile layout */}
+              <div className="flex sm:hidden flex-col gap-3 w-full">
+                {/* primary actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCopySelectedOrderIds}
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 active:scale-95 cursor-pointer whitespace-nowrap"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy ID Pesanan</span>
+                  </button>
+
+                  <select
+                    value={orderYearFilter}
+                    onChange={(e) => setOrderYearFilter(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-850 text-slate-700 dark:text-slate-300 font-bold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
+                  >
+                    <option value="all">Semua Tahun</option>
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                  </select>
+                </div>
+
+                {/* Row 2: Pilih Semua & Semua Status */}
+                <div className="grid grid-cols-2 gap-3">
+                  {(() => {
+                    const currentPageOrders = filteredOrders.slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage);
+                    const isPageAllSelected = currentPageOrders.length > 0 && currentPageOrders.every(o => selectedOrderIds.includes(o.id));
+                    return (
+                      <button
+                        onClick={() => handleToggleSelectAll(currentPageOrders)}
+                        className={`w-full flex items-center justify-center gap-2 border font-bold py-2.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap ${
+                          isPageAllSelected 
+                            ? 'bg-indigo-650/15 border-indigo-500/35 text-indigo-400' 
+                            : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-850 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isPageAllSelected}
+                          readOnly
+                          className="w-3.5 h-3.5 rounded border-slate-350 dark:border-slate-800 text-indigo-650 pointer-events-none"
+                        />
+                        <span>Pilih Semua</span>
+                      </button>
+                    );
+                  })()}
+
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-855 text-slate-700 dark:text-slate-300 font-bold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="pending">PENDING</option>
+                    <option value="processing">PROCESSING</option>
+                    <option value="inprogress">INPROGRESS</option>
+                    <option value="success">SUCCESS</option>
+                    <option value="partial">PARTIAL</option>
+                    <option value="failed">ERROR</option>
+                  </select>
+                </div>
+
+                {selectedOrderIds.length > 0 && orders.filter(o => selectedOrderIds.includes(o.id) && o.payment_status === 'unpaid').length > 0 && (
+                  <button
+                    onClick={handleBulkPayOrders}
+                    className="w-full flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl text-xs transition-all shadow-md active:scale-95 cursor-pointer"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Bayar Terpilih ({orders.filter(o => selectedOrderIds.includes(o.id) && o.payment_status === 'unpaid').length})</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2007,101 +2606,294 @@ export default function UserDashboard() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto scrollbar-thin">
-                <table className="w-full min-w-[850px] text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-850 text-slate-450 text-xs font-semibold uppercase tracking-wider">
-                      <th className="py-4 px-4">Order ID</th>
-                      <th className="py-4 px-4">Layanan</th>
-                      <th className="py-4 px-4">Target URL</th>
-                      <th className="py-4 px-4 text-right">Jumlah</th>
-                      <th className="py-4 px-4 text-right">Harga</th>
-                      <th className="py-4 px-4 text-center">Status</th>
-                      <th className="py-4 px-4 text-right">Start Count</th>
-                      <th className="py-4 px-4">Tanggal & Waktu</th>
-                      <th className="py-4 px-4 text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-850/40 text-xs">
-                    {filteredOrders
-                      .slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage)
-                      .map(order => (
-                      <tr key={order.id} className="hover:bg-slate-900/30 transition-colors">
-                        <td className="py-4 px-4 font-mono text-slate-400">{order.id.slice(0, 8)}</td>
-                        <td className="py-4 px-4">
-                          <span className="font-semibold text-slate-200">{order.service_name}</span>
-                          <span className="block text-[10px] text-slate-500 mt-0.5">{order.category}</span>
-                        </td>
-                        <td className="py-4 px-4 font-mono text-slate-400 max-w-xs truncate">
-                          <a href={order.target_url} target="_blank" rel="noreferrer" className="hover:text-indigo-400 hover:underline">
-                            {order.target_url}
-                          </a>
-                        </td>
-                        <td className="py-4 px-4 text-right font-medium text-slate-300">{order.quantity.toLocaleString()}</td>
-                        <td className="py-4 px-4 text-right font-semibold text-indigo-400">{formatPrice(order.total_price)}</td>
-                        <td className="py-4 px-4 text-center">
-                          <div className="flex flex-col items-center gap-1.5 justify-center">
-                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wide inline-block ${
-                              order.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                              order.status === 'inprogress' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                              order.status === 'processing' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
-                              order.status === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                              order.status === 'partial' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
-                              'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            }`}>
-                              {order.status === 'failed' ? 'ERROR' : order.status}
-                            </span>
-                            {order.payment_status === 'unpaid' && (
-                              <button
-                                onClick={() => handlePayOrderWithBalance(order)}
-                                className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-[10px] font-bold text-white transition-all shadow-sm shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
-                              >
-                                Bayar via Saldo
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-right font-mono text-slate-400">
-                          {order.start_count ? order.start_count.toLocaleString() : '-'}
-                        </td>
-                        <td className="py-4 px-4 text-slate-500">
-                          {new Date(order.created_at).toLocaleString('id-ID', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto scrollbar-thin">
+                  {(() => {
+                    const currentPageOrders = filteredOrders.slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage);
+                    const isPageAllSelected = currentPageOrders.length > 0 && currentPageOrders.every(o => selectedOrderIds.includes(o.id));
+                    return (
+                      <table className="w-full min-w-[850px] text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-850 text-slate-450 text-xs font-semibold uppercase tracking-wider">
+                            <th className="py-4 px-4 w-12 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isPageAllSelected}
+                                onChange={() => handleToggleSelectAll(currentPageOrders)}
+                                className="w-4 h-4 rounded border-slate-350 dark:border-slate-800 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+                              />
+                            </th>
+                            <th className="py-4 px-4">ID</th>
+                            <th className="py-4 px-4">Layanan</th>
+                            <th className="py-4 px-4">Target URL</th>
+                            <th className="py-4 px-4 text-right">Jumlah</th>
+                            <th className="py-4 px-4 text-right">Harga</th>
+                            <th className="py-4 px-4">Status</th>
+                            <th className="py-4 px-4 text-right">Start Count</th>
+                            <th className="py-4 px-4">Tanggal & Waktu</th>
+                            <th className="py-4 px-4">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-850/40 text-xs">
+                          {currentPageOrders.map(order => {
+                            const isSelected = selectedOrderIds.includes(order.id);
+                            return (
+                              <tr key={order.id} className={`transition-colors ${isSelected ? 'bg-indigo-500/5 dark:bg-indigo-500/10' : 'hover:bg-slate-900/30'}`}>
+                                <td className="py-4 px-4 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => handleToggleSelectOrder(order.id)}
+                                    className="w-4 h-4 rounded border-slate-350 dark:border-slate-800 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+                                  />
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="flex items-center border border-slate-200 dark:border-slate-800/80 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900/50 max-w-[130px] shadow-sm">
+                                    <span className="px-2 py-1 font-mono text-[10px] text-slate-700 dark:text-slate-300 select-all truncate flex-1 font-semibold">
+                                      {order.order_id ? String(order.order_id) : order.id.slice(0, 8)}
+                                    </span>
+                                    <button
+                                      onClick={() => {
+                                        const idToCopy = order.order_id ? String(order.order_id) : order.id;
+                                        navigator.clipboard.writeText(idToCopy);
+                                        showToast('ID Pesanan berhasil disalin!', 'success');
+                                      }}
+                                      className="bg-indigo-600 hover:bg-indigo-700 text-white p-1 transition-colors cursor-pointer flex items-center justify-center border-l border-indigo-500 w-7 h-7"
+                                      title="Salin ID Pesanan"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className="font-semibold text-slate-200">{order.service_name}</span>
+                                  <span className="block text-[10px] text-slate-500 mt-0.5">{order.category}</span>
+                                </td>
+                                <td className="py-4 px-4 font-mono text-slate-400 max-w-xs truncate">
+                                  <a href={order.target_url} target="_blank" rel="noreferrer" className="hover:text-indigo-400 hover:underline">
+                                    {order.target_url}
+                                  </a>
+                                </td>
+                                <td className="py-4 px-4 text-right font-medium text-slate-300">{order.quantity.toLocaleString()}</td>
+                                <td className="py-4 px-4 text-right font-semibold text-indigo-400">{formatPrice(order.total_price)}</td>
+                                <td className="py-4 px-4 text-center">
+                                  <div className="flex flex-col items-center gap-1.5 justify-center">
+                                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wide inline-block ${
+                                      order.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                      order.status === 'inprogress' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                                      order.status === 'processing' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                                      order.status === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                      order.status === 'partial' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
+                                      'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                    }`}>
+                                      {order.status === 'failed' ? 'ERROR' : order.status}
+                                    </span>
+                                    {order.payment_status === 'unpaid' && (
+                                      <button
+                                        onClick={() => handlePayOrderWithBalance(order)}
+                                        className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-[10px] font-bold text-white transition-all shadow-sm shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
+                                      >
+                                        Bayar via Saldo
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4 text-right font-mono text-slate-400">
+                                  {order.start_count ? order.start_count.toLocaleString() : '-'}
+                                </td>
+                                <td className="py-4 px-4 text-slate-500">
+                                  {new Date(order.created_at).toLocaleString('id-ID', {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'short'
+                                  })}
+                                </td>
+                                <td className="py-4 px-4 text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => setSelectedOrderDetail(order)}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-750 text-white text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-650/15"
+                                    >
+                                      <span>Detail</span>
+                                    </button>
+                                    {order.payment_status === 'paid' && (
+                                      <>
+                                        <button
+                                          onClick={() => setSelectedInvoiceDetail({
+                                            type: 'order',
+                                            id: order.order_id ? String(order.order_id) : order.id,
+                                            amount: order.total_price,
+                                            date: order.created_at,
+                                            method: 'Saldo Akun (Wallet)',
+                                            description: `Pembelian Layanan: ${order.service_name}`,
+                                            status: order.status
+                                          })}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                        >
+                                          <Printer className="w-3 h-3" />
+                                          <span>Invoice</span>
+                                        </button>
+                                        <button
+                                          onClick={() => handleReorder(order)}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-emerald-500/10"
+                                        >
+                                          <RefreshCw className="w-3 h-3" />
+                                          <span>Pesan Lagi</span>
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
                           })}
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => setSelectedOrderDetail(order)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-650/15"
-                            >
-                              <span>Detail</span>
-                            </button>
-                            {order.payment_status === 'paid' && (
-                              <button
-                                onClick={() => setSelectedInvoiceDetail({
-                                  type: 'order',
-                                  id: order.id,
-                                  amount: order.total_price,
-                                  date: order.created_at,
-                                  method: 'Saldo Akun (Wallet)',
-                                  description: `Pembelian Layanan: ${order.service_name}`,
-                                  status: order.status
-                                })}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-                              >
-                                <Printer className="w-3 h-3" />
-                                <span>Invoice</span>
-                              </button>
-                            )}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
+                </div>
+
+                {/* Mobile View (Responsive Card List) */}
+                <div className="block md:hidden space-y-3.5">
+                  {(() => {
+                    const currentPageOrders = filteredOrders.slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage);
+                    return currentPageOrders.map(order => {
+                      const isSelected = selectedOrderIds.includes(order.id);
+                      const dateStr = new Date(order.created_at).toLocaleString('id-ID', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      });
+
+                      return (
+                        <div key={order.id} className={`p-4.5 rounded-2xl border transition-colors space-y-3 shadow-md dark:shadow-none ${
+                          isSelected 
+                            ? 'bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/30' 
+                            : 'bg-white/90 dark:bg-slate-950/20 border-slate-300 dark:border-slate-850/50'
+                        }`}>
+                          {/* Header: Select Checkbox, ID, Date */}
+                          <div className="flex justify-between items-center text-[10px] gap-2">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleSelectOrder(order.id)}
+                                className="w-4 h-4 rounded border-slate-350 dark:border-slate-850 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+                              />
+                              <div className="flex items-center border border-slate-200 dark:border-slate-800/80 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900/50 shadow-sm">
+                                <span className="px-2 py-0.5 font-mono text-[9px] text-slate-700 dark:text-slate-300 select-all truncate max-w-[80px] font-semibold">
+                                  {order.order_id ? String(order.order_id) : order.id.slice(0, 6)}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    const idToCopy = order.order_id ? String(order.order_id) : order.id;
+                                    navigator.clipboard.writeText(idToCopy);
+                                    showToast('ID Pesanan berhasil disalin!', 'success');
+                                  }}
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white p-1 transition-colors cursor-pointer flex items-center justify-center border-l border-indigo-500 w-6 h-6"
+                                  title="Salin ID"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            <span className="text-slate-500 font-light">{dateStr}</span>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+
+                          {/* Body: Service & Category */}
+                          <div className="border-t border-b border-slate-300 dark:border-slate-900/60 py-2.5 space-y-1.5">
+                            <div>
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">{order.service_name}</span>
+                              <span className="text-[9px] text-slate-500 font-light uppercase tracking-wider">{order.category}</span>
+                            </div>
+                            <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 break-all">
+                              <span className="text-slate-500 dark:text-slate-550 block text-[9px] uppercase tracking-wider mb-0.5">Target:</span>
+                              <a href={order.target_url} target="_blank" rel="noreferrer" className="hover:text-indigo-400 hover:underline">
+                                {order.target_url}
+                              </a>
+                            </div>
+                          </div>
+
+                          {/* Stats: Qty, Price, Start Count */}
+                          <div className="grid grid-cols-3 gap-2 text-xs py-1">
+                            <div>
+                              <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Jumlah</span>
+                              <span className="font-bold text-slate-700 dark:text-slate-250">{order.quantity.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Harga</span>
+                              <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{formatPrice(order.total_price)}</span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Mulai</span>
+                              <span className="font-mono text-slate-500 dark:text-slate-400">{order.start_count ? order.start_count.toLocaleString() : '-'}</span>
+                            </div>
+                          </div>
+
+                          {/* Footer: Status, Action Buttons */}
+                          <div className="flex justify-between items-center pt-3 border-t border-slate-300 dark:border-slate-900/50 gap-2">
+                            <div className="flex flex-col items-start gap-1">
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide inline-block ${
+                                order.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                order.status === 'inprogress' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                                order.status === 'processing' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                                order.status === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                order.status === 'partial' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
+                                'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              }`}>
+                                {order.status === 'failed' ? 'ERROR' : order.status}
+                              </span>
+                              {order.payment_status === 'unpaid' && (
+                                <button
+                                  onClick={() => handlePayOrderWithBalance(order)}
+                                  className="px-2 py-0.5 rounded bg-indigo-650 text-[9px] font-bold text-white whitespace-nowrap mt-0.5"
+                                >
+                                  Bayar via Saldo
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="flex gap-1.5">
+                              <button
+                                onClick={() => setSelectedOrderDetail(order)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-750 text-white text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                              >
+                                <span>Detail</span>
+                              </button>
+                              {order.payment_status === 'paid' && (
+                                <>
+                                  <button
+                                    onClick={() => setSelectedInvoiceDetail({
+                                      type: 'order',
+                                      id: order.order_id ? String(order.order_id) : order.id,
+                                      amount: order.total_price,
+                                      date: order.created_at,
+                                      method: 'Saldo Akun (Wallet)',
+                                      description: `Pembelian Layanan: ${order.service_name}`,
+                                      status: order.status
+                                    })}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                  >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    <span>Invoice</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleReorder(order)}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                  >
+                                    <RefreshCw className="w-3 h-3" />
+                                    <span>Pesan Lagi</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
               
               {filteredOrders.length > itemsPerPage && (
                 <div className="flex justify-between items-center gap-2 pt-5 border-t border-slate-850 mt-5">
@@ -2134,15 +2926,87 @@ export default function UserDashboard() {
         {activeTab === 'transactions' && (() => {
           const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
 
+          // Calculate topup stats
+          const successfulDeposits = transactions.filter(tx => tx.type === 'topup' && tx.status === 'success');
+          const failedDeposits = transactions.filter(tx => tx.type === 'topup' && tx.status === 'failed');
+
+          const totalSuccessCount = successfulDeposits.length;
+          const totalSuccessAmount = successfulDeposits.reduce((sum, tx) => sum + Number(tx.amount), 0);
+
+          const totalFailedCount = failedDeposits.length;
+          const totalFailedAmount = failedDeposits.reduce((sum, tx) => sum + Number(tx.amount), 0);
+
           return (
             <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-md">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-indigo-400" />
-                <span>Riwayat Deposit</span>
+                <span>Riwayat Transaksi</span>
               </h2>
+
+              {/* Stats Cards */}
+              <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                {/* Successful Deposit Card */}
+                <div className="bg-slate-950/30 border border-slate-850 p-5 rounded-2xl flex items-center gap-4 transition-all hover:border-emerald-500/20">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <CheckCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Berhasil</span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-extrabold text-emerald-450">{formatPrice(totalSuccessAmount)}</span>
+                      <span className="text-[11px] font-medium text-slate-500">({totalSuccessCount} Transaksi)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Failed Deposit Card */}
+                <div className="bg-slate-950/30 border border-slate-850 p-5 rounded-2xl flex items-center gap-4 transition-all hover:border-rose-500/20">
+                  <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                    <XCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Gagal</span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-extrabold text-rose-400">{formatPrice(totalFailedAmount)}</span>
+                      <span className="text-[11px] font-medium text-slate-500">({totalFailedCount} Transaksi)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Redesigned Premium Filters Bar (Matching User Screenshot with Labels) */}
               <div className="grid md:grid-cols-4 gap-4 mb-6">
+                {/* Pencarian */}
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Cari Transaksi</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={txSearchType}
+                      onChange={(e) => setTxSearchType(e.target.value)}
+                      className="bg-slate-950 border border-slate-805 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold shrink-0"
+                    >
+                      <option value="id">ID Transaksi</option>
+                      <option value="amount">Jumlah</option>
+                    </select>
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        placeholder="cari..."
+                        value={txSearchQuery}
+                        onChange={(e) => setTxSearchQuery(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-750 text-white p-2 rounded-lg transition-colors cursor-pointer"
+                        title="Cari"
+                      >
+                        <Search className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Filter Tahun */}
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Tahun</label>
@@ -2189,57 +3053,27 @@ export default function UserDashboard() {
                     <option value="success">Sukses</option>
                   </select>
                 </div>
-
-                {/* Pencarian */}
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Cari Transaksi</label>
-                  <div className="flex gap-2">
-                    <select
-                      value={txSearchType}
-                      onChange={(e) => setTxSearchType(e.target.value)}
-                      className="bg-slate-950 border border-slate-805 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold shrink-0"
-                    >
-                      <option value="id">ID Deposit</option>
-                      <option value="amount">Jumlah</option>
-                    </select>
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        placeholder="cari..."
-                        value={txSearchQuery}
-                        onChange={(e) => setTxSearchQuery(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-750 text-white p-2 rounded-lg transition-colors cursor-pointer"
-                        title="Cari"
-                      >
-                        <Search className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {filteredTxs.length === 0 ? (
                 <div className="py-16 text-center text-slate-400 font-light flex flex-col items-center justify-center gap-2">
                   <CreditCard className="w-10 h-10 text-slate-600 mb-2" />
-                  <p>Tidak ada riwayat deposit dengan kriteria ini.</p>
+                  <p>Tidak ada riwayat transaksi dengan kriteria ini.</p>
                 </div>
               ) : (
                 <>
-                  <div className="overflow-x-auto scrollbar-thin">
+                  {/* Desktop View */}
+                  <div className="hidden md:block overflow-x-auto scrollbar-thin">
                     <table className="w-full min-w-[750px] text-left border-collapse text-xs">
                       <thead>
                         <tr className="border-b border-slate-850 text-slate-450 text-xs font-semibold uppercase tracking-wider">
                           <th className="py-4 px-4">ID</th>
-                          <th className="py-4 px-4">Dibuat</th>
-                          <th className="py-4 px-4">Metode Pembayaran</th>
-                          <th className="py-4 px-4">Jumlah Deposit</th>
+                          <th className="py-4 px-4">Tanggal</th>
+                          <th className="py-4 px-4">Metode & Keterangan</th>
+                          <th className="py-4 px-4">Saldo Didapat</th>
                           <th className="py-4 px-4">Total Bayar</th>
                           <th className="py-4 px-4 text-center">Status</th>
-                          <th className="py-4 px-4 text-center">Aksi</th>
+                          <th className="py-4 px-4">Aksi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-850/40">
@@ -2255,24 +3089,55 @@ export default function UserDashboard() {
                               second: '2-digit'
                             });
 
+                            const isAddition = tx.type === 'topup' || tx.type === 'refund';
+                            
+                            // Calculate credited amount with potential bonus for topup
+                            let creditedAmount = Number(tx.amount);
+                            let baseAmount = Number(tx.amount);
+                            
+                            if (tx.type === 'topup') {
+                              const bonusMin = parseInt(siteSettings.deposit_bonus_min) || 10000;
+                              const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
+                              const hasBonus = tx.status === 'success' && baseAmount >= bonusMin && bonusPercent > 0;
+                              const bonusAmount = hasBonus ? Math.round(baseAmount * bonusPercent / 100) : 0;
+                              creditedAmount = baseAmount + bonusAmount;
+                            }
+
                             return (
                               <tr key={tx.id} className="hover:bg-slate-900/30 transition-colors">
-                                <td className="py-4 px-4 font-mono text-slate-400">{tx.id.slice(0, 6)}</td>
+                                <td className="py-4 px-4 font-mono text-slate-400">
+                                  {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 6)}
+                                </td>
                                 <td className="py-4 px-4 text-slate-500">{dateStr}</td>
                                 <td className="py-4 px-4 font-medium text-slate-600 dark:text-slate-400">
-                                  <div>{formatPaymentMethod(tx.payment_method)}</div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold">{formatPaymentMethod(tx.payment_method)}</span>
+                                    <span className="text-[10px] text-slate-500 px-1.5 py-0.5 rounded bg-slate-950/45 border border-slate-850 uppercase font-mono">
+                                      {tx.type}
+                                    </span>
+                                  </div>
                                   {tx.description && (
-                                    <div className="text-[10px] text-slate-500 mt-1 max-w-[220px] leading-relaxed font-light">{tx.description}</div>
+                                    <div className="text-[10px] text-slate-500 mt-1 max-w-[320px] leading-relaxed font-light">{tx.description}</div>
                                   )}
                                 </td>
-                                <td className="py-4 px-4 font-bold text-slate-700 dark:text-slate-300">
-                                  {formatPrice(tx.amount)}
+                                {/* SALDO DIDAPAT */}
+                                <td className={`py-4 px-4 font-bold text-sm ${
+                                  isAddition ? 'text-emerald-500' : 'text-rose-500'
+                                }`}>
+                                  {isAddition ? '+' : '-'}{formatPrice(Math.abs(tx.type === 'topup' ? creditedAmount : baseAmount))}
                                 </td>
-                                <td className="py-4 px-4 font-bold text-slate-700 dark:text-slate-300">
-                                  {formatPrice(tx.amount)}
+                                {/* TOTAL BAYAR */}
+                                <td className={`py-4 px-4 font-extrabold text-sm ${
+                                  tx.type === 'topup' ? 'text-slate-100 dark:text-white' :
+                                  tx.type === 'refund' ? 'text-slate-400 dark:text-slate-350' :
+                                  'text-rose-500 dark:text-rose-400'
+                                }`}>
+                                  {tx.type === 'topup' ? formatPrice(Math.abs(baseAmount)) :
+                                   tx.type === 'refund' ? 'Rp 0' :
+                                   `-${formatPrice(Math.abs(baseAmount))}`}
                                 </td>
                                 <td className="py-4 px-4 text-center">
-                                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider inline-block border ${
+                                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider inline-block border ${
                                     tx.status === 'success' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-500/20' :
                                     tx.status === 'failed' ? 'bg-rose-50 dark:bg-red-500/10 text-rose-700 dark:text-red-400 border-rose-200/60 dark:border-red-500/20' :
                                     'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-450 border-amber-200/60 dark:border-amber-500/20'
@@ -2282,8 +3147,8 @@ export default function UserDashboard() {
                                      'Belum Dibayar'}
                                   </span>
                                 </td>
-                                <td className="py-4 px-4 text-center">
-                                  <div className="flex items-center justify-center gap-2">
+                                <td className="py-4 px-4">
+                                  <div className="flex items-center justify-start gap-2">
                                     <button
                                       onClick={() => setSelectedTxDetail(tx)}
                                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-750 text-white text-[10px] font-extrabold transition-all hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
@@ -2293,12 +3158,12 @@ export default function UserDashboard() {
                                     {tx.status === 'success' && (
                                       <button
                                         onClick={() => setSelectedInvoiceDetail({
-                                          type: 'topup',
-                                          id: tx.id,
+                                          type: tx.type === 'topup' ? 'topup' : 'order',
+                                          id: tx.tx_id ? `TRX-${tx.tx_id}` : tx.id,
                                           amount: tx.amount,
                                           date: tx.created_at,
                                           method: formatPaymentMethod(tx.payment_method),
-                                          description: 'Top Up Saldo Akun Buzzify',
+                                          description: tx.type === 'topup' ? 'Top Up Saldo Akun' : tx.type === 'refund' ? 'Refund Saldo Pesanan' : 'Pembayaran Layanan SMM',
                                           status: tx.status
                                         })}
                                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
@@ -2314,6 +3179,116 @@ export default function UserDashboard() {
                           })}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile View (Responsive Card List) */}
+                  <div className="block md:hidden space-y-3.5">
+                    {filteredTxs
+                      .slice((transactionsPage - 1) * itemsPerPage, transactionsPage * itemsPerPage)
+                      .map(tx => {
+                        const dateStr = new Date(tx.created_at).toLocaleString('id-ID', {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        });
+
+                        const isAddition = tx.type === 'topup' || tx.type === 'refund';
+                        
+                        let creditedAmount = Number(tx.amount);
+                        let baseAmount = Number(tx.amount);
+                        
+                        if (tx.type === 'topup') {
+                          const bonusMin = parseInt(siteSettings.deposit_bonus_min) || 10000;
+                          const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
+                          const hasBonus = tx.status === 'success' && baseAmount >= bonusMin && bonusPercent > 0;
+                          const bonusAmount = hasBonus ? Math.round(baseAmount * bonusPercent / 100) : 0;
+                          creditedAmount = baseAmount + bonusAmount;
+                        }
+
+                        return (
+                          <div key={tx.id} className="bg-white/40 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850/50 p-4.5 rounded-2xl space-y-3 shadow-sm dark:shadow-none">
+                            <div className="flex justify-between items-center text-[10px]">
+                              <span className="font-mono font-bold text-indigo-400">
+                                {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 6)}
+                              </span>
+                              <span className="text-slate-500 font-light">{dateStr}</span>
+                            </div>
+
+                            <div className="border-t border-b border-slate-200/80 dark:border-slate-900/60 py-2.5 space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-slate-200">{formatPaymentMethod(tx.payment_method)}</span>
+                                <span className="text-[9px] text-slate-450 px-1.5 py-0.5 rounded bg-slate-950/45 border border-slate-850 uppercase font-mono">
+                                  {tx.type}
+                                </span>
+                              </div>
+                              {tx.description && (
+                                <div className="text-[10px] text-slate-400 leading-relaxed font-light">{tx.description}</div>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs py-1">
+                              <div>
+                                <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Saldo Didapat</span>
+                                <span className={`font-extrabold text-sm ${isAddition ? 'text-emerald-450' : 'text-rose-450'}`}>
+                                  {isAddition ? '+' : '-'}{formatPrice(Math.abs(tx.type === 'topup' ? creditedAmount : baseAmount))}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Total Bayar</span>
+                                <span className={`font-extrabold text-sm ${
+                                  tx.type === 'topup' ? 'text-slate-100 dark:text-white' :
+                                  tx.type === 'refund' ? 'text-slate-400 dark:text-slate-350' :
+                                  'text-rose-500 dark:text-rose-400'
+                                }`}>
+                                  {tx.type === 'topup' ? formatPrice(Math.abs(baseAmount)) :
+                                   tx.type === 'refund' ? 'Rp 0' :
+                                   `-${formatPrice(Math.abs(baseAmount))}`}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-900/50">
+                              <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider inline-block border ${
+                                tx.status === 'success' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-500/20' :
+                                tx.status === 'failed' ? 'bg-rose-50 dark:bg-red-500/10 text-rose-700 dark:text-red-400 border-rose-200/60 dark:border-red-500/20' :
+                                'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-450 border-amber-200/60 dark:border-amber-500/20'
+                              }`}>
+                                {tx.status === 'success' ? 'Sukses' :
+                                 tx.status === 'failed' ? 'Dibatalkan' :
+                                 'Belum Dibayar'}
+                              </span>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setSelectedTxDetail(tx)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-750 text-white text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                >
+                                  <span>Detail</span>
+                                </button>
+                                {tx.status === 'success' && (
+                                  <button
+                                    onClick={() => setSelectedInvoiceDetail({
+                                      type: tx.type === 'topup' ? 'topup' : 'order',
+                                      id: tx.tx_id ? `TRX-${tx.tx_id}` : tx.id,
+                                      amount: tx.amount,
+                                      date: tx.created_at,
+                                      method: formatPaymentMethod(tx.payment_method),
+                                      description: tx.type === 'topup' ? 'Top Up Saldo Akun' : tx.type === 'refund' ? 'Refund Saldo Pesanan' : 'Pembayaran Layanan SMM',
+                                      status: tx.status
+                                    })}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                  >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    <span>Invoice</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
 
                   {filteredTxs.length > itemsPerPage && (
@@ -2344,6 +3319,285 @@ export default function UserDashboard() {
             </div>
           );
         })()}
+
+        {/* Support Ticket System Tab */}
+        {activeTab === 'tickets' && (
+          <div className="grid lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-300">
+            {/* Kirim Tiket Form */}
+            {showCreateTicket && (
+              <div className="lg:col-span-4 bg-white dark:bg-slate-900/40 border border-zinc-200 dark:border-slate-800/80 p-6 rounded-3xl backdrop-blur-md relative">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-extrabold text-sm text-zinc-950 dark:text-slate-200 flex items-center gap-2">
+                    <MessageSquare className="w-4.5 h-4.5 text-indigo-500" />
+                    <span>Kirim Tiket</span>
+                  </h3>
+                  <button 
+                    onClick={() => setShowCreateTicket(false)}
+                    className="p-1.5 hover:bg-zinc-100 dark:hover:bg-slate-800 rounded-lg text-zinc-400 hover:text-zinc-650 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateTicket} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-zinc-500 dark:text-slate-400 uppercase tracking-wider mb-2">Subjek</label>
+                    <select
+                      value={ticketSubject}
+                      onChange={(e) => {
+                        setTicketSubject(e.target.value);
+                        setTicketOrderId('');
+                        setTicketRequestType('');
+                        setTicketDepositId('');
+                      }}
+                      required
+                      className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    >
+                      <option value="">Pilih...</option>
+                      <option value="Pesanan">Pesanan</option>
+                      <option value="Deposit">Deposit</option>
+                      <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                  </div>
+
+                  {ticketSubject === 'Pesanan' && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-extrabold text-zinc-500 dark:text-slate-400 uppercase tracking-wider mb-2">order_id</label>
+                        <input
+                          type="text"
+                          required
+                          value={ticketOrderId}
+                          onChange={(e) => setTicketOrderId(e.target.value)}
+                          placeholder="Pisahkan dengan koma jika lebih dari satu."
+                          className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-extrabold text-zinc-500 dark:text-slate-400 uppercase tracking-wider mb-2">Permintaan</label>
+                        <select
+                          required
+                          value={ticketRequestType}
+                          onChange={(e) => setTicketRequestType(e.target.value)}
+                          className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                        >
+                          <option value="">Pilih...</option>
+                          <option value="Refill">Refill</option>
+                          <option value="Batalkan">Batalkan</option>
+                          <option value="Percepat">Percepat</option>
+                          <option value="Lain-lain">Lain-lain</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {ticketSubject === 'Deposit' && (
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-zinc-500 dark:text-slate-400 uppercase tracking-wider mb-2">ID Deposit</label>
+                      <input
+                        type="text"
+                        required
+                        value={ticketDepositId}
+                        onChange={(e) => setTicketDepositId(e.target.value)}
+                        placeholder="Masukkan ID Deposit"
+                        className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-zinc-500 dark:text-slate-400 uppercase tracking-wider mb-2">Pesan</label>
+                    <textarea
+                      value={ticketMessage}
+                      onChange={(e) => setTicketMessage(e.target.value)}
+                      required
+                      rows={6}
+                      placeholder="Tuliskan keluhan atau detail kendala Anda secara lengkap di sini..."
+                      className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-zinc-500 dark:text-slate-400 uppercase tracking-wider mb-2">Gambar <span className="text-zinc-400 dark:text-slate-500">*Tidak wajib</span></label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setTicketImage(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                        id="ticket-image-upload"
+                      />
+                      <label
+                        htmlFor="ticket-image-upload"
+                        className="bg-zinc-100 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 hover:border-indigo-500/50 text-zinc-650 dark:text-slate-355 px-4 py-2.5 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-indigo-600"
+                      >
+                        Choose File
+                      </label>
+                      <span className="text-[10px] text-zinc-400 dark:text-slate-500 truncate max-w-[150px]">
+                        {ticketImage ? 'Gambar dipilih' : 'No file chosen'}
+                      </span>
+                      {ticketImage && (
+                        <button
+                          type="button"
+                          onClick={() => setTicketImage('')}
+                          className="text-[10px] text-red-500 hover:text-red-400 font-bold cursor-pointer ml-auto"
+                        >
+                          Hapus
+                        </button>
+                      )}
+                    </div>
+                    {ticketImage && (
+                      <div className="mt-3 relative w-full h-24 rounded-xl overflow-hidden bg-zinc-950 border border-zinc-200/20">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={ticketImage} alt="Attachment Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submittingTicket}
+                    className="w-full bg-indigo-600 hover:bg-indigo-750 text-white font-bold py-3 rounded-2xl transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-indigo-650/15"
+                  >
+                    <span>Kirim</span>
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Tiket Saya List */}
+            <div className={`${showCreateTicket ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white dark:bg-slate-900/40 border border-zinc-200 dark:border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-md`}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-950 dark:text-slate-200">
+                  <MessageSquare className="w-5 h-5 text-indigo-400" />
+                  <span>Tiket Saya</span>
+                </h2>
+                {!showCreateTicket && (
+                  <button
+                    onClick={() => {
+                      setTicketSubject('');
+                      setTicketMessage('');
+                      setTicketImage('');
+                      setShowCreateTicket(true);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md shadow-indigo-650/10 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Kirim Tiket</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="grid md:grid-cols-4 gap-4 mb-6">
+                <div className="md:col-span-3 flex gap-2">
+                  <div className="w-1/3">
+                    <select
+                      value={ticketSearchType}
+                      onChange={(e) => setTicketSearchType(e.target.value)}
+                      className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    >
+                      <option value="id">ID</option>
+                      <option value="subject">Subjek</option>
+                    </select>
+                  </div>
+                  <div className="w-2/3 relative">
+                    <input
+                      type="text"
+                      placeholder="Cari..."
+                      value={ticketSearchQuery}
+                      onChange={(e) => setTicketSearchQuery(e.target.value)}
+                      className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 pl-4 pr-10 py-3 rounded-2xl outline-none text-xs"
+                    />
+                    <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-350">
+                      <Search className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-zinc-150 dark:border-slate-850">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="bg-zinc-50 dark:bg-slate-950 border-b border-zinc-150 dark:border-slate-850 text-zinc-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                      <th className="py-4 px-6">ID</th>
+                      <th className="py-4 px-6">Subjek</th>
+                      <th className="py-4 px-6">Status</th>
+                      <th className="py-4 px-6">Pembaruan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-150 dark:divide-slate-850">
+                    {(() => {
+                      const filteredTickets = tickets.filter(ticket => {
+                        const q = ticketSearchQuery.toLowerCase().trim();
+                        if (!q) return true;
+                        if (ticketSearchType === 'id') {
+                          return String(ticket.id).includes(q);
+                        } else {
+                          return String(ticket.subject).toLowerCase().includes(q);
+                        }
+                      });
+
+                      if (filteredTickets.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={4} className="py-8 text-center text-zinc-400 dark:text-slate-500 text-xs">
+                              Tidak ada tiket bantuan ditemukan.
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return filteredTickets.map(ticket => (
+                        <tr 
+                          key={ticket.id} 
+                          className="hover:bg-zinc-50/50 dark:hover:bg-slate-900/20 transition-all text-xs text-zinc-800 dark:text-slate-300 animate-in fade-in duration-200"
+                        >
+                          <td className="py-4 px-6 font-mono font-bold text-zinc-550 dark:text-slate-450">
+                            {ticket.id}
+                          </td>
+                          <td className="py-4 px-6">
+                            <button
+                              onClick={() => fetchTicketDetails(ticket.id)}
+                              className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline text-left cursor-pointer flex items-center gap-1.5"
+                            >
+                              <span>{ticket.subject}</span>
+                              {ticket.status === 'Pending' && (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-rose-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-widest">NEW</span>
+                              )}
+                            </button>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                              ticket.status === 'Answered' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                              ticket.status === 'Closed' ? 'bg-slate-500/10 text-slate-400 border border-slate-500/20' :
+                              'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
+                              {ticket.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 font-medium text-zinc-400 dark:text-slate-500">
+                            {new Date(ticket.updated_at).toLocaleString('id-ID', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short'
+                            })}
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Bottom Navigation Bar - Mobile only */}
@@ -2353,6 +3607,7 @@ export default function UserDashboard() {
           { id: 'order', label: 'Pesan', icon: ShoppingBag },
           { id: 'history', label: 'Pesanan', icon: History, action: () => fetchOrders(user?.id) },
           { id: 'transactions', label: 'Deposit', icon: CreditCard, action: () => fetchProfileAndTransactions(user?.id) },
+          { id: 'tickets', label: 'Tiket', icon: MessageSquare, action: () => fetchTickets() },
         ].map(item => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -2458,12 +3713,12 @@ export default function UserDashboard() {
                     <div className="relative group">
                       <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-450 dark:text-slate-500 text-sm transition-colors group-focus-within:text-indigo-500">Rp</span>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         required
-                        min={10000}
-                        placeholder="Contoh: 50000"
-                        value={topupAmount || ''}
-                        onChange={(e) => setTopupAmount(parseInt(e.target.value) || 0)}
+                        placeholder="Contoh: 50.000"
+                        value={formatNumberWithDots(topupAmount)}
+                        onChange={(e) => setTopupAmount(parseNumberFromDots(e.target.value))}
                         className="w-full bg-slate-950/40 dark:bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-slate-200 px-5 pl-12 py-4 rounded-2xl outline-none transition-all text-sm font-semibold"
                       />
                     </div>
@@ -2551,69 +3806,88 @@ export default function UserDashboard() {
       {/* Premium Confirmation Dialog */}
       {/* Announcement Detail Modal */}
       {selectedAnnouncement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
-            {/* Header image / banner if exists */}
-            {selectedAnnouncement.image_url ? (
-              <div className="w-full h-48 sm:h-56 relative overflow-hidden bg-slate-950 border-b border-slate-800">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={selectedAnnouncement.image_url} alt={selectedAnnouncement.title} className="w-full h-full object-cover" />
-                <button
-                  onClick={() => setSelectedAnnouncement(null)}
-                  className="absolute top-4 right-4 bg-black/60 hover:bg-black/85 text-white p-2 rounded-xl backdrop-blur-sm transition-all cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white text-zinc-900 border border-zinc-200 p-6 sm:p-8 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-2">
+                {selectedAnnouncement.badge && (
+                  <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-200/50">
+                    {selectedAnnouncement.badge}
+                  </span>
+                )}
+                <span className="text-[10px] text-zinc-400 font-bold">
+                  {new Date(selectedAnnouncement.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                </span>
               </div>
-            ) : (
-              <div className="p-6 border-b border-slate-800/80 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Megaphone className="w-5 h-5 text-indigo-400" />
-                  <span className="text-sm font-bold text-slate-200">Detail Pengumuman</span>
+              <button
+                onClick={() => setSelectedAnnouncement(null)}
+                className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-lg sm:text-xl font-extrabold text-zinc-950 mb-4 tracking-tight leading-snug">{selectedAnnouncement.title}</h3>
+
+            {/* Image Banner if exists */}
+            {selectedAnnouncement.image_url && (
+              <div 
+                className="w-full h-48 sm:h-64 md:h-72 relative overflow-hidden rounded-2xl bg-zinc-950 border border-zinc-200/80 mb-4 cursor-zoom-in group"
+                onClick={() => setShowImageZoom(selectedAnnouncement.image_url || null)}
+                title="Klik untuk memperbesar gambar"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={selectedAnnouncement.image_url} 
+                  alt={selectedAnnouncement.title} 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102" 
+                />
+                {/* Overlay hint on hover */}
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
+                  <span className="text-white text-[9px] font-bold bg-black/75 px-3.5 py-2 rounded-full border border-white/10 tracking-widest">KLIK UNTUK MEMPERBESAR</span>
                 </div>
-                <button
-                  onClick={() => setSelectedAnnouncement(null)}
-                  className="text-slate-500 hover:text-slate-350 p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
               </div>
             )}
 
-            {/* Modal Body */}
-            <div className="p-6 sm:p-8 space-y-4">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  {selectedAnnouncement.badge && (
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
-                      selectedAnnouncement.badge === 'HOT' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
-                      selectedAnnouncement.badge === 'RECOMMENDED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                      'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                    }`}>
-                      {selectedAnnouncement.badge}
-                    </span>
-                  )}
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    {new Date(selectedAnnouncement.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-100">{selectedAnnouncement.title}</h3>
-              </div>
+            {/* Body Content */}
+            <div className="max-h-56 overflow-y-auto pr-2 text-zinc-700 text-xs sm:text-sm font-light leading-relaxed whitespace-pre-wrap scrollbar-thin scrollbar-thumb-zinc-200 mb-6">
+              {selectedAnnouncement.content}
+            </div>
 
-              <div className="max-h-60 overflow-y-auto pr-2 text-slate-300 text-xs sm:text-sm font-light leading-relaxed whitespace-pre-wrap scrollbar-thin scrollbar-thumb-slate-800">
-                {selectedAnnouncement.content}
-              </div>
-
-              <div className="pt-4 border-t border-slate-850 flex justify-end">
-                <button
-                  onClick={() => setSelectedAnnouncement(null)}
-                  className="px-5 py-2.5 bg-indigo-650 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-all active:scale-98 cursor-pointer"
-                >
-                  Tutup
-                </button>
-              </div>
+            {/* Footer */}
+            <div className="pt-4 border-t border-zinc-150 flex justify-end">
+              <button
+                onClick={() => setSelectedAnnouncement(null)}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-600/10"
+              >
+                Tutup
+              </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Zoom Overlay */}
+      {showImageZoom && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 animate-in fade-in duration-200 cursor-zoom-out"
+          onClick={() => setShowImageZoom(null)}
+        >
+          <button 
+            className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full backdrop-blur-md border border-white/10 transition-all cursor-pointer"
+            onClick={() => setShowImageZoom(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img 
+            src={showImageZoom} 
+            alt="Zoomed Banner" 
+            className="max-w-[92%] max-h-[90vh] object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200"
+          />
         </div>
       )}
 
@@ -2669,35 +3943,13 @@ export default function UserDashboard() {
 
               <h3 className="text-base font-bold mb-6 flex items-center gap-2 border-b border-slate-850 pb-3 text-slate-100">
                 <Info className="w-4 h-4 text-indigo-400" />
-                <span>Detail Permintaan Deposit</span>
+                <span>Detail {selectedTxDetail.type === 'topup' ? 'Deposit' : 'Transaksi'} #{selectedTxDetail.tx_id || selectedTxDetail.id.slice(0, 8)}</span>
               </h3>
 
               <div className="space-y-3.5 text-xs text-slate-305">
                 <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
-                  <span className="text-slate-450 font-light">ID Deposit</span>
-                  <span className="font-mono font-semibold text-slate-300">{selectedTxDetail.id.slice(0, 8)}</span>
-                </div>
-
-                <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
-                  <span className="text-slate-450 font-light">Tanggal Dibuat</span>
-                  <span className="font-medium text-slate-300">{txDateStr}</span>
-                </div>
-
-                <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 gap-4">
-                  <span className="text-slate-450 font-light shrink-0">Metode Pembayaran</span>
-                  <span className="font-medium text-slate-400 text-right text-[11px] leading-relaxed">
-                    {formatPaymentMethod(selectedTxDetail.payment_method)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
-                  <span className="text-slate-450 font-light">Jumlah Deposit</span>
-                  <span className="font-extrabold text-slate-300">{formatPrice(selectedTxDetail.amount)}</span>
-                </div>
-
-                <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
-                  <span className="text-slate-450 font-light">Total Bayar</span>
-                  <span className="font-extrabold text-indigo-400 text-sm">{formatPrice(selectedTxDetail.amount)}</span>
+                  <span className="text-slate-450 font-light">ID {selectedTxDetail.type === 'topup' ? 'Deposit' : 'Transaksi'}</span>
+                  <span className="font-mono font-semibold text-slate-300">#{selectedTxDetail.tx_id || selectedTxDetail.id.slice(0, 8)}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
@@ -2712,6 +3964,75 @@ export default function UserDashboard() {
                      'Belum Dibayar'}
                   </span>
                 </div>
+
+                <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
+                  <span className="text-slate-450 font-light">Dibuat</span>
+                  <span className="font-medium text-slate-300">{txDateStr}</span>
+                </div>
+
+                <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 gap-4">
+                  <span className="text-slate-450 font-light shrink-0">Metode Pembayaran</span>
+                  <span className="font-medium text-slate-400 text-right text-[11px] leading-relaxed">
+                    {formatPaymentMethod(selectedTxDetail.payment_method)}
+                  </span>
+                </div>
+
+                {selectedTxDetail.type === 'topup' ? (() => {
+                  const baseAmount = Number(selectedTxDetail.amount);
+                  const bonusMin = parseInt(siteSettings.deposit_bonus_min) || 10000;
+                  const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
+                  const hasBonus = selectedTxDetail.status === 'success' && baseAmount >= bonusMin && bonusPercent > 0;
+                  const bonusAmount = hasBonus ? Math.round(baseAmount * bonusPercent / 100) : 0;
+                  const creditedAmount = baseAmount + bonusAmount;
+
+                  return (
+                    <>
+                      <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
+                        <span className="text-slate-450 font-light">Jumlah Deposit</span>
+                        <span className="font-medium text-slate-300">{formatPrice(baseAmount)}</span>
+                      </div>
+
+                      <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 flex-col">
+                        <div className="flex justify-between w-full items-center">
+                          <span className="text-slate-450 font-light flex flex-col">
+                            <span>Total</span>
+                            <span className="text-[9px] text-slate-500 font-light">*Jumlah yang harus dibayar</span>
+                          </span>
+                          <span className="font-extrabold text-rose-400 text-sm">{formatPrice(baseAmount)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 flex-col">
+                        <div className="flex justify-between w-full items-center">
+                          <span className="text-slate-450 font-light flex flex-col">
+                            <span>Bonus</span>
+                            <span className="text-[9px] text-slate-500 font-light">*Bonus untuk deposit lebih dari atau sama dengan {formatPrice(bonusMin)}</span>
+                          </span>
+                          <span className="font-medium text-slate-300">{formatPrice(bonusAmount)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 flex-col">
+                        <div className="flex justify-between w-full items-center">
+                          <span className="text-slate-450 font-light flex flex-col">
+                            <span>Saldo</span>
+                            <span className="text-[9px] text-slate-500 font-light">*Jumlah saldo yang didapatkan</span>
+                          </span>
+                          <span className="font-bold text-emerald-400 text-sm">{formatPrice(creditedAmount)}</span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })() : (
+                  <>
+                    <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
+                      <span className="text-slate-450 font-light">Total Bayar</span>
+                      <span className={`font-extrabold text-sm ${selectedTxDetail.type === 'refund' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {selectedTxDetail.type === 'refund' ? '+' : '-'}{formatPrice(selectedTxDetail.amount)}
+                      </span>
+                    </div>
+                  </>
+                )}
 
                 {selectedTxDetail.description && (
                   <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 gap-4">
@@ -2875,7 +4196,7 @@ export default function UserDashboard() {
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200 print:p-0 print:bg-white print:static print:z-0">
-            <div className="w-full max-w-lg bg-white text-slate-900 border border-slate-200 p-8 sm:p-10 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200 print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:rounded-none">
+            <div className="w-full max-w-lg bg-white text-zinc-900 border border-zinc-200 p-8 sm:p-10 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200 print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:rounded-none">
               
               {/* Print CSS Override */}
               <style dangerouslySetInnerHTML={{__html: `
@@ -2898,73 +4219,77 @@ export default function UserDashboard() {
               {/* Close Button - hidden during print */}
               <button
                 onClick={() => setSelectedInvoiceDetail(null)}
-                className="absolute top-6 right-6 text-slate-400 hover:text-slate-655 transition-colors p-2 hover:bg-slate-100 rounded-xl print:hidden"
+                className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-600 transition-colors p-2 hover:bg-zinc-100 rounded-xl print:hidden"
               >
                 <X className="w-5 h-5" />
               </button>
 
               {/* Invoice Layout */}
               <div id="print-area">
-                <div className="flex justify-between items-start border-b border-slate-200 pb-6">
+                <div className="flex justify-between items-start border-b border-zinc-200 pb-6">
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <div className="bg-indigo-650 p-1.5 rounded-lg text-white">
+                      <div className="bg-indigo-600 p-1.5 rounded-lg text-white">
                         <Zap className="w-4 h-4" />
                       </div>
-                      <span className="font-extrabold text-lg tracking-tight text-slate-950">Buzzify</span>
+                      <span className="font-extrabold text-lg tracking-tight text-zinc-950">Buzzify</span>
                     </div>
-                    <p className="text-[10px] text-slate-500">Platform SMM & Buzzer Terbaik Indonesia</p>
+                    <p className="text-[10px] text-zinc-550">Platform SMM & Buzzer Terbaik Indonesia</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-extrabold tracking-widest text-indigo-600 uppercase bg-indigo-50 px-2.5 py-1 rounded-md">KUITANSI RESMI</span>
-                    <p className="text-xs font-mono font-bold text-slate-800 mt-2">#{selectedInvoiceDetail.id.slice(0, 10).toUpperCase()}</p>
+                    <span className="text-[9px] font-extrabold tracking-wider text-emerald-600 uppercase bg-emerald-50 border border-emerald-200/50 px-2.5 py-1 rounded-md">KUITANSI RESMI</span>
+                    <p className="text-xs font-mono font-bold text-zinc-800 mt-2">
+                      {selectedInvoiceDetail.id.startsWith('TRX-') || /^\d+$/.test(selectedInvoiceDetail.id) 
+                        ? selectedInvoiceDetail.id 
+                        : `#${selectedInvoiceDetail.id.slice(0, 8).toUpperCase()}`}
+                    </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 py-6 border-b border-slate-100 text-xs">
+                <div className="grid grid-cols-2 gap-4 py-6 border-b border-zinc-100 text-xs">
                   <div>
-                    <span className="text-slate-450 block mb-1">Diterbitkan Untuk:</span>
-                    <strong className="text-slate-800 font-bold block">{user?.email}</strong>
-                    <span className="text-slate-500 text-[10px] block mt-0.5">User ID: {user?.id.slice(0, 12)}</span>
+                    <span className="text-zinc-500 block mb-1">Diterbitkan Untuk:</span>
+                    <strong className="text-zinc-900 font-bold block">{user?.email}</strong>
+                    <span className="text-zinc-500 text-[10px] block mt-0.5">User ID: {user?.id.slice(0, 12)}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-slate-450 block mb-1">Tanggal Transaksi:</span>
-                    <strong className="text-slate-800 block">{invDateStr}</strong>
-                    <span className="text-slate-550 text-[10px] block mt-0.5">Metode: {selectedInvoiceDetail.method}</span>
+                    <span className="text-zinc-500 block mb-1">Tanggal Transaksi:</span>
+                    <strong className="text-zinc-900 block">{invDateStr}</strong>
+                    <span className="text-zinc-500 text-[10px] block mt-0.5">Metode: {selectedInvoiceDetail.method}</span>
                   </div>
                 </div>
 
                 <div className="py-6">
-                  <span className="text-slate-450 text-[10px] font-bold uppercase tracking-wider block mb-3">Rincian Pembayaran</span>
-                  <div className="rounded-2xl border border-slate-150 overflow-hidden text-xs">
+                  <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider block mb-3">Rincian Pembayaran</span>
+                  <div className="rounded-2xl border border-zinc-200 overflow-hidden text-xs">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-150">
+                        <tr className="bg-zinc-50 text-zinc-650 font-semibold border-b border-zinc-200">
                           <th className="p-3 pl-4">Deskripsi Layanan / Item</th>
                           <th className="p-3 text-right pr-4">Total</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-150">
-                        <tr className="text-slate-800">
+                      <tbody className="divide-y divide-zinc-200">
+                        <tr className="text-zinc-800 bg-white">
                           <td className="p-4 pl-4 font-medium max-w-[280px] break-words">{selectedInvoiceDetail.description}</td>
-                          <td className="p-4 text-right pr-4 font-bold text-slate-900">{formatPrice(selectedInvoiceDetail.amount)}</td>
+                          <td className="p-4 text-right pr-4 font-bold text-zinc-900">{formatPrice(selectedInvoiceDetail.amount)}</td>
                         </tr>
-                        <tr className="bg-slate-50/50 font-bold text-slate-900">
-                          <td className="p-3 pl-4 text-right">TOTAL BAYAR (LUNAS):</td>
-                          <td className="p-3 text-right pr-4 text-indigo-700 text-sm">{formatPrice(selectedInvoiceDetail.amount)}</td>
+                        <tr className="bg-indigo-50/40 font-bold text-zinc-900 border-t border-zinc-200">
+                          <td className="p-4 pl-4 text-right text-[10px] uppercase tracking-wider text-zinc-500">TOTAL BAYAR (LUNAS):</td>
+                          <td className="p-4 text-right pr-4 text-indigo-650 text-sm font-extrabold">{formatPrice(selectedInvoiceDetail.amount)}</td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
                 </div>
 
-                <div className="text-center pt-4 border-t border-slate-100">
-                  <p className="text-[10px] text-slate-400 leading-relaxed">Kuitansi ini dibuat secara otomatis oleh sistem Buzzify dan sah sebagai bukti pembayaran yang valid. Terima kasih atas kepercayaan Anda!</p>
+                <div className="text-center pt-4 border-t border-zinc-100">
+                  <p className="text-[10px] text-zinc-500 leading-relaxed">Kuitansi ini dibuat secara otomatis oleh sistem Buzzify dan sah sebagai bukti pembayaran yang valid. Terima kasih atas kepercayaan Anda!</p>
                 </div>
               </div>
 
               {/* Actions - hidden during print */}
-              <div className="mt-8 pt-4 border-t border-slate-100 flex gap-3 print:hidden">
+              <div className="mt-8 pt-4 border-t border-zinc-200 flex gap-3 print:hidden">
                 <button
                   onClick={() => window.print()}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl transition-all shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-1.5 text-xs cursor-pointer"
@@ -2974,7 +4299,7 @@ export default function UserDashboard() {
                 </button>
                 <button
                   onClick={() => setSelectedInvoiceDetail(null)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-655 font-bold py-3.5 rounded-2xl transition-all text-xs cursor-pointer text-center"
+                  className="flex-1 bg-zinc-100 hover:bg-zinc-250 text-zinc-700 font-bold py-3.5 rounded-2xl transition-all text-xs cursor-pointer text-center"
                 >
                   Tutup
                 </button>
@@ -2983,6 +4308,345 @@ export default function UserDashboard() {
           </div>
         );
       })()}
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setShowProfileModal(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-200 transition-colors p-2 hover:bg-slate-800 rounded-xl cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="mb-6 border-b border-slate-800 pb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-slate-100">
+                <User className="w-5 h-5 text-indigo-400" />
+                <span>Pengaturan Profil & Keamanan</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">Ubah data profil Anda atau lakukan pembaruan kata sandi</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Left Column: Update Profile Info */}
+              <div>
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Informasi Akun</h3>
+
+                  {profileError && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs font-semibold">
+                      {profileError}
+                    </div>
+                  )}
+
+                  {profileSuccess && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-xl text-xs font-semibold">
+                      {profileSuccess}
+                    </div>
+                  )}
+
+                  {/* Email (Non-editable) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Email (Akun)</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={user?.email || ''}
+                      className="w-full bg-slate-950/60 border border-slate-850/50 text-slate-400 px-4 py-2.5 rounded-xl outline-none text-xs cursor-not-allowed font-medium"
+                    />
+                    <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-1 font-medium">
+                      <span>* Hubungi Admin jika ingin mengubah alamat email.</span>
+                    </p>
+                  </div>
+
+                  {/* Full Name */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Nama Lengkap</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Masukkan nama lengkap Anda"
+                      value={profileFullName}
+                      onChange={(e) => setProfileFullName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                    />
+                  </div>
+
+                  {/* Username */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Username</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Masukkan username Anda"
+                      value={profileUsername}
+                      onChange={(e) => setProfileUsername(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                    />
+                  </div>
+
+                  {/* WhatsApp */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Nomor WhatsApp</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: 08123456789"
+                      value={profileWhatsApp}
+                      onChange={(e) => setProfileWhatsApp(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={profileLoading}
+                      className="w-full bg-indigo-600 hover:bg-indigo-750 text-white font-bold py-3 rounded-xl transition-all text-xs cursor-pointer text-center disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      {profileLoading ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Menyimpan...</span>
+                        </>
+                      ) : (
+                        <span>Simpan Perubahan Profil</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Right Column: Change Password */}
+              <div className="border-t md:border-t-0 md:border-l border-slate-800 pt-6 md:pt-0 md:pl-8">
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Ganti Password</h3>
+
+                  {changePasswordError && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs font-semibold">
+                      {changePasswordError}
+                    </div>
+                  )}
+
+                  {changePasswordSuccess && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-xl text-xs font-semibold">
+                      {changePasswordSuccess}
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Password Saat Ini</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Masukkan password sekarang"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Password Baru</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Password baru (min. 6 karakter)"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Konfirmasi Password Baru</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Ulangi password baru"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowProfileModal(false)}
+                      className="flex-1 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold py-3 rounded-xl transition-all text-xs cursor-pointer text-center"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={changePasswordLoading}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-755 text-white font-bold py-3 rounded-xl transition-all text-xs cursor-pointer text-center disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      {changePasswordLoading ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Memproses...</span>
+                        </>
+                      ) : (
+                        <span>Perbarui Password</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Ticket Detail & Chat Modal */}
+      {selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white text-zinc-900 border border-zinc-200 p-6 sm:p-8 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            
+            {/* Header */}
+            <div className="flex justify-between items-start border-b border-zinc-100 pb-4 mb-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-200/50">
+                    Tiket #{selectedTicket.id}
+                  </span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                    selectedTicket.status === 'Answered' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50' :
+                    selectedTicket.status === 'Closed' ? 'bg-slate-550 text-slate-500 border border-slate-200/50' :
+                    'bg-amber-50 text-amber-600 border border-amber-200/50'
+                  }`}>
+                    {selectedTicket.status}
+                  </span>
+                </div>
+                <h3 className="text-lg font-extrabold text-zinc-955 tracking-tight">Subjek: {selectedTicket.subject}</h3>
+                {selectedTicket.subject === 'Pesanan' && selectedTicket.order_id && (
+                  <div className="mt-1.5 text-xs text-zinc-550 font-bold flex flex-wrap gap-x-4 gap-y-1">
+                    <span>order_id: <span className="font-mono text-zinc-800 bg-zinc-100 px-1.5 py-0.5 rounded">{selectedTicket.order_id}</span></span>
+                    {selectedTicket.request_type && <span>Permintaan: <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-black">{selectedTicket.request_type}</span></span>}
+                  </div>
+                )}
+                {selectedTicket.subject === 'Deposit' && selectedTicket.deposit_id && (
+                  <div className="mt-1.5 text-xs text-zinc-550 font-bold">
+                    <span>ID Deposit: <span className="font-mono text-zinc-800 bg-zinc-100 px-1.5 py-0.5 rounded">{selectedTicket.deposit_id}</span></span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedTicket(null)}
+                className="text-zinc-400 hover:text-zinc-650 p-1.5 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer animate-in fade-in"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Chat Body */}
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-6 scrollbar-thin scrollbar-thumb-zinc-200">
+              {ticketMessages.map((msg) => {
+                const isAdmin = msg.sender_role === 'admin';
+                return (
+                  <div 
+                    key={msg.id} 
+                    className={`flex flex-col ${isAdmin ? 'items-start' : 'items-end'}`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[9px] text-zinc-400 font-bold mb-1 px-1">
+                      <span>{isAdmin ? `Admin (${msg.full_name || 'CS'})` : 'Anda'}</span>
+                      <span>•</span>
+                      <span>{new Date(msg.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                    </div>
+
+                    <div className={`max-w-[85%] p-3.5 rounded-2xl text-xs sm:text-sm font-light leading-relaxed whitespace-pre-wrap shadow-sm text-left ${
+                      isAdmin 
+                        ? 'bg-zinc-100 text-zinc-800 rounded-tl-none border border-zinc-200/50' 
+                        : 'bg-indigo-600 text-white rounded-tr-none'
+                    }`}>
+                      {msg.message}
+
+                      {msg.image_url && (
+                        <div 
+                          className="mt-3 relative rounded-xl overflow-hidden border border-black/10 cursor-zoom-in max-h-48"
+                          onClick={() => setShowImageZoom(msg.image_url)}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={msg.image_url} alt="Attachment" className="max-h-48 w-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Reply Input Form */}
+            {selectedTicket.status !== 'Closed' ? (
+              <form onSubmit={handleSendTicketMessage} className="border-t border-zinc-150 pt-4 space-y-3">
+                <div className="flex items-end gap-2 bg-zinc-50 border border-zinc-200 rounded-2xl p-2 focus-within:border-indigo-500 transition-all">
+                  <textarea
+                    value={newTicketMessage}
+                    onChange={(e) => setNewTicketMessage(e.target.value)}
+                    placeholder="Tulis balasan pesan Anda..."
+                    rows={2}
+                    className="flex-1 bg-transparent border-none outline-none resize-none text-xs sm:text-sm text-zinc-800 pl-2 pt-1"
+                  />
+                  
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setNewTicketMessageImage(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="ticket-reply-image-upload"
+                    />
+                    <label
+                      htmlFor="ticket-reply-image-upload"
+                      className="p-2 hover:bg-zinc-200 rounded-xl text-zinc-500 hover:text-zinc-700 cursor-pointer transition-colors"
+                      title="Lampirkan Gambar"
+                    >
+                      <Upload className="w-4 h-4" />
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={sendingTicketMessage || !newTicketMessage.trim()}
+                      className="bg-indigo-600 hover:bg-indigo-750 text-white p-2.5 rounded-xl transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-indigo-650/10 flex items-center justify-center shrink-0"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {newTicketMessageImage && (
+                  <div className="relative inline-block rounded-xl overflow-hidden border border-zinc-200 bg-zinc-50 p-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={newTicketMessageImage} alt="Reply Attachment" className="h-16 w-16 object-cover rounded-lg" />
+                    <button
+                      type="button"
+                      onClick={() => setNewTicketMessageImage('')}
+                      className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-650 text-white p-1 rounded-full shadow-md scale-75 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </form>
+            ) : (
+              <div className="border-t border-zinc-150 pt-4 text-center text-xs text-zinc-400 italic">
+                Tiket ini telah ditutup. Anda tidak dapat mengirim balasan pesan.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

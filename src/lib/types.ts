@@ -39,6 +39,7 @@ export interface Order {
   payment_status: 'unpaid' | 'paid' | 'expired' | 'refunded';
   payment_method: string;
   created_at: string;
+  order_id?: number;
   profiles?: {
     email: string;
   };
@@ -54,6 +55,7 @@ export interface Transaction {
   payment_method?: string;
   description?: string;
   created_at: string;
+  tx_id?: number;
   profiles?: {
     email: string;
   };

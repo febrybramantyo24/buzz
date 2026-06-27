@@ -40,12 +40,14 @@ CREATE TABLE IF NOT EXISTS services (
     provider_service_id VARCHAR(100),
     provider_price_per_k DECIMAL(15, 2) DEFAULT 0.00,
     is_recommended BOOLEAN DEFAULT FALSE,
+    average_duration VARCHAR(255) DEFAULT '15 Menit',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 4. Orders Table
 CREATE TABLE IF NOT EXISTS orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id SERIAL UNIQUE, -- Numeric auto-incrementing ID for orders
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     service_id UUID,
     category VARCHAR(100),
@@ -65,12 +67,14 @@ CREATE TABLE IF NOT EXISTS orders (
 -- 5. Transactions Table (Log top-ups and wallet actions)
 CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tx_id SERIAL UNIQUE, -- Numeric auto-incrementing ID for transactions
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     amount DECIMAL(15, 2) NOT NULL,
     type VARCHAR(50) NOT NULL, -- 'topup', 'order_payment', 'refund'
     status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'success', 'failed'
     reference_id VARCHAR(255),
     payment_method VARCHAR(100),
+    description TEXT, -- Audit trail detail (e.g. deposit breakdown or adjustment note)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -92,3 +96,26 @@ CREATE TABLE IF NOT EXISTS site_settings (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 8. Tickets Table (Support Ticket System)
+CREATE TABLE IF NOT EXISTS tickets (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    subject TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Pending',
+    order_id TEXT,
+    request_type TEXT,
+    deposit_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. Ticket Messages Table (Support Ticket Chat Thread)
+CREATE TABLE IF NOT EXISTS ticket_messages (
+    id SERIAL PRIMARY KEY,
+    ticket_id INT REFERENCES tickets(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    sender_role TEXT NOT NULL,
+    message TEXT NOT NULL,
+    image_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
