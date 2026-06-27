@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Fetch user from users table
-    const userQuery = userId 
+    const userQuery = userId
       ? await query('SELECT * FROM users WHERE id = $1', [userId])
       : await query('SELECT * FROM users WHERE email = $1', [userEmail]);
 
@@ -43,8 +43,8 @@ export async function POST(request: Request) {
 
     // 4. Verify account status
     if (!user.is_verified) {
-      return NextResponse.json({ 
-        error: 'Akun Anda belum diverifikasi. Silakan cek email Anda untuk memverifikasi akun sebelum login.' 
+      return NextResponse.json({
+        error: 'Akun Anda belum diverifikasi. Silakan cek email Anda untuk memverifikasi akun sebelum login.'
       }, { status: 400 });
     }
 
@@ -55,9 +55,9 @@ export async function POST(request: Request) {
     // 6. Generate JWT Token
     const jwtSecret = process.env.JWT_SECRET || 'buzzify_secret_key_1234567890';
     const token = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email, 
+      {
+        userId: user.id,
+        email: user.email,
         role: profile.role,
         username: profile.username
       },
@@ -79,9 +79,10 @@ export async function POST(request: Request) {
     });
 
     const isProduction = process.env.NODE_ENV === 'production';
+    const isHttps = request.url.startsWith('https://');
     response.cookies.set('token', token, {
       httpOnly: true,
-      secure: isProduction,
+      secure: isProduction && isHttps,
       sameSite: 'strict',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/'
