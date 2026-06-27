@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { dbClient as supabase } from '@/lib/db-client';
 import { Service } from '@/lib/types';
 import PremiumThemeToggle from '@/components/PremiumThemeToggle';
 import { 
@@ -18,26 +18,29 @@ import {
   Activity,
   Heart,
   Eye,
-  MessageSquare
+  MessageSquare,
+  Wallet
 } from 'lucide-react';
 
 export default function LandingPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [settings, setSettings] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    async function fetchServices() {
+    async function fetchServicesAndSettings() {
       try {
-        const { data, error } = await supabase
+        // Fetch services
+        const { data: servicesData, error: servicesError } = await supabase
           .from('services')
           .select('*')
           .eq('is_active', true);
         
-        if (error) throw error;
-        setServices(data || []);
-      } catch (err) {
-        console.error('Error fetching services:', err);
+        if (servicesError) throw servicesError;
+        setServices(servicesData || []);
+      } catch (err: any) {
+        console.error('Error fetching services:', err?.message || err);
         // Add some mock services in case database tables are not yet created
         setServices([
           {
@@ -73,7 +76,7 @@ export default function LandingPage() {
           {
             id: '4',
             category: 'TikTok',
-            name: 'TikTok Views Video [Instant]',
+            name: 'TikTok Views Video [Proses Cepat]',
             price_per_k: 3000,
             min_order: 500,
             max_order: 100000,
@@ -101,12 +104,23 @@ export default function LandingPage() {
             created_at: ''
           }
         ]);
+      }
+
+      try {
+        // Fetch site settings from server-side API
+        const response = await fetch('/api/site-settings');
+        if (response.ok) {
+          const loaded = await response.json();
+          setSettings(prev => ({ ...prev, ...loaded }));
+        }
+      } catch (err) {
+        console.error('Error fetching site settings:', err);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchServices();
+    fetchServicesAndSettings();
   }, []);
 
   const categories = ['All', ...Array.from(new Set(services.map(s => s.category)))];
@@ -136,6 +150,21 @@ export default function LandingPage() {
     }
   };
 
+
+  const renderRichText = (text: string) => {
+    const parts = text.split('**');
+    return parts.map((part, index) => {
+      if (index % 2 === 1) {
+        return (
+          <span key={index} className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white overflow-x-hidden">
       {/* Background Gradients */}
@@ -154,16 +183,16 @@ export default function LandingPage() {
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#features" className="hover:text-white transition-colors">Keunggulan</a>
-            <a href="#services" className="hover:text-white transition-colors">Daftar Layanan</a>
-            <a href="#how-it-works" className="hover:text-white transition-colors">Cara Kerja</a>
+            <a href="#features" className="hover:text-slate-100 transition-colors">Keunggulan</a>
+            <a href="#services" className="hover:text-slate-100 transition-colors">Daftar Layanan</a>
+            <a href="#how-it-works" className="hover:text-slate-100 transition-colors">Cara Kerja</a>
           </nav>
 
           <div className="flex items-center gap-4">
             <PremiumThemeToggle />
             <Link 
               href="/login" 
-              className="text-sm font-semibold hover:text-white transition-colors text-slate-300 px-4 py-2"
+              className="text-sm font-semibold hover:text-slate-100 transition-colors text-slate-300 px-4 py-2"
             >
               Masuk
             </Link>
@@ -177,56 +206,76 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero Section */}
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:pt-32 md:pb-36 flex flex-col items-center text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-semibold mb-6 animate-bounce">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Platform Buzzer Terpercaya & Tercepat di Indonesia</span>
-        </div>
+        {settings.hero_badge && (
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-indigo-200/50 dark:border-indigo-500/20 bg-indigo-50/80 dark:bg-indigo-500/20 text-xs font-semibold mb-6 animate-float">
+            <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--color-slate-100)' }} />
+            <span style={{ color: 'var(--color-slate-100)' }}>{settings.hero_badge}</span>
+          </div>
+        )}
         
-        <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight max-w-4xl leading-tight sm:leading-none">
-          Tingkatkan <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">Popularitas Medsos</span> Anda Instan!
-        </h1>
+        {settings.hero_title && (
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight max-w-4xl leading-tight sm:leading-none animate-fade-in-up">
+            {renderRichText(settings.hero_title)}
+          </h1>
+        )}
         
-        <p className="mt-6 text-lg sm:text-xl text-slate-400 max-w-2xl font-light">
-          Buzzify menyediakan layanan optimasi media sosial terbaik. Followers, Likes, Views, dan Subscribers berkualitas tinggi dengan harga termurah.
-        </p>
+        {settings.hero_subtitle && (
+          <p className="mt-6 text-lg sm:text-xl text-slate-400 max-w-2xl font-light leading-relaxed animate-fade-in-up animation-delay-100">
+            {settings.hero_subtitle}
+          </p>
+        )}
 
-        <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center w-full max-w-md">
-          <Link 
-            href="/login" 
-            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:-translate-y-1"
-          >
-            <span>Mulai Order Sekarang</span>
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-          <a 
-            href="#services" 
-            className="flex items-center justify-center bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-semibold px-8 py-4 rounded-2xl transition-all"
-          >
-            Lihat Layanan
-          </a>
-        </div>
+        {(settings.hero_cta_text || settings.hero_cta_sub_text) && (
+          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center w-full max-w-md animate-fade-in-up animation-delay-200">
+            {settings.hero_cta_text && (
+              <Link 
+                href="/login" 
+                className="shimmer-btn flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:-translate-y-1"
+              >
+                <span>{settings.hero_cta_text}</span>
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            )}
+            {settings.hero_cta_sub_text && (
+              <a 
+                href="#services" 
+                className="flex items-center justify-center bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-semibold px-8 py-4 rounded-2xl transition-all"
+              >
+                {settings.hero_cta_sub_text}
+              </a>
+            )}
+          </div>
+        )}
 
-        {/* Stats */}
-        <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-4xl bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 p-8 rounded-3xl">
-          <div className="text-center border-r border-slate-800 last:border-0">
-            <div className="text-3xl sm:text-4xl font-extrabold text-white">100K+</div>
-            <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider">Pesanan Sukses</div>
-          </div>
-          <div className="text-center md:border-r border-slate-800 last:border-0">
-            <div className="text-3xl sm:text-4xl font-extrabold text-white">15K+</div>
-            <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider">Pelanggan Aktif</div>
-          </div>
-          <div className="text-center border-r border-slate-800 last:border-0">
-            <div className="text-3xl sm:text-4xl font-extrabold text-indigo-400">99.9%</div>
-            <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider">Tingkat Keberhasilan</div>
-          </div>
-          <div className="text-center last:border-0">
-            <div className="text-3xl sm:text-4xl font-extrabold text-purple-400">&lt; 5 Menit</div>
-            <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider">Proses Instant</div>
-          </div>
-        </div>
+        {(() => {
+          const statsList = [
+            { key: 'stats_orders', value: settings.stats_orders, label: 'Pesanan Sukses', colorClass: 'text-slate-100' },
+            { key: 'stats_clients', value: settings.stats_clients, label: 'Pelanggan Aktif', colorClass: 'text-slate-100' },
+            { key: 'stats_success', value: settings.stats_success, label: 'Tingkat Keberhasilan', colorClass: 'text-indigo-400' },
+            { key: 'stats_speed', value: settings.stats_speed, label: 'Proses Cepat', colorClass: 'text-purple-400' }
+          ].filter(stat => !!stat.value);
+
+          if (statsList.length === 0) return null;
+
+          const gridColClasses = {
+            1: 'md:grid-cols-1',
+            2: 'md:grid-cols-2',
+            3: 'md:grid-cols-3',
+            4: 'md:grid-cols-4'
+          }[statsList.length as 1 | 2 | 3 | 4] || 'md:grid-cols-4';
+
+          return (
+            <div className={`mt-20 grid grid-cols-2 ${gridColClasses} gap-6 w-full max-w-4xl bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 p-8 rounded-3xl animate-fade-in-up animation-delay-300 premium-card-glow`}>
+              {statsList.map((stat) => (
+                <div key={stat.key} className="text-center border-slate-800 last:border-0 odd:border-r even:border-0 md:border-r md:last:border-0">
+                  <div className={`text-3xl sm:text-4xl font-extrabold ${stat.colorClass}`}>{stat.value}</div>
+                  <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </section>
 
       {/* Features Section */}
@@ -239,18 +288,18 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Feature 1 */}
-            <div className="bg-slate-900/40 border border-slate-850 hover:border-slate-800 p-8 rounded-3xl transition-all duration-300 hover:-translate-y-1">
+            <div className="premium-card-glow bg-slate-900/40 backdrop-blur-xl border border-slate-850 p-8 rounded-3xl">
               <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6">
                 <Clock className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-semibold mb-3">Proses Cepat</h3>
               <p className="text-slate-400 font-light leading-relaxed">
-                Pesanan Anda akan diproses secara instan atau dalam hitungan menit secara otomatis setelah pembayaran sukses diterima.
+                Pesanan Anda akan diproses secara cepat atau dalam hitungan menit secara otomatis setelah pembayaran sukses diterima.
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div className="bg-slate-900/40 border border-slate-850 hover:border-slate-800 p-8 rounded-3xl transition-all duration-300 hover:-translate-y-1">
+            <div className="premium-card-glow bg-slate-900/40 backdrop-blur-xl border border-slate-850 p-8 rounded-3xl">
               <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
                 <ShieldCheck className="w-6 h-6" />
               </div>
@@ -261,7 +310,7 @@ export default function LandingPage() {
             </div>
 
             {/* Feature 3 */}
-            <div className="bg-slate-900/40 border border-slate-850 hover:border-slate-800 p-8 rounded-3xl transition-all duration-300 hover:-translate-y-1">
+            <div className="premium-card-glow bg-slate-900/40 backdrop-blur-xl border border-slate-850 p-8 rounded-3xl">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
                 <Users className="w-6 h-6" />
               </div>
@@ -322,8 +371,19 @@ export default function LandingPage() {
                   {filteredServices.map(service => (
                     <tr key={service.id} className="hover:bg-slate-900/40 transition-colors">
                       <td className="py-4 px-6 font-medium text-slate-200">
-                        <div className="flex items-center gap-2">
-                          {getCategoryIcon(service.category)}
+                        <div className="flex items-center gap-2.5">
+                          {(() => {
+                            const categoryIcon = services.find(s => s.category === service.category && s.icon_url)?.icon_url;
+                            if (categoryIcon) {
+                              return (
+                                <div className="w-6 h-6 rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={categoryIcon} alt="icon" className="w-full h-full object-cover" />
+                                </div>
+                              );
+                            }
+                            return getCategoryIcon(service.category);
+                          })()}
                           {service.category}
                         </div>
                       </td>
@@ -345,6 +405,74 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Cara Kerja Section */}
+      <section id="how-it-works" className="py-24 border-t border-slate-900 bg-slate-950 relative overflow-hidden">
+        {/* Glow decoration */}
+        <div className="absolute top-1/2 right-10 -translate-y-1/2 w-72 h-72 pointer-events-none opacity-5 blur-[120px] bg-purple-500 rounded-full"></div>
+        <div className="absolute bottom-10 left-10 w-72 h-72 pointer-events-none opacity-5 blur-[120px] bg-indigo-500 rounded-full"></div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-20">
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-4 py-1.5 rounded-full border border-indigo-500/20">
+              Sangat Mudah & Praktis
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-extrabold mt-4 tracking-tight">
+              Cara Kerja <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">Buzzify</span>
+            </h2>
+            <p className="text-slate-400 mt-4 text-base sm:text-lg font-light leading-relaxed">
+              Hanya butuh 3 langkah mudah untuk melipatgandakan popularitas profil sosial media Anda secara otomatis 24 jam non-stop.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 lg:gap-12 relative">
+            {/* Connecting Line (Desktop) */}
+            <div className="hidden md:block absolute top-[60px] left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-pink-500/30 -z-10"></div>
+
+            {/* Step 1 */}
+            <div className="premium-card-glow group relative z-10 bg-slate-900 border border-slate-800/80 p-8 rounded-3xl">
+              <div className="absolute top-6 right-6 text-6xl font-black text-slate-850 select-none font-mono group-hover:text-indigo-500/10 transition-colors">
+                01
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-8 shadow-inner group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
+                <Users className="w-7 h-7" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-indigo-300 transition-colors">Daftar Akun</h3>
+              <p className="text-slate-350 font-light leading-relaxed text-sm">
+                Lengkapi formulir pendaftaran dengan Nama, Username, Email, dan nomor WhatsApp aktif Anda untuk langsung mengakses dasbor utama.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="premium-card-glow group relative z-10 bg-slate-900 border border-slate-800/80 p-8 rounded-3xl">
+              <div className="absolute top-6 right-6 text-6xl font-black text-slate-850 select-none font-mono group-hover:text-purple-500/10 transition-colors">
+                02
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-8 shadow-inner group-hover:bg-purple-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
+                <Wallet className="w-7 h-7" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-purple-300 transition-colors">Top Up Saldo</h3>
+              <p className="text-slate-350 font-light leading-relaxed text-sm">
+                Isi saldo akun Anda melalui deposit cepat otomatis menggunakan QRIS, e-wallet, atau transfer bank. Saldo akan langsung bertambah dalam hitungan detik.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="premium-card-glow group relative z-10 bg-slate-900 border border-slate-800/80 p-8 rounded-3xl">
+              <div className="absolute top-6 right-6 text-6xl font-black text-slate-850 select-none font-mono group-hover:text-pink-500/10 transition-colors">
+                03
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 mb-8 shadow-inner group-hover:bg-pink-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
+                <Zap className="w-7 h-7" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-pink-300 transition-colors">Pilih Layanan & Order</h3>
+              <p className="text-slate-350 font-light leading-relaxed text-sm">
+                Gunakan saldo Anda untuk memesan layanan media sosial yang diinginkan. Sistem cerdas kami akan langsung memproses pesanan Anda secara otomatis dan cepat!
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Footer */}
       <section className="py-20 border-t border-slate-900 relative">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 pointer-events-none opacity-10 blur-[120px] bg-indigo-500 rounded-full"></div>
@@ -352,12 +480,12 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-4 text-center relative z-10">
           <h2 className="text-3xl sm:text-5xl font-extrabold">Siap Tingkatkan Media Sosial Anda?</h2>
           <p className="text-slate-400 mt-4 text-lg max-w-xl mx-auto font-light">
-            Daftar akun gratis sekarang dan nikmati layanan order otomatis 24/7 super instan.
+            Daftar akun gratis sekarang dan nikmati layanan order otomatis 24/7 proses cepat.
           </p>
           <div className="mt-8 flex justify-center">
             <Link 
               href="/login?tab=register" 
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-1"
+              className="shimmer-btn inline-flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-1"
             >
               <span>Daftar Sekarang</span>
               <ChevronRight className="w-5 h-5" />

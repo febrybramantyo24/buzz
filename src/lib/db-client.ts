@@ -1,6 +1,6 @@
-// Client-side wrapper for Supabase client emulation that directs to local Next.js APIs.
+// Client-side wrapper for DB query builder that directs to local Next.js APIs.
 
-class SupabaseQueryBuilder {
+class DbQueryBuilder {
   private table: string;
   private method: string = 'GET';
   private body: any = null;
@@ -15,7 +15,6 @@ class SupabaseQueryBuilder {
   }
 
   select(columns?: string) {
-    // We select all in our backend by default
     return this;
   }
 
@@ -130,7 +129,11 @@ class SupabaseQueryBuilder {
   }
 }
 
-export const supabase = {
+export const dbClient = {
+  from: (table: string) => {
+    return new DbQueryBuilder(table);
+  },
+  
   auth: {
     getSession: async () => {
       try {
@@ -187,14 +190,14 @@ export const supabase = {
       }
     },
 
-    signUp: async ({ email, password }: any) => {
+    signUp: async ({ email, password, username, fullName, whatsapp }: any) => {
       try {
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ email, password, username, fullName, whatsapp })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -202,15 +205,13 @@ export const supabase = {
         }
         return { 
           data: { 
-            user: { 
-              id: data.userId, 
-              email: email 
-            } 
+            session: data.session, 
+            user: data.session ? data.session.user : null 
           }, 
           error: null 
         };
       } catch (err: any) {
-        return { data: { user: null }, error: err };
+        return { data: { session: null, user: null }, error: err };
       }
     },
 
@@ -219,9 +220,9 @@ export const supabase = {
         const res = await fetch('/api/auth/logout', {
           method: 'POST'
         });
-        const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || 'Gagal logout');
+          const data = await res.json();
+          throw new Error(data.error || 'Logout gagal');
         }
         return { error: null };
       } catch (err: any) {
@@ -236,20 +237,16 @@ export const supabase = {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ email })
+          body: JSON.stringify({ email, redirectTo: options?.redirectTo })
         });
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || 'Gagal mengirim link reset');
+          throw new Error(data.error || 'Reset password gagal');
         }
-        return { data, error: null };
+        return { error: null };
       } catch (err: any) {
-        return { data: null, error: err };
+        return { error: err };
       }
     }
-  },
-
-  from: (table: string) => {
-    return new SupabaseQueryBuilder(table);
   }
 };

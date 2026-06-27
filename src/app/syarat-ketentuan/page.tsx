@@ -133,7 +133,7 @@ export default function TermsPage() {
               <h3 className="text-base sm:text-lg font-bold text-slate-100">4. Pembayaran & Kebijakan Refund Saldo</h3>
             </div>
             <ul className="list-disc list-outside pl-13 space-y-2">
-              <li>Top-up saldo dilakukan secara otomatis dan instan menggunakan QRIS / Transfer Bank melalui gerbang pembayaran Midtrans Sandbox.</li>
+              <li>Top-up saldo dilakukan secara otomatis dan cepat menggunakan QRIS / Transfer Bank melalui gerbang pembayaran Midtrans Sandbox.</li>
               <li>
                 <strong>Ketentuan Non-Refundable:</strong> Saldo akun yang sudah di-top-up <strong>tidak dapat diuangkan kembali</strong> atau ditransfer ke rekening pribadi/bank pihak ketiga. Saldo hanya dapat digunakan untuk pembelian layanan di dalam platform Buzzify.
               </li>

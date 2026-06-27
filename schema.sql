@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     full_name VARCHAR(255),
     username VARCHAR(100) UNIQUE,
     whatsapp VARCHAR(50),
-    balance DECIMAL(15, 2) DEFAULT 100000.00,
+    balance DECIMAL(15, 2) DEFAULT 0.00,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -35,6 +35,11 @@ CREATE TABLE IF NOT EXISTS services (
     min_order INTEGER NOT NULL,
     max_order INTEGER NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
+    icon_url TEXT,
+    provider_id VARCHAR(50) DEFAULT 'manual',
+    provider_service_id VARCHAR(100),
+    provider_price_per_k DECIMAL(15, 2) DEFAULT 0.00,
+    is_recommended BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -53,6 +58,7 @@ CREATE TABLE IF NOT EXISTS orders (
     start_count INTEGER DEFAULT 0,
     payment_status VARCHAR(50) DEFAULT 'unpaid', -- 'unpaid', 'paid', 'expired'
     payment_method VARCHAR(100),
+    provider_order_id VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -74,6 +80,15 @@ CREATE TABLE IF NOT EXISTS announcements (
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
     badge VARCHAR(50) DEFAULT 'INFO',
+    image_url TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 7. Site Settings Table (For dynamic landing page config)
+CREATE TABLE IF NOT EXISTS site_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+

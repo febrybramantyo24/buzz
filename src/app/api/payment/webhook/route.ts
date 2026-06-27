@@ -61,12 +61,11 @@ export async function POST(request: Request) {
     }
 
     // Check if this is a wallet topup transaction
-    const isTopup = order_id.startsWith('TOPUP-');
+    const isTopup = order_id.startsWith('T-');
 
     if (isTopup) {
-      // Format: TOPUP-[transactionId]-[timestamp]
-      const parts = order_id.split('-');
-      const actualTxId = parts[1];
+      // Format: T-[transactionId]
+      const actualTxId = order_id.substring(2);
 
       const statusVal = paymentStatus === 'paid' ? 'success' : (paymentStatus === 'expired' ? 'failed' : 'pending');
 
@@ -93,11 +92,33 @@ export async function POST(request: Request) {
         if (profileCheck.rows.length === 0) {
           console.error('Failed to fetch user profile for balance update');
         } else {
-          const currentBalance = Number(profileCheck.rows[0].balance || 0);
-          const newBalance = currentBalance + Number(gross_amount);
+          // Fetch dynamic deposit bonus settings
+          const settingsRes = await query('SELECT key, value FROM site_settings');
+          const siteSettings = settingsRes.rows.reduce((acc: any, row: any) => {
+            acc[row.key] = row.value;
+            return acc;
+          }, {});
 
+          const bonusMinLimit = parseInt(siteSettings.deposit_bonus_min) || 10000;
+          const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
+
+          const baseAmount = Number(gross_amount);
+          let creditedAmount = baseAmount;
+          
+          if (baseAmount >= bonusMinLimit && bonusPercent > 0) {
+            creditedAmount = Math.round(baseAmount + (baseAmount * bonusPercent / 100));
+          }
+
+          const currentBalance = Number(profileCheck.rows[0].balance || 0);
+          const newBalance = currentBalance + creditedAmount;
+
+          // Update profile balance
           await query('UPDATE profiles SET balance = $1 WHERE id = $2', [newBalance, tx.user_id]);
-          console.log(`Successfully credited Rp ${gross_amount} to user ${tx.user_id}. New balance: Rp ${newBalance}`);
+
+          // Update transaction log amount to reflect final credited amount (including bonus)
+          await query('UPDATE transactions SET amount = $1 WHERE id = $2', [creditedAmount, actualTxId]);
+          
+          console.log(`Successfully credited Rp ${creditedAmount} (Base: ${baseAmount}, Bonus applied: ${creditedAmount > baseAmount}) to user ${tx.user_id}. New balance: Rp ${newBalance}`);
         }
       }
 
@@ -105,8 +126,8 @@ export async function POST(request: Request) {
     }
 
     // Regular order payment
-    // Extract original order ID by removing the timestamp suffix
-    const actualOrderId = order_id.split('-')[0];
+    // Format: O-[orderId]
+    const actualOrderId = order_id.substring(2);
 
     // Check if order exists
     const orderCheck = await query('SELECT id FROM orders WHERE id = $1', [actualOrderId]);

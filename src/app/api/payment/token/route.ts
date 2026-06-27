@@ -26,6 +26,19 @@ export async function POST(request: Request) {
     // Create pending transaction in DB from server-side
     let dbTxId = orderId;
     if (type === 'topup' && userId) {
+      // Check if user has 3 or more pending topups
+      const checkPending = await query(
+        `SELECT COUNT(*) FROM transactions WHERE user_id = $1 AND type = 'topup' AND status = 'pending'`,
+        [userId]
+      );
+      const pendingCount = parseInt(checkPending.rows[0].count) || 0;
+      if (pendingCount >= 3) {
+        return NextResponse.json(
+          { error: 'Anda hanya dapat memiliki maksimal 3 permintaan deposit Pending. Silakan selesaikan pembayaran sebelumnya atau batalkan terlebih dahulu.' },
+          { status: 400 }
+        );
+      }
+
       // Check if orderId is a valid UUID before searching
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId);
       
@@ -53,9 +66,12 @@ export async function POST(request: Request) {
       }
     }
 
+    // Midtrans limits order_id to 50 characters.
+    // We prefix with 'T-' for Topup and 'O-' for Order, followed by the full UUID (36 characters).
+    // Total length: 2 + 36 = 38 characters (safe under the 50-character limit).
     const uniqueOrderId = type === 'topup' 
-      ? `TOPUP-${dbTxId}-${Date.now()}` 
-      : `${orderId}-${Date.now()}`;
+      ? `T-${dbTxId}` 
+      : `O-${dbTxId}`;
 
     const payload = {
       transaction_details: {

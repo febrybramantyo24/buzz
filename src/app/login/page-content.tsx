@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { dbClient as supabase } from '@/lib/db-client';
 import { 
   Zap, 
   Mail, 
@@ -109,6 +109,32 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
     try {
       if (isRegister) {
         // Validation
+        if (fullName.trim().length < 3) {
+          throw new Error('Nama Lengkap minimal 3 karakter.');
+        }
+        if (!/^[a-zA-Z\s]+$/.test(fullName)) {
+          throw new Error('Nama Lengkap hanya boleh berisi huruf dan spasi.');
+        }
+
+        const usernameRegex = /^[a-z0-9_]{3,16}$/;
+        if (!usernameRegex.test(username)) {
+          throw new Error('Username harus 3-16 karakter dan hanya boleh berisi huruf kecil, angka, dan underscore (_).');
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          throw new Error('Format email tidak valid.');
+        }
+
+        const whatsappClean = whatsapp.replace('+', '');
+        if (!/^[0-9]{9,15}$/.test(whatsappClean)) {
+          throw new Error('Nomor Whatsapp harus berupa angka dengan panjang 9-15 digit.');
+        }
+
+        if (password.length < 6) {
+          throw new Error('Password minimal 6 karakter.');
+        }
+
         if (password !== confirmPassword) {
           throw new Error('Password dan Ketik Ulang Password tidak cocok.');
         }
@@ -116,21 +142,13 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
           throw new Error('Anda harus menyetujui Syarat dan Ketentuan.');
         }
 
-        // Check if username is already taken
-        const { data: existingUser } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('username', username)
-          .maybeSingle();
-
-        if (existingUser) {
-          throw new Error('Username sudah digunakan oleh orang lain.');
-        }
-
         // Sign Up
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          username,
+          fullName,
+          whatsapp,
         });
 
         if (error) throw error;
@@ -146,7 +164,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
               full_name: fullName,
               username: username,
               whatsapp: whatsapp,
-              balance: 100000 // Give 100K demo balance
+              balance: 0 // Initial balance is 0
             });
 
           if (profileError) {
@@ -154,7 +172,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
           }
 
           // Local fallback balance setting
-          localStorage.setItem(`balance_${data.user.id}`, '100000');
+          localStorage.setItem(`balance_${data.user.id}`, '0');
 
           setMessage({
             type: 'success',
@@ -168,24 +186,8 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
         }
       } else {
         // Sign In
-        let loginEmail = email;
-
-        // If email field does not contain '@', treat it as username
-        if (!email.includes('@')) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('username', email)
-            .maybeSingle();
-
-          if (!profile) {
-            throw new Error('Username tidak terdaftar.');
-          }
-          loginEmail = profile.email;
-        }
-
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: loginEmail,
+          email, // can be username or email, resolved on the backend
           password,
         });
 
@@ -203,12 +205,12 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
           if (profileErr || !profile) {
             await supabase.from('profiles').insert({
               id: data.session.user.id,
-              email: data.session.user.email || loginEmail,
+              email: data.session.user.email || email,
               role: 'user',
               username: email.includes('@') ? email.split('@')[0] : email,
-              balance: 100000
+              balance: 0
             });
-            localStorage.setItem(`balance_${data.session.user.id}`, '100000');
+            localStorage.setItem(`balance_${data.session.user.id}`, '0');
             router.push('/dashboard');
             return;
           }
@@ -453,7 +455,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
       {/* Background radial highlight */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-full"></div>
 
-      <div className={`w-full ${isRegister ? 'max-w-xl' : 'max-w-md'} bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 transition-all duration-300`}>
+      <div className={`w-full ${isRegister ? 'max-w-xl' : 'max-w-md'} bg-slate-900/90 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 transition-all duration-300`}>
         
         {/* Logo / Header */}
         <div className="flex flex-col items-center mb-8">
@@ -493,12 +495,12 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Nama Lengkap</label>
                   <div className="relative">
-                    <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-550" />
+                    <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                       type="text"
                       required
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(e) => setFullName(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
                       placeholder="Nama Lengkap Anda"
                       className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-100 pl-11 pr-4 py-3 rounded-2xl outline-none transition-colors text-sm"
                     />
@@ -508,12 +510,13 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Username</label>
                   <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-550" />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                       type="text"
                       required
+                      maxLength={16}
                       value={username}
-                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                       placeholder="username"
                       className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-100 pl-11 pr-4 py-3 rounded-2xl outline-none transition-colors text-sm"
                     />
@@ -525,7 +528,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Email</label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-550" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                       type="email"
                       required
@@ -540,7 +543,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Nomor Whatsapp</label>
                   <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-550" />
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                       type="tel"
                       required
@@ -557,7 +560,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-550" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
@@ -579,7 +582,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Ketik Ulang Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-550" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
@@ -771,7 +774,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                   setAgreeTerms(true);
                   setShowTermsModal(false);
                 }}
-                className="bg-indigo-650 hover:bg-indigo-600 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md active:scale-95"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md active:scale-95"
               >
                 Setuju & Lanjutkan
               </button>

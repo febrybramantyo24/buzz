@@ -209,6 +209,8 @@ export async function PATCH(
     // RLS emulation: Restrict non-admins to updating their own data
     let rlsFilterCol = filterCol;
     let rlsFilterVal = filterVal;
+    let extraWhereClause = '';
+    const extraParams = [];
 
     if (user && user.role !== 'admin') {
       if (table === 'profiles') {
@@ -217,8 +219,9 @@ export async function PATCH(
         // Make sure non-admin cannot alter their role
         delete body.role;
       } else if (table === 'orders' || table === 'transactions') {
-        rlsFilterCol = 'user_id';
-        rlsFilterVal = user.userId;
+        // Keep primary filter column (like id) intact, but enforce user ownership check
+        extraWhereClause = ` AND user_id = $${Object.keys(body).length + 2}`;
+        extraParams.push(user.userId);
       }
     }
 
@@ -233,8 +236,8 @@ export async function PATCH(
     const setPhrases = setKeys.map((k, i) => `${k} = $${i + 1}`).join(', ');
     const cleanFilterCol = rlsFilterCol.replace(/[^a-zA-Z0-9_]/g, '');
     
-    const sql = `UPDATE ${table} SET ${setPhrases} WHERE ${cleanFilterCol} = $${setValues.length + 1} RETURNING *`;
-    const res = await query(sql, [...setValues, rlsFilterVal]);
+    const sql = `UPDATE ${table} SET ${setPhrases} WHERE ${cleanFilterCol} = $${setValues.length + 1}${extraWhereClause} RETURNING *`;
+    const res = await query(sql, [...setValues, rlsFilterVal, ...extraParams]);
 
     if (res.rows.length === 0) {
       return NextResponse.json({ error: 'Record not found or access denied' }, { status: 404 });
@@ -282,19 +285,22 @@ export async function DELETE(
     // RLS emulation: Restrict non-admins to deleting their own data
     let rlsFilterCol = filterCol;
     let rlsFilterVal = filterVal;
+    let extraWhereClause = '';
+    const extraParams = [];
 
     if (user && user.role !== 'admin') {
       if (table === 'profiles') {
         return NextResponse.json({ error: 'Profiles cannot be deleted by users' }, { status: 403 });
       } else if (table === 'orders' || table === 'transactions') {
-        rlsFilterCol = 'user_id';
-        rlsFilterVal = user.userId;
+        // Keep primary filter column (like id) intact, but enforce user ownership check
+        extraWhereClause = ` AND user_id = $2`;
+        extraParams.push(user.userId);
       }
     }
 
     const cleanFilterCol = rlsFilterCol.replace(/[^a-zA-Z0-9_]/g, '');
-    const sql = `DELETE FROM ${table} WHERE ${cleanFilterCol} = $1 RETURNING *`;
-    const res = await query(sql, [rlsFilterVal]);
+    const sql = `DELETE FROM ${table} WHERE ${cleanFilterCol} = $1${extraWhereClause} RETURNING *`;
+    const res = await query(sql, [rlsFilterVal, ...extraParams]);
 
     return NextResponse.json({ success: true, count: res.rowCount, deleted: res.rows });
 

@@ -15,6 +15,12 @@ export interface Service {
   min_order: number;
   max_order: number;
   is_active: boolean;
+  icon_url?: string;
+  provider_id?: string;
+  provider_service_id?: string | null;
+  provider_price_per_k?: number;
+  average_duration?: string;
+  is_recommended?: boolean;
   created_at: string;
 }
 
@@ -28,9 +34,9 @@ export interface Order {
   quantity: number;
   price_per_k: number;
   total_price: number;
-  status: 'pending' | 'processing' | 'inprogress' | 'success' | 'failed';
+  status: 'pending' | 'processing' | 'inprogress' | 'success' | 'failed' | 'partial';
   start_count: number;
-  payment_status: 'unpaid' | 'paid' | 'expired';
+  payment_status: 'unpaid' | 'paid' | 'expired' | 'refunded';
   payment_method: string;
   created_at: string;
   profiles?: {
@@ -46,6 +52,7 @@ export interface Transaction {
   status: 'pending' | 'success' | 'failed';
   reference_id?: string;
   payment_method?: string;
+  description?: string;
   created_at: string;
   profiles?: {
     email: string;
@@ -57,6 +64,7 @@ export interface Announcement {
   title: string;
   content: string;
   badge?: string;
+  image_url?: string | null;
   is_active: boolean;
   created_at: string;
 }

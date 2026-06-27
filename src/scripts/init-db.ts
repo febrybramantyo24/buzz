@@ -39,12 +39,20 @@ async function initDb() {
       const userId = userRes.rows[0].id;
 
       // Insert profile
-      await pool.query(
-        `INSERT INTO profiles (id, email, role, full_name, username, whatsapp, balance) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userId, adminEmail, 'admin', 'Administrator', 'admin', '081234567890', 10000000.00]
-      );
-      console.log('Admin user seeded (Email: admin@buzzify.com, Password: adminpassword)');
+      try {
+        await pool.query(
+          `INSERT INTO profiles (id, email, role, full_name, username, whatsapp, balance) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [userId, adminEmail, 'admin', 'Administrator', 'admin', '081234567890', 10000000.00]
+        );
+        console.log('Admin user seeded (Email: admin@buzzify.com, Password: adminpassword)');
+      } catch (e: any) {
+        if (e.code === '23505') {
+          console.log('Admin profile with username "admin" already exists.');
+        } else {
+          throw e;
+        }
+      }
     }
 
     // Check if services are empty, seed them if they are
@@ -66,7 +74,7 @@ async function initDb() {
           price_per_k: 12000,
           min_order: 50,
           max_order: 5000,
-          description: 'Likes dari akun Indonesia. Proses sangat cepat, masuk secara instant.'
+          description: 'Likes dari akun Indonesia. Proses sangat cepat, masuk secara cepat.'
         },
         {
           category: 'TikTok',
@@ -78,11 +86,11 @@ async function initDb() {
         },
         {
           category: 'TikTok',
-          name: 'TikTok Views Video [Instant]',
+          name: 'TikTok Views Video [Proses Cepat]',
           price_per_k: 3000,
           min_order: 500,
           max_order: 100000,
-          description: 'Views video TikTok instant. Sangat cocok untuk menaikkan engagement konten Anda.'
+          description: 'Views video TikTok proses cepat. Sangat cocok untuk menaikkan engagement konten Anda.'
         },
         {
           category: 'YouTube',
