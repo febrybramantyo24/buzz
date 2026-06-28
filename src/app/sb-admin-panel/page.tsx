@@ -1172,7 +1172,7 @@ export default function AdminDashboard() {
                 <Zap className="w-5 h-5 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="font-black text-sm leading-tight text-slate-100 dark:text-slate-100 tracking-tight">
+                <span className="font-black text-sm leading-tight text-slate-900 dark:text-slate-100 tracking-tight">
                   Buzzify
                 </span>
                 <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest leading-none mt-0.5">
@@ -1334,7 +1334,7 @@ export default function AdminDashboard() {
                 <Zap className="w-5 h-5 text-rose-500" />
               </button>
               
-              <h1 className="text-xs font-black text-slate-100 dark:text-slate-100 uppercase tracking-wider hidden sm:block">
+              <h1 className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider hidden sm:block">
                 {activeTab === 'orders' && 'Manajemen Pesanan'}
                 {activeTab === 'services' && 'Pengaturan Layanan'}
                 {activeTab === 'announcements' && 'Informasi & Rekomendasi'}
@@ -1461,7 +1461,7 @@ export default function AdminDashboard() {
                   placeholder="Cari Order ID, Layanan, atau URL..."
                   value={orderSearch}
                   onChange={(e) => setOrderSearch(e.target.value)}
-                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-11 pr-4 py-3 rounded-2xl outline-none transition-all text-sm shadow-inner"
+                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-11 pr-4 py-3 rounded-2xl outline-none transition-all text-sm shadow-inner"
                 />
               </div>
 
@@ -1548,12 +1548,12 @@ export default function AdminDashboard() {
                                 </span>
                                 {/* Process Status badge */}
                                 <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider border ${
-                                  order.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' :
-                                  order.status === 'inprogress' ? 'bg-rose-50/80 dark:bg-rose-950/15 text-rose-500 dark:text-rose-400 border-indigo-500/25' :
-                                  order.status === 'processing' ? 'bg-purple-500/10 text-purple-400 border-purple-500/25' :
-                                  order.status === 'failed' ? 'bg-red-500/10 text-red-400 border-red-500/25' :
-                                  order.status === 'partial' ? 'bg-orange-500/10 text-orange-400 border-orange-500/25' :
-                                  'bg-amber-500/10 text-amber-400 border-amber-500/25'
+                                  order.status === 'success' ? 'bg-emerald-600 dark:bg-emerald-700 text-white px-2 py-0.5 rounded' :
+                                  order.status === 'inprogress' ? 'bg-blue-600 dark:bg-blue-700 text-white px-2 py-0.5 rounded' :
+                                  order.status === 'processing' ? 'bg-purple-600 dark:bg-purple-700 text-white px-2 py-0.5 rounded' :
+                                  order.status === 'failed' ? 'bg-red-600 dark:bg-red-700 text-white px-2 py-0.5 rounded' :
+                                  order.status === 'partial' ? 'bg-orange-600 dark:bg-orange-700 text-white px-2 py-0.5 rounded' :
+                                  'bg-amber-600 dark:bg-amber-700 text-white px-2 py-0.5 rounded'
                                 }`}>
                                   {order.status === 'failed' ? 'error' : order.status}
                                 </span>
@@ -1598,7 +1598,7 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-4 px-4 text-center">
                               {updatingOrderId === order.id ? (
-                                <div className="flex flex-col gap-2.5 p-3.5 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 rounded-2xl w-48 mx-auto text-left shadow-xl">
+                                <div className="flex flex-col gap-2.5 p-3.5 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl w-48 mx-auto text-left shadow-xl">
                                   {orderStatusSelect === 'pending' && (
                                     <div>
                                       <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Jumlah Awal</label>
@@ -1778,8 +1778,8 @@ export default function AdminDashboard() {
                                 {order.payment_status}
                               </span>
                               <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider border ${
-                                order.status === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
-                                order.status === 'failed' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' :
+                                order.status === 'success' ? 'bg-emerald-600 dark:bg-emerald-700 text-white px-2 py-0.5 rounded' :
+                                order.status === 'failed' ? 'bg-red-600 dark:bg-red-700 text-white px-2 py-0.5 rounded' :
                                 'bg-slate-800 text-slate-400 dark:text-slate-400 border-slate-800/80'
                               }`}>
                                 {order.status === 'failed' ? 'error' : order.status}
@@ -1960,7 +1960,7 @@ export default function AdminDashboard() {
                       onClick={() => {
                         setIsAdminCategoryDropdownOpen(!isAdminCategoryDropdownOpen);
                       }}
-                      className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs text-left cursor-pointer"
+                      className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs text-left cursor-pointer"
                     >
                       <span className="truncate">
                         {serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X' 
@@ -1975,7 +1975,7 @@ export default function AdminDashboard() {
 
                     {/* Custom Admin Category Dropdown List */}
                     {isAdminCategoryDropdownOpen && (
-                      <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[260px] flex flex-col">
+                      <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[260px] flex flex-col">
                         <div className="p-2.5 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
                           <input
                             type="text"
@@ -2019,7 +2019,7 @@ export default function AdminDashboard() {
                       placeholder="Masukkan nama kategori baru..."
                       value={serviceCategory}
                       onChange={(e) => setServiceCategory(e.target.value)}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-250 px-4 py-3 rounded-2xl outline-none text-xs mt-2"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-250 px-4 py-3 rounded-2xl outline-none text-xs mt-2"
                     />
                   )}
                 </div>
@@ -2032,7 +2032,7 @@ export default function AdminDashboard() {
                     placeholder="Contoh: Followers Indo Real"
                     value={serviceName}
                     onChange={(e) => setServiceName(e.target.value)}
-                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   />
                 </div>
 
@@ -2055,7 +2055,7 @@ export default function AdminDashboard() {
                     required
                     value={formatNumberWithDots(servicePrice)}
                     onChange={(e) => setServicePrice(parseNumberFromDots(e.target.value))}
-                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs font-semibold"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs font-semibold"
                   />
                 </div>
 
@@ -2073,7 +2073,7 @@ export default function AdminDashboard() {
                         setProviderServiceId('');
                         setProviderPrice(0);
                       }}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                     >
                       <option value="manual">Manual (Tanpa Provider)</option>
                       <option value="buzzerpanel">BuzzerPanel</option>
@@ -2130,7 +2130,7 @@ export default function AdminDashboard() {
                                   placeholder="Contoh: Followers..."
                                   value={providerSearch}
                                   onChange={(e) => setProviderSearch(e.target.value)}
-                                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
+                                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
                                 />
                               </div>
                               <div>
@@ -2148,7 +2148,7 @@ export default function AdminDashboard() {
                                       setProviderCategoryFilter(matched);
                                     }
                                   }}
-                                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
+                                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
                                 />
                                                            <div>
                                 <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kategori Pusat</label>
@@ -2160,7 +2160,7 @@ export default function AdminDashboard() {
                                       setIsProviderCategoryDropdownOpen(!isProviderCategoryDropdownOpen);
                                       setIsProviderServiceDropdownOpen(false);
                                     }}
-                                    className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px] text-left cursor-pointer"
+                                    className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px] text-left cursor-pointer"
                                   >
                                     <span className="truncate">{providerCategoryFilter === 'all' ? 'Semua Kategori' : providerCategoryFilter}</span>
                                     <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isProviderCategoryDropdownOpen ? 'rotate-180' : ''}`} />
@@ -2168,7 +2168,7 @@ export default function AdminDashboard() {
 
                                   {/* Custom Category Dropdown List */}
                                   {isProviderCategoryDropdownOpen && (
-                                    <div className="absolute left-0 right-0 mt-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[220px] flex flex-col">
+                                    <div className="absolute left-0 right-0 mt-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[220px] flex flex-col">
                                       <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
                                         <button
                                           type="button"
@@ -2231,7 +2231,7 @@ export default function AdminDashboard() {
                                     setIsProviderServiceDropdownOpen(!isProviderServiceDropdownOpen);
                                     setIsProviderCategoryDropdownOpen(false);
                                   }}
-                                  className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs text-left cursor-pointer min-w-0"
+                                  className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs text-left cursor-pointer min-w-0"
                                 >
                                   <span className="truncate">
                                     {providerServiceId 
@@ -2247,7 +2247,7 @@ export default function AdminDashboard() {
 
                                 {/* Custom Service Dropdown List */}
                                 {isProviderServiceDropdownOpen && (
-                                  <div className="absolute left-0 right-0 mt-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                                  <div className="absolute left-0 right-0 mt-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
                                     <div className="p-3 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
                                       <input
                                         type="text"
@@ -2344,7 +2344,7 @@ export default function AdminDashboard() {
                           placeholder="Contoh: 140"
                           value={providerServiceId}
                           onChange={(e) => setProviderServiceId(e.target.value)}
-                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                         />
                       </div>
                       <div>
@@ -2355,7 +2355,7 @@ export default function AdminDashboard() {
                           placeholder="Harga beli"
                           value={providerPrice || ''}
                           onChange={(e) => setProviderPrice(parseFloat(e.target.value) || 0)}
-                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                         />
                       </div>
                     </div>
@@ -2370,7 +2370,7 @@ export default function AdminDashboard() {
                       required
                       value={serviceMin}
                       onChange={(e) => setServiceMin(parseInt(e.target.value) || 0)}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                     />
                   </div>
                   <div>
@@ -2380,7 +2380,7 @@ export default function AdminDashboard() {
                       required
                       value={serviceMax}
                       onChange={(e) => setServiceMax(parseInt(e.target.value) || 0)}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                     />
                   </div>
                 </div>
@@ -2393,7 +2393,7 @@ export default function AdminDashboard() {
                     placeholder="Contoh: 15 Menit, 1 Jam, dll."
                     value={averageDuration}
                     onChange={(e) => setAverageDuration(e.target.value)}
-                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   />
                 </div>
 
@@ -2418,12 +2418,12 @@ export default function AdminDashboard() {
                     />
                     <label
                       htmlFor="service-icon-upload"
-                      className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
+                      className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
                     >
                       Pilih File Gambar
                     </label>
                     {serviceIcon && (
-                      <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 flex items-center justify-center shrink-0">
+                      <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 flex items-center justify-center shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={serviceIcon} alt="Preview" className="w-full h-full object-cover" />
                         <button
@@ -2634,7 +2634,7 @@ export default function AdminDashboard() {
                   placeholder="Ketik nama layanan, misal: Followers Indo..."
                   value={comparisonKeyword}
                   onChange={(e) => setComparisonKeyword(e.target.value)}
-                  className="flex-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-250 px-4 py-3 rounded-2xl outline-none text-xs"
+                  className="flex-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-250 px-4 py-3 rounded-2xl outline-none text-xs"
                 />
                 <button
                   type="submit"
@@ -2758,7 +2758,7 @@ export default function AdminDashboard() {
                   <select
                     value={annBadge}
                     onChange={(e) => setAnnBadge(e.target.value)}
-                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   >
                     <option value="INFO">INFO</option>
                     <option value="HOT">HOT</option>
@@ -2775,7 +2775,7 @@ export default function AdminDashboard() {
                     placeholder="Contoh: Promo Weekend Followers"
                     value={annTitle}
                     onChange={(e) => setAnnTitle(e.target.value)}
-                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   />
                 </div>
 
@@ -2787,7 +2787,7 @@ export default function AdminDashboard() {
                     placeholder="Masukkan pesan info detail rekomendasi di sini..."
                     value={annContent}
                     onChange={(e) => setAnnContent(e.target.value)}
-                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   />
                 </div>
 
@@ -2812,7 +2812,7 @@ export default function AdminDashboard() {
                     />
                     <label
                       htmlFor="announcement-banner-upload"
-                      className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
+                      className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
                     >
                       Pilih File Banner
                     </label>
@@ -2827,7 +2827,7 @@ export default function AdminDashboard() {
                     )}
                   </div>
                   {annImageUrl && (
-                    <div className="mt-3 relative w-full h-32 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 flex items-center justify-center">
+                    <div className="mt-3 relative w-full h-32 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 flex items-center justify-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={annImageUrl} alt="Preview Banner" className="w-full h-full object-cover" />
                     </div>
@@ -3026,7 +3026,7 @@ export default function AdminDashboard() {
                     placeholder="Cari user email or ID..."
                     value={searchTermTransactions}
                     onChange={(e) => setSearchTermTransactions(e.target.value)}
-                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-10 pr-4 py-2 rounded-xl outline-none transition-colors text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-10 pr-4 py-2 rounded-xl outline-none transition-colors text-xs"
                   />
                 </div>
               </div>
@@ -3082,8 +3082,8 @@ export default function AdminDashboard() {
                               <td className="py-3 px-3 font-mono text-slate-455 uppercase">{tx.payment_method || '-'}</td>
                               <td className="py-3 px-3 text-center">
                                 <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider inline-block ${
-                                  tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                  tx.status === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                  tx.status === 'success' ? 'bg-emerald-600 dark:bg-emerald-700 text-white px-2 py-0.5 rounded' :
+                                  tx.status === 'failed' ? 'bg-red-600 dark:bg-red-700 text-white px-2 py-0.5 rounded' :
                                   'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                                 }`}>
                                   {tx.status}
@@ -3150,8 +3150,8 @@ export default function AdminDashboard() {
                             <div className="flex justify-between items-center">
                               <span className="text-slate-400 font-medium">Status:</span>
                               <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider inline-block ${
-                                tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
-                                tx.status === 'failed' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
+                                tx.status === 'success' ? 'bg-emerald-600 dark:bg-emerald-700 text-white px-2 py-0.5 rounded' :
+                                tx.status === 'failed' ? 'bg-red-600 dark:bg-red-700 text-white px-2 py-0.5 rounded' :
                                 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                               }`}>
                                 {tx.status}
@@ -3215,7 +3215,7 @@ export default function AdminDashboard() {
                       type="text"
                       value={landingSettings.hero_badge || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_badge: e.target.value }))}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       placeholder="e.g. Platform Buzzer Terpercaya & Tercepat di Indonesia"
                     />
                   </div>
@@ -3226,7 +3226,7 @@ export default function AdminDashboard() {
                       type="text"
                       value={landingSettings.hero_title || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_title: e.target.value }))}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       placeholder="e.g. Tingkatkan **Popularitas Medsos** Anda dengan Proses Cepat!"
                     />
                   </div>
@@ -3237,7 +3237,7 @@ export default function AdminDashboard() {
                       value={landingSettings.hero_subtitle || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_subtitle: e.target.value }))}
                       rows={3}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs resize-none"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs resize-none"
                       placeholder="e.g. Deskripsi singkat platform Anda..."
                     />
                   </div>
@@ -3249,7 +3249,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.hero_cta_text || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_cta_text: e.target.value }))}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       />
                     </div>
                     <div>
@@ -3258,7 +3258,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.hero_cta_sub_text || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_cta_sub_text: e.target.value }))}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       />
                     </div>
                   </div>
@@ -3275,7 +3275,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.stats_orders || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, stats_orders: e.target.value }))}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
                       />
                     </div>
                     <div>
@@ -3284,7 +3284,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.stats_clients || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, stats_clients: e.target.value }))}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
                       />
                     </div>
                     <div>
@@ -3293,7 +3293,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.stats_success || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, stats_success: e.target.value }))}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
                       />
                     </div>
                     <div>
@@ -3302,7 +3302,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.stats_speed || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, stats_speed: e.target.value }))}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
                       />
                     </div>
                   </div>
@@ -3333,7 +3333,7 @@ export default function AdminDashboard() {
                       type="text"
                       value={landingSettings[`warning_title_${selectedWarningCategory}`] || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, [`warning_title_${selectedWarningCategory}`]: e.target.value }))}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       placeholder={`Contoh: Penting ${selectedWarningCategory.toUpperCase()}:`}
                     />
                   </div>
@@ -3344,7 +3344,7 @@ export default function AdminDashboard() {
                       value={landingSettings[`warning_desc_${selectedWarningCategory}`] || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, [`warning_desc_${selectedWarningCategory}`]: e.target.value }))}
                       rows={6}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs resize-y"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs resize-y"
                       placeholder="Masukkan deskripsi peringatan dan langkah-langkah di sini..."
                     />
                   </div>
@@ -3371,12 +3371,12 @@ export default function AdminDashboard() {
                         />
                         <label
                           htmlFor="warning-image-upload"
-                          className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
+                          className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
                         >
                           Pilih File Gambar
                         </label>
                         {landingSettings[`warning_image_url_${selectedWarningCategory}`] && (
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 flex items-center justify-center shrink-0">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 flex items-center justify-center shrink-0">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={landingSettings[`warning_image_url_${selectedWarningCategory}`]}
@@ -3401,7 +3401,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings[`warning_video_url_${selectedWarningCategory}`] || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, [`warning_video_url_${selectedWarningCategory}`]: e.target.value }))}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                         placeholder="Contoh: https://youtube.com/watch?v=..."
                       />
                     </div>
@@ -3420,7 +3420,7 @@ export default function AdminDashboard() {
                         inputMode="numeric"
                         value={formatNumberWithDots(landingSettings.deposit_bonus_min)}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, deposit_bonus_min: String(parseNumberFromDots(e.target.value)) }))}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs font-semibold"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs font-semibold"
                         placeholder="Contoh: 10.000"
                       />
                     </div>
@@ -3431,7 +3431,7 @@ export default function AdminDashboard() {
                         type="number"
                         value={landingSettings.deposit_bonus_percent || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, deposit_bonus_percent: e.target.value }))}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                         placeholder="Contoh: 11"
                       />
                     </div>
@@ -3465,7 +3465,7 @@ export default function AdminDashboard() {
                   <select
                     value={ticketSearchType}
                     onChange={(e) => setTicketSearchType(e.target.value)}
-                    className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
+                    className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
                   >
                     <option value="id">ID</option>
                     <option value="subject">Subjek</option>
@@ -3477,7 +3477,7 @@ export default function AdminDashboard() {
                       placeholder="Cari..."
                       value={ticketSearchQuery}
                       onChange={(e) => setTicketSearchQuery(e.target.value)}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none text-xs"
                     />
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   </div>
@@ -3559,8 +3559,8 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-4 px-6">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                              t.status === 'Answered' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                              t.status === 'Closed' ? 'bg-slate-500/10 text-slate-400 border border-slate-500/20' :
+                              t.status === 'Answered' ? 'bg-emerald-600 dark:bg-emerald-700 text-white px-2 py-0.5 rounded' :
+                              t.status === 'Closed' ? 'bg-slate-600 dark:bg-slate-700 text-white px-2 py-0.5 rounded' :
                               'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                             }`}>
                               {t.status}
@@ -3613,8 +3613,8 @@ export default function AdminDashboard() {
                     Tiket #{selectedTicket.id}
                   </span>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                    selectedTicket.status === 'Answered' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50' :
-                    selectedTicket.status === 'Closed' ? 'bg-slate-550 text-slate-500 border border-slate-200/50' :
+                    selectedTicket.status === 'Answered' ? 'bg-emerald-600 dark:bg-emerald-700 text-white px-2.5 py-0.5 rounded' :
+                    selectedTicket.status === 'Closed' ? 'bg-slate-600 dark:bg-slate-700 text-white px-2.5 py-0.5 rounded' :
                     'bg-amber-50 text-amber-600 border border-amber-200/50'
                   }`}>
                     {selectedTicket.status}
@@ -3828,7 +3828,7 @@ export default function AdminDashboard() {
                   value={formatNumberWithDots(adjustmentAmount)}
                   onChange={(e) => setAdjustmentAmount(parseNumberFromDots(e.target.value))}
                   placeholder="Contoh: 50.000"
-                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-mono font-semibold"
+                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-mono font-semibold"
                 />
               </div>
 
@@ -3840,7 +3840,7 @@ export default function AdminDashboard() {
                   value={adjustmentReason}
                   onChange={(e) => setAdjustmentReason(e.target.value)}
                   placeholder="Tulis alasan penyesuaian (misal: Manual topup via transfer WA, refund order #123, dll)"
-                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs resize-none"
+                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs resize-none"
                 />
               </div>
 
