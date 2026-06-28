@@ -110,6 +110,7 @@ export default function UserDashboard() {
   const [selectedTxDetail, setSelectedTxDetail] = useState<Transaction | null>(null);
   const [isExamplesExpanded, setIsExamplesExpanded] = useState(false);
   const [isFavoritesExpanded, setIsFavoritesExpanded] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRecomExpanded, setIsRecomExpanded] = useState(true);
   const [warningExpanded, setWarningExpanded] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -210,7 +211,7 @@ export default function UserDashboard() {
       const formattedLine = parts.map((part, partIdx) => {
         if (partIdx % 2 === 1) {
           return (
-            <b key={partIdx} className="text-indigo-600 dark:text-indigo-400 font-extrabold">
+            <b key={partIdx} className="text-indigo-600 dark:text-rose-500 dark:text-rose-400 font-extrabold">
               {part}
             </b>
           );
@@ -1459,179 +1460,254 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-slate-955 text-slate-100 selection:bg-indigo-500 selection:text-white font-sans transition-colors duration-300">
       
-      {/* Header */}
-      <header className="border-b border-slate-900 bg-slate-950/80 sticky top-0 z-30 backdrop-blur-md print:hidden">
-        <div className="w-full max-w-[96%] xl:max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2 rounded-lg">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-extrabold text-lg tracking-tight">
-              Buzz<span className="text-indigo-400">ify</span>
-            </span>
-          </div>
+      {/* Sidebar Overlay (Mobile) */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
+        />
+      )}
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            <PremiumThemeToggle />
-            <button 
-              onClick={() => {
-                setCurrentPassword('');
-                setNewPassword('');
-                setConfirmPassword('');
-                setChangePasswordError('');
-                setChangePasswordSuccess('');
-                setShowProfileModal(true);
-              }}
-              className="flex items-center gap-1.5 sm:gap-2 bg-slate-900 hover:bg-slate-855 px-2.5 py-2 sm:px-3.5 sm:py-1.5 rounded-xl border border-slate-800 text-xs text-slate-300 hover:text-slate-100 transition-all cursor-pointer"
-              title="Buka Profil & Ganti Password"
-            >
-              <User className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="font-medium hidden sm:inline">{user?.email}</span>
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-1 sm:gap-1.5 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2.5 py-2 sm:px-3.5 rounded-xl transition-all border border-red-500/20"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Keluar</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="w-full max-w-[96%] xl:max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 lg:pb-8 print:hidden">
-
-        {/* Wallet and Stats Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {/* Balance Card */}
-          <div className="relative overflow-hidden bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 p-4 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md">
-            <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-500/5 dark:bg-indigo-500/10 blur-3xl rounded-full"></div>
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Saldo Anda</span>
-                <div className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mt-1">{formatPrice(balance)}</div>
-              </div>
-              <div className="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-750 text-slate-600 dark:text-slate-400 shrink-0">
-                <Wallet className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="mt-5">
-              <button
-                onClick={() => setShowTopupModal(true)}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/25 flex items-center justify-center gap-1.5 active:scale-98"
-              >
-                <ArrowUpRight className="w-4 h-4" />
-                <span>Top Up Saldo</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Total Orders Card */}
-          <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
-            <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Pesanan</span>
-              <div className="text-3xl font-extrabold text-slate-150 mt-1">{orders.length}</div>
-            </div>
-            <div className="bg-slate-800/50 p-3 rounded-2xl border border-slate-750 text-slate-400 shrink-0">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-          </div>
-
-          {/* Active Orders Card */}
-          <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
-            <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Layanan Aktif</span>
-              <div className="text-3xl font-extrabold text-slate-150 mt-1">
-                {orders.filter(o => o.status === 'processing' || o.status === 'inprogress').length}
-              </div>
-            </div>
-            <div className="bg-slate-800/50 p-3 rounded-2xl border border-slate-750 text-slate-400 shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
+      <div className="flex min-h-screen">
         
-        {/* Tab Controls - Desktop only */}
-        <div className="hidden lg:flex gap-2 mb-8 border-b border-slate-205 dark:border-slate-900 pb-4 overflow-x-auto scrollbar-none">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 cursor-pointer ${
-              activeTab === 'dashboard'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-250 hover:bg-slate-100 dark:hover:bg-slate-900/60'
-            }`}
-          >
-            <TrendingUp className="w-4 h-4" />
-            <span>Dashboard</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('order')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 cursor-pointer ${
-              activeTab === 'order'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-250 hover:bg-slate-100 dark:hover:bg-slate-900/60'
-            }`}
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Buat Pesanan</span>
-          </button>
+        {/* Left Sidebar */}
+        <aside className={`fixed md:sticky top-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}>
+          <div className="space-y-6">
+            {/* Logo/Brand */}
+            <div className="flex items-center gap-2.5 px-2">
+              <div className="bg-gradient-to-tr from-pink-500 to-indigo-600 p-2.5 rounded-2xl shadow-md shadow-pink-500/10">
+                <Zap className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-black text-sm leading-tight text-slate-100 tracking-tight">
+                  Buzzify
+                </span>
+                <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest leading-none mt-0.5">
+                  User Portal
+                </span>
+              </div>
+            </div>
 
-          <button
-            onClick={() => {
-              setActiveTab('history');
-              fetchOrders(user.id);
-            }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 cursor-pointer ${
-              activeTab === 'history'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-250 hover:bg-slate-100 dark:hover:bg-slate-900/60'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            <span>Riwayat Pesanan</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('transactions');
-              fetchProfileAndTransactions(user.id);
-            }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 cursor-pointer ${
-              activeTab === 'transactions'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-250 hover:bg-slate-100 dark:hover:bg-slate-900/60'
-            }`}
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>Riwayat Transaksi</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('tickets');
-              fetchTickets();
-            }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 cursor-pointer ${
-              activeTab === 'tickets'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-250 hover:bg-slate-100 dark:hover:bg-slate-900/60'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Tiket Bantuan</span>
-          </button>
-        </div>
+            {/* Navigation Tabs */}
+            <div className="space-y-6 pt-4">
+              <div>
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block px-3 mb-2.5">Menu Utama</span>
+                <nav className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveTab('dashboard');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'dashboard'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </button>
 
+                  <button
+                    onClick={() => {
+                      setActiveTab('order');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'order'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Buat Pesanan</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('history');
+                      fetchOrders(user.id);
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'history'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <History className="w-4 h-4" />
+                    <span>Riwayat Pesanan</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('transactions');
+                      fetchProfileAndTransactions(user.id);
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'transactions'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-955/40 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Log Saldo / Topup</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('tickets');
+                      fetchTickets();
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'tickets'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-955/40 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Tiket Bantuan</span>
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Footer Logout */}
+          <div className="pt-4 border-t border-slate-800/60">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold text-red-500 hover:bg-red-500/10 transition-all cursor-pointer text-left"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span>Keluar Akun</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 font-sans">
+          
+          {/* Top Navbar */}
+          <header className="h-16 bg-slate-900 border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+            <div className="flex items-center gap-4">
+              {/* Mobile Burger Toggle */}
+              <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="md:hidden p-2 hover:bg-slate-800 rounded-xl text-slate-450 transition-colors"
+              >
+                <Zap className="w-5 h-5 text-rose-500" />
+              </button>
+              
+              <h1 className="text-xs font-black text-slate-100 uppercase tracking-wider hidden sm:block">
+                {activeTab === 'dashboard' && 'Statistik & Ringkasan Akun'}
+                {activeTab === 'order' && 'Buat Pesanan Baru'}
+                {activeTab === 'history' && 'Riwayat Pesanan Anda'}
+                {activeTab === 'transactions' && 'Log Mutasi Saldo & Topup'}
+                {activeTab === 'tickets' && 'Tiket Bantuan Pelanggan'}
+              </h1>
+            </div>
+
+            {/* Profile Info, Balance & Theme Toggle */}
+            <div className="flex items-center gap-3">
+              <div className="bg-slate-800 text-slate-350 dark:text-slate-400 font-bold px-3 py-1.5 rounded-xl border border-slate-800/80 text-[10px] tracking-tight flex items-center gap-2" title="Saldo Wallet Anda">
+                <Wallet className="w-3.5 h-3.5 text-slate-400" />
+                <span>Saldo: {formatPrice(balance)}</span>
+                <button 
+                  onClick={() => setShowTopupModal(true)}
+                  className="bg-rose-500 hover:bg-rose-600 text-white font-extrabold px-1.5 py-0.5 rounded text-[8px] tracking-wide cursor-pointer transition-all active:scale-95 ml-1"
+                >
+                  TOPUP
+                </button>
+              </div>
+
+              <button 
+                onClick={() => {
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setChangePasswordError('');
+                  setChangePasswordSuccess('');
+                  setShowProfileModal(true);
+                }}
+                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-750 px-3 py-1.5 rounded-xl border border-slate-800/80 text-[10px] font-bold text-slate-300 transition-all cursor-pointer"
+                title="Ganti Password"
+              >
+                <User className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden lg:inline">{user?.email}</span>
+              </button>
+
+              <PremiumThemeToggle />
+            </div>
+          </header>
+
+          {/* Main Dashboard Container */}
+          <main className="p-6 md:p-8 space-y-6 flex-1 overflow-y-auto bg-slate-955">
+      
         {/* Dashboard Overview Tab */}
         {activeTab === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in duration-300">
+            {/* Wallet and Stats Cards */}
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* Balance Card */}
+              <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md">
+                <div className="absolute top-0 right-0 w-28 h-28 bg-slate-500/5 blur-3xl rounded-full"></div>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Anda</span>
+                    <div className="text-3xl font-extrabold text-slate-100 mt-1">{formatPrice(balance)}</div>
+                  </div>
+                  <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="mt-5">
+                  <button
+                    onClick={() => setShowTopupModal(true)}
+                    className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-rose-500/10 flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+                  >
+                    <ArrowUpRight className="w-4 h-4" />
+                    <span>Top Up Saldo</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Total Orders Card */}
+              <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
+                <div>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Pesanan</span>
+                  <div className="text-3xl font-extrabold text-slate-100 mt-1">{orders.length}</div>
+                </div>
+                <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Active Orders Card */}
+              <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
+                <div>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Layanan Aktif</span>
+                  <div className="text-3xl font-extrabold text-slate-100 mt-1">
+                    {orders.filter(o => o.status === 'processing' || o.status === 'inprogress').length}
+                  </div>
+                </div>
+                <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
             {/* SVG Line Chart Card */}
-            <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 lg:p-8 rounded-3xl backdrop-blur-md">
+            <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 lg:p-8 rounded-3xl backdrop-blur-md">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-indigo-400" />
+                    <TrendingUp className="w-5 h-5 text-rose-500 dark:text-rose-400" />
                     <span>Statistik Akun Anda</span>
                   </h3>
                   <p className="text-slate-400 text-xs mt-1">Analisis pengeluaran belanja dan riwayat order 6 bulan terakhir</p>
@@ -1744,16 +1820,16 @@ export default function UserDashboard() {
             <div className="grid lg:grid-cols-2 gap-8 items-start">
               {/* Left Column: Info & Pengumuman Penting */}
               {announcements.length > 0 ? (
-                <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 rounded-3xl backdrop-blur-md space-y-4 min-w-0 w-full">
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl backdrop-blur-md space-y-4 min-w-0 w-full">
                   <div className="flex items-center gap-2 pb-3 border-b border-slate-850">
-                    <Megaphone className="w-4 h-4 text-indigo-400" />
+                    <Megaphone className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                     <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Info & Pengumuman Penting</span>
                   </div>
                   <div className="space-y-3">
                     {announcements.map(ann => (
                       <div key={ann.id} className="p-4 rounded-2xl bg-slate-950/40 border border-slate-850 flex items-start justify-between gap-3.5 hover:border-slate-800 transition-all">
                         <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                          <div className="bg-indigo-500/10 p-2 rounded-xl border border-indigo-500/20 text-indigo-400 shrink-0 mt-0.5">
+                          <div className="bg-rose-50/80 dark:bg-rose-950/15 p-2 rounded-xl border border-indigo-500/20 text-rose-500 dark:text-rose-400 shrink-0 mt-0.5">
                             <Award className="w-4 h-4" />
                           </div>
                           <div className="space-y-1 min-w-0 flex-1">
@@ -1762,7 +1838,7 @@ export default function UserDashboard() {
                                 <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider ${
                                   ann.badge === 'HOT' ? 'bg-rose-500/10 text-rose-455 border border-rose-500/20' :
                                   ann.badge === 'RECOMMENDED' ? 'bg-amber-500/10 text-amber-455 border border-amber-500/20' :
-                                  'bg-indigo-500/10 text-indigo-455 border border-indigo-500/20'
+                                  'bg-rose-50/80 dark:bg-rose-950/15 text-rose-600 dark:text-rose-455 border border-indigo-500/20'
                                 }`}>
                                   {ann.badge}
                                 </span>
@@ -1773,7 +1849,7 @@ export default function UserDashboard() {
                             <button
                               type="button"
                               onClick={() => setSelectedAnnouncement(ann)}
-                              className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold mt-1.5 flex items-center gap-1 cursor-pointer transition-colors"
+                              className="text-[10px] text-rose-500 dark:text-rose-400 hover:text-indigo-300 font-bold mt-1.5 flex items-center gap-1 cursor-pointer transition-colors"
                             >
                               <span>Detail Selengkapnya</span>
                               <span>&rarr;</span>
@@ -1796,21 +1872,21 @@ export default function UserDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md flex flex-col items-center justify-center py-12 text-center text-slate-500 text-xs min-w-0 w-full">
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md flex flex-col items-center justify-center py-12 text-center text-slate-500 text-xs min-w-0 w-full">
                   <Megaphone className="w-8 h-8 text-slate-650 mb-2" />
                   <span>Belum ada pengumuman terbaru.</span>
                 </div>
               )}
 
               {/* Right Column: Layanan Rekomendasi */}
-              <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl overflow-hidden backdrop-blur-md min-w-0 w-full">
+              <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl overflow-hidden backdrop-blur-md min-w-0 w-full">
                 <button
                   type="button"
                   onClick={() => setIsRecomExpanded(!isRecomExpanded)}
                   className="w-full flex items-center justify-between p-6 sm:p-7 hover:bg-slate-900/10 dark:hover:bg-slate-900/30 transition-all text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <ThumbsUp className="w-5 h-5 text-indigo-400 dark:text-indigo-400 shrink-0" />
+                    <ThumbsUp className="w-5 h-5 text-rose-500 dark:text-rose-400 dark:text-rose-500 dark:text-rose-400 shrink-0" />
                     <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Layanan Rekomendasi</span>
                   </div>
                   {isRecomExpanded ? (
@@ -1842,17 +1918,17 @@ export default function UserDashboard() {
                           >
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                <span className="text-[9px] font-extrabold text-indigo-400 uppercase bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                                <span className="text-[9px] font-extrabold text-rose-500 dark:text-rose-400 uppercase bg-rose-50/80 dark:bg-rose-950/15 px-2 py-0.5 rounded border border-indigo-500/20">
                                   #{index + 1}
                                 </span>
                                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
                                   {service.category}
                                 </span>
                               </div>
-                              <h4 className="text-xs font-bold text-slate-355 dark:text-slate-350 whitespace-normal break-words leading-relaxed group-hover:text-indigo-400 transition-colors" title={service.name}>
+                              <h4 className="text-xs font-bold text-slate-355 dark:text-slate-350 whitespace-normal break-words leading-relaxed group-hover:text-rose-500 dark:text-rose-400 transition-colors" title={service.name}>
                                 {service.name}
                               </h4>
-                              <p className="text-[11px] text-indigo-400 font-extrabold mt-1">
+                              <p className="text-[11px] text-rose-500 dark:text-rose-400 font-extrabold mt-1">
                                 {formatPrice(service.price_per_k)} <span className="text-[9px] text-slate-500 font-normal">/ 1K</span>
                               </p>
                             </div>
@@ -1863,7 +1939,7 @@ export default function UserDashboard() {
                                 setActiveTab('order');
                                 showToast(`Layanan '${service.name}' dipilih.`, 'success');
                               }}
-                              className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all active:scale-95 cursor-pointer shrink-0"
+                              className="p-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-white transition-all active:scale-95 cursor-pointer shrink-0"
                               title="Pesan Sekarang"
                             >
                               <ShoppingBag className="w-4 h-4" />
@@ -1884,9 +1960,9 @@ export default function UserDashboard() {
           <div className="grid lg:grid-cols-3 gap-8 items-start">
             
             {/* Form Card */}
-            <div className="lg:col-span-2 bg-slate-900/40 border border-slate-800/80 p-6 sm:p-8 rounded-3xl backdrop-blur-md">
+            <div className="lg:col-span-2 bg-slate-900 border border-slate-800/80 shadow-sm p-6 sm:p-8 rounded-3xl backdrop-blur-md">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-indigo-400" />
+                <ShoppingBag className="w-5 h-5 text-rose-500 dark:text-rose-400" />
                 <span>Formulir Pemesanan</span>
               </h2>
 
@@ -1942,7 +2018,7 @@ export default function UserDashboard() {
                                   setIsCategoryDropdownOpen(false);
                                   setCategorySearchQuery('');
                                 }}
-                                className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors ${
+                                className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-rose-500 dark:text-rose-400 transition-colors ${
                                   selectedCategory === cat ? 'bg-indigo-600/20 text-indigo-450 font-semibold' : 'text-slate-300 dark:text-slate-300'
                                 }`}
                               >
@@ -2015,7 +2091,7 @@ export default function UserDashboard() {
                                   setIsServiceDropdownOpen(false);
                                   setServiceSearchQuery('');
                                 }}
-                                className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors flex flex-col gap-0.5 ${
+                                className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-rose-500 dark:text-rose-400 transition-colors flex flex-col gap-0.5 ${
                                   selectedService?.id === service.id ? 'bg-indigo-600/20 text-indigo-450 font-semibold' : 'text-slate-300 dark:text-slate-300'
                                 }`}
                               >
@@ -2072,7 +2148,7 @@ export default function UserDashboard() {
                     </div>
                     <div className="mt-2 pt-2 border-t border-indigo-500/10 flex justify-between items-end">
                       <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Total Harga</span>
-                      <span className="text-lg font-black text-indigo-650 dark:text-indigo-400">{formatPrice(totalPrice)}</span>
+                      <span className="text-lg font-black text-rose-600 dark:text-rose-455 dark:text-rose-500 dark:text-rose-400">{formatPrice(totalPrice)}</span>
                     </div>
                   </div>
                 </div>
@@ -2091,8 +2167,8 @@ export default function UserDashboard() {
                               className="w-full flex items-center justify-between gap-4 text-left cursor-pointer"
                             >
                               <div className="flex gap-2 items-center">
-                                <AlertCircle className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0" />
-                                <span className="font-extrabold text-sm text-indigo-600 dark:text-indigo-400">
+                                <AlertCircle className="w-5 h-5 text-indigo-500 dark:text-rose-500 dark:text-rose-400 shrink-0" />
+                                <span className="font-extrabold text-sm text-indigo-600 dark:text-rose-500 dark:text-rose-400">
                                   {siteSettings[`warning_title_${selectedCategory.toLowerCase()}`]}
                                 </span>
                               </div>
@@ -2116,7 +2192,7 @@ export default function UserDashboard() {
                                     href={siteSettings[`warning_video_url_${selectedCategory.toLowerCase()}`]} 
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold transition-all"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50/80 dark:bg-rose-950/15 hover:bg-indigo-500/20 text-indigo-600 dark:text-rose-500 dark:text-rose-400 text-[10px] font-bold transition-all"
                                   >
                                     <Play className="w-3 h-3 fill-current" />
                                     <span>Tonton Video Panduan</span>
@@ -2149,11 +2225,11 @@ export default function UserDashboard() {
                       <div className="relative overflow-hidden p-4 rounded-2xl bg-slate-950/40 border border-indigo-500/20 dark:border-indigo-500/30 text-xs shadow-md w-full max-w-full break-words">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-xl pointer-events-none" />
                         <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-slate-850">
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                          <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider">Deskripsi Layanan</span>
+                          <Sparkles className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />
+                          <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider">Deskripsi Layanan</span>
                         </div>
                         <div 
-                          className="text-slate-200 leading-relaxed font-normal text-xs pl-0.5 whitespace-pre-wrap select-text [&_a]:text-indigo-400 [&_a]:underline [&_a]:hover:text-indigo-300 tracking-wide font-sans break-words"
+                          className="text-slate-200 leading-relaxed font-normal text-xs pl-0.5 whitespace-pre-wrap select-text [&_a]:text-rose-500 dark:text-rose-400 [&_a]:underline [&_a]:hover:text-indigo-300 tracking-wide font-sans break-words"
                           dangerouslySetInnerHTML={{ __html: selectedService.description }}
                         />
                       </div>
@@ -2176,7 +2252,7 @@ export default function UserDashboard() {
                     )}
                     
                     <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-xs text-slate-400 flex items-start gap-2.5 w-full max-w-full break-words">
-                      <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                      <Info className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0 mt-0.5" />
                       <div className="w-full min-w-0">
                         <p>Aturan batas order untuk layanan ini:</p>
                         <ul className="list-disc list-inside mt-1 space-y-0.5">
@@ -2191,7 +2267,7 @@ export default function UserDashboard() {
                 <button
                   type="submit"
                   disabled={submittingOrder || !selectedService}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-600/15 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-600/15 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {submittingOrder ? 'Membuat Permintaan...' : 'Buat Permintaan & Bayar'}
                 </button>
@@ -2200,14 +2276,14 @@ export default function UserDashboard() {
 
             {/* Sidebar Guidelines */}
             <div className="space-y-6">
-              <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl">
+              <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl">
                 <h3 className="font-bold text-sm text-slate-200 mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-indigo-400" />
+                  <TrendingUp className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                   <span>Petunjuk Penting</span>
                 </h3>
                 <ul className="space-y-3.5 text-xs text-slate-400 font-light leading-relaxed mb-6">
                   <li className="flex gap-2">
-                    <span className="text-indigo-400 font-bold"></span>
+                    <span className="text-rose-500 dark:text-rose-400 font-bold"></span>
                     <span>Pengisian data jumlah awal (start count) dilakukan otomatis oleh system / admin pada awal proses buzzer berjalan.</span>
                   </li>
                 </ul>
@@ -2216,7 +2292,7 @@ export default function UserDashboard() {
                   <button
                     type="button"
                     onClick={() => setIsExamplesExpanded(!isExamplesExpanded)}
-                    className="w-full inline-flex items-center justify-between px-4 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 text-xs font-bold transition-all cursor-pointer active:scale-98 shadow-sm"
+                    className="w-full inline-flex items-center justify-between px-4 py-2.5 rounded-xl bg-rose-50/80 dark:bg-rose-950/15 hover:bg-indigo-500/20 text-indigo-600 dark:text-rose-500 dark:text-rose-400 hover:text-indigo-700 dark:hover:text-indigo-300 text-xs font-bold transition-all cursor-pointer active:scale-98 shadow-sm"
                   >
                     <span className="flex items-center gap-2">
                       <Info className="w-4 h-4" />
@@ -2237,7 +2313,7 @@ export default function UserDashboard() {
                     <div className="space-y-3">
                       {/* Instagram */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">Instagram</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">Instagram</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Followers, Story, Live Video, Profile Visits</p>
@@ -2264,7 +2340,7 @@ export default function UserDashboard() {
 
                       {/* YouTube */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">YouTube</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">YouTube</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Likes, Views, Shares, Komentar</p>
@@ -2286,7 +2362,7 @@ export default function UserDashboard() {
 
                       {/* Facebook */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">Facebook</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">Facebook</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Page Likes, Page Followers</p>
@@ -2313,7 +2389,7 @@ export default function UserDashboard() {
 
                       {/* Twitter */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">Twitter / X</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">Twitter / X</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Followers</p>
@@ -2330,7 +2406,7 @@ export default function UserDashboard() {
 
                       {/* TikTok */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">TikTok</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">TikTok</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Followers</p>
@@ -2347,7 +2423,7 @@ export default function UserDashboard() {
 
                       {/* Shopee */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">Shopee</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">Shopee</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Followers</p>
@@ -2364,7 +2440,7 @@ export default function UserDashboard() {
 
                       {/* Tokopedia */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">Tokopedia</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">Tokopedia</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Followers</p>
@@ -2381,7 +2457,7 @@ export default function UserDashboard() {
 
                       {/* Telegram */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">Telegram</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">Telegram</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Channnel Members / Group</p>
@@ -2405,7 +2481,7 @@ export default function UserDashboard() {
 
                       {/* WhatsApp */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">WhatsApp</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">WhatsApp</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Channnel Members / Group</p>
@@ -2417,7 +2493,7 @@ export default function UserDashboard() {
 
                       {/* Website Traffic */}
                       <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                        <span className="font-extrabold text-[10px] text-indigo-400 uppercase tracking-wider block mb-2">Website Traffic</span>
+                        <span className="font-extrabold text-[10px] text-rose-500 dark:text-rose-400 uppercase tracking-wider block mb-2">Website Traffic</span>
                         <div className="space-y-2">
                           <div>
                             <p className="text-slate-300 font-semibold">Website Traffic</p>
@@ -2440,7 +2516,7 @@ export default function UserDashboard() {
                 const favoriteServices = services.filter(s => favorites.includes(s.id));
                 if (favoriteServices.length === 0) return null;
                 return (
-                  <div className="hidden lg:block bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl">
+                  <div className="hidden lg:block bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl">
                     <button
                       type="button"
                       onClick={() => setIsFavoritesExpanded(!isFavoritesExpanded)}
@@ -2489,7 +2565,7 @@ export default function UserDashboard() {
 
         {/* History Order List Tab */}
         {activeTab === 'history' && (
-          <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-md">
+          <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 backdrop-blur-md">
             
             {/* Table Filters */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
@@ -2500,7 +2576,7 @@ export default function UserDashboard() {
                   placeholder="Cari berdasarkan ID, Layanan, atau URL Target..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-800 dark:border-slate-800 focus:border-indigo-500 text-slate-100 dark:text-slate-100 pl-11 pr-4 py-2.5 rounded-xl outline-none transition-colors text-sm shadow-sm"
+                  className="w-full bg-slate-950 dark:bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 dark:border-slate-800 focus:border-indigo-500 text-slate-100 dark:text-slate-100 pl-11 pr-4 py-2.5 rounded-xl outline-none transition-colors text-sm shadow-sm"
                 />
               </div>
 
@@ -2509,7 +2585,7 @@ export default function UserDashboard() {
               <div className="hidden sm:flex flex-wrap items-center gap-3 w-full lg:w-auto">
                 <button
                   onClick={handleCopySelectedOrderIds}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 hover:shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
+                  className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 hover:shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
                 >
                   <Copy className="w-3.5 h-3.5" />
                   <span>Copy ID Pesanan</span>
@@ -2557,7 +2633,7 @@ export default function UserDashboard() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={handleCopySelectedOrderIds}
-                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 active:scale-95 cursor-pointer whitespace-nowrap"
+                    className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 text-white text-white font-bold py-3 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 active:scale-95 cursor-pointer whitespace-nowrap"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     <span>Copy ID Pesanan</span>
@@ -2566,7 +2642,7 @@ export default function UserDashboard() {
                   <select
                     value={orderYearFilter}
                     onChange={(e) => setOrderYearFilter(e.target.value)}
-                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-800 dark:border-slate-800 text-slate-100 dark:text-slate-100 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
+                    className="w-full bg-slate-950 dark:bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 dark:border-slate-800 text-slate-100 dark:text-slate-100 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
                   >
                     <option value="all">Semua Tahun</option>
                     <option value="2026">2026</option>
@@ -2585,7 +2661,7 @@ export default function UserDashboard() {
                         onClick={() => handleToggleSelectAll(currentPageOrders)}
                         className={`w-full flex items-center justify-center gap-2 border font-bold py-3 rounded-xl text-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap ${
                           isPageAllSelected 
-                            ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-550 dark:text-indigo-400' 
+                            ? 'bg-rose-50/80 dark:bg-rose-950/15 border-indigo-500/30 text-indigo-550 dark:text-rose-500 dark:text-rose-400' 
                             : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-350'
                         }`}
                       >
@@ -2593,7 +2669,7 @@ export default function UserDashboard() {
                           type="checkbox"
                           checked={isPageAllSelected}
                           readOnly
-                          className="w-3.5 h-3.5 rounded border-slate-350 dark:border-slate-800 text-indigo-650 pointer-events-none"
+                          className="w-3.5 h-3.5 rounded border-slate-350 dark:border-slate-800 text-rose-600 dark:text-rose-455 pointer-events-none"
                         />
                         <span>Pilih Semua</span>
                       </button>
@@ -2603,7 +2679,7 @@ export default function UserDashboard() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-800 dark:border-slate-800 text-slate-100 dark:text-slate-100 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
+                    className="w-full bg-slate-950 dark:bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 dark:border-slate-800 text-slate-100 dark:text-slate-100 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
                   >
                     <option value="all">Semua Status</option>
                     <option value="pending">PENDING</option>
@@ -2649,7 +2725,7 @@ export default function UserDashboard() {
                                 type="checkbox"
                                 checked={isPageAllSelected}
                                 onChange={() => handleToggleSelectAll(currentPageOrders)}
-                                className="w-4 h-4 rounded border-slate-350 dark:border-slate-800 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+                                className="w-4 h-4 rounded border-slate-350 dark:border-slate-800 text-rose-600 dark:text-rose-455 focus:ring-indigo-500 cursor-pointer"
                               />
                             </th>
                             <th className="py-4 px-4">ID</th>
@@ -2667,13 +2743,13 @@ export default function UserDashboard() {
                           {currentPageOrders.map(order => {
                             const isSelected = selectedOrderIds.includes(order.id);
                             return (
-                              <tr key={order.id} className={`transition-colors ${isSelected ? 'bg-indigo-500/5 dark:bg-indigo-500/10' : 'hover:bg-slate-900/30'}`}>
+                              <tr key={order.id} className={`transition-colors ${isSelected ? 'bg-indigo-500/5 dark:bg-rose-50/80 dark:bg-rose-950/15' : 'hover:bg-slate-900/30'}`}>
                                 <td className="py-4 px-4 text-center">
                                   <input
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={() => handleToggleSelectOrder(order.id)}
-                                    className="w-4 h-4 rounded border-slate-350 dark:border-slate-800 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+                                    className="w-4 h-4 rounded border-slate-350 dark:border-slate-800 text-rose-600 dark:text-rose-455 focus:ring-indigo-500 cursor-pointer"
                                   />
                                 </td>
                                 <td className="py-4 px-4">
@@ -2687,7 +2763,7 @@ export default function UserDashboard() {
                                         navigator.clipboard.writeText(idToCopy);
                                         showToast('ID Pesanan berhasil disalin!', 'success');
                                       }}
-                                      className="bg-indigo-600 hover:bg-indigo-700 text-white p-1 transition-colors cursor-pointer flex items-center justify-center border-l border-indigo-500 w-7 h-7"
+                                      className="bg-rose-500 hover:bg-rose-600 text-white text-white p-1 transition-colors cursor-pointer flex items-center justify-center border-l border-indigo-500 w-7 h-7"
                                       title="Salin ID Pesanan"
                                     >
                                       <Copy className="w-3.5 h-3.5" />
@@ -2699,12 +2775,12 @@ export default function UserDashboard() {
                                   <span className="block text-[10px] text-slate-500 mt-0.5">{order.category}</span>
                                 </td>
                                 <td className="py-4 px-4 font-mono text-slate-400 max-w-xs truncate">
-                                  <a href={order.target_url} target="_blank" rel="noreferrer" className="hover:text-indigo-400 hover:underline">
+                                  <a href={order.target_url} target="_blank" rel="noreferrer" className="hover:text-rose-500 dark:text-rose-400 hover:underline">
                                     {order.target_url}
                                   </a>
                                 </td>
                                 <td className="py-4 px-4 text-right font-medium text-slate-300">{order.quantity.toLocaleString()}</td>
-                                <td className="py-4 px-4 text-right font-semibold text-indigo-400">{formatPrice(order.total_price)}</td>
+                                <td className="py-4 px-4 text-right font-semibold text-rose-500 dark:text-rose-400">{formatPrice(order.total_price)}</td>
                                 <td className="py-4 px-4 text-center">
                                   <div className="flex flex-col items-center gap-1.5 justify-center">
                                     <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wide inline-block ${
@@ -2720,7 +2796,7 @@ export default function UserDashboard() {
                                     {order.payment_status === 'unpaid' && (
                                       <button
                                         onClick={() => handlePayOrderWithBalance(order)}
-                                        className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-[10px] font-bold text-white transition-all shadow-sm shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
+                                        className="px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold text-white transition-all shadow-sm shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
                                       >
                                         Bayar via Saldo
                                       </button>
@@ -2808,7 +2884,7 @@ export default function UserDashboard() {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => handleToggleSelectOrder(order.id)}
-                                className="w-4 h-4 rounded-lg border-slate-350 dark:border-slate-800 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+                                className="w-4 h-4 rounded-lg border-slate-350 dark:border-slate-800 text-rose-600 dark:text-rose-455 focus:ring-indigo-500 cursor-pointer"
                               />
                               <div className="flex items-center border border-slate-200 dark:border-slate-800/60 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50 shadow-sm">
                                 <span className="px-2.5 py-1 font-mono text-[9px] text-slate-200 dark:text-slate-300 select-all truncate max-w-[80px] font-bold">
@@ -2820,7 +2896,7 @@ export default function UserDashboard() {
                                     navigator.clipboard.writeText(idToCopy);
                                     showToast('ID Pesanan berhasil disalin!', 'success');
                                   }}
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 transition-colors cursor-pointer flex items-center justify-center border-l border-indigo-500 w-7 h-7"
+                                  className="bg-rose-500 hover:bg-rose-600 text-white text-white p-1.5 transition-colors cursor-pointer flex items-center justify-center border-l border-indigo-500 w-7 h-7"
                                   title="Salin ID"
                                 >
                                   <Copy className="w-3 h-3" />
@@ -2834,7 +2910,7 @@ export default function UserDashboard() {
                           <div className="space-y-3">
                             <div>
                               <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                                <span className="px-2 py-0.5 rounded-lg text-[8px] font-extrabold bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border border-indigo-500/10 uppercase tracking-widest">
+                                <span className="px-2 py-0.5 rounded-lg text-[8px] font-extrabold bg-rose-50/80 dark:bg-rose-950/15 text-rose-600 dark:text-rose-455 dark:text-rose-500 dark:text-rose-400 border border-indigo-500/10 uppercase tracking-widest">
                                   {order.category}
                                 </span>
                               </div>
@@ -2848,7 +2924,7 @@ export default function UserDashboard() {
                                 href={order.target_url} 
                                 target="_blank" 
                                 rel="noreferrer" 
-                                className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 break-all select-all font-semibold hover:underline block"
+                                className="text-[10px] font-mono text-indigo-600 dark:text-rose-500 dark:text-rose-400 break-all select-all font-semibold hover:underline block"
                               >
                                 {order.target_url}
                               </a>
@@ -2863,7 +2939,7 @@ export default function UserDashboard() {
                             </div>
                             <div>
                               <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Harga</span>
-                              <span className="font-extrabold text-indigo-600 dark:text-indigo-400 text-xs">{formatPrice(order.total_price)}</span>
+                              <span className="font-extrabold text-indigo-600 dark:text-rose-500 dark:text-rose-400 text-xs">{formatPrice(order.total_price)}</span>
                             </div>
                             <div>
                               <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Mulai</span>
@@ -2887,7 +2963,7 @@ export default function UserDashboard() {
                               {order.payment_status === 'unpaid' && (
                                 <button
                                   onClick={() => handlePayOrderWithBalance(order)}
-                                  className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[9px] font-black text-white whitespace-nowrap sm:mt-0.5 transition-transform active:scale-95 cursor-pointer shadow-md shadow-indigo-600/10"
+                                  className="px-2.5 py-1 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-[9px] font-black text-white whitespace-nowrap sm:mt-0.5 transition-transform active:scale-95 cursor-pointer shadow-md shadow-indigo-600/10"
                                 >
                                   Bayar via Saldo
                                 </button>
@@ -2897,7 +2973,7 @@ export default function UserDashboard() {
                             <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
                               <button
                                 onClick={() => setSelectedOrderDetail(order)}
-                                className="inline-flex items-center gap-1 px-3.5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/15"
+                                className="inline-flex items-center gap-1 px-3.5 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/15"
                               >
                                 <FileText className="w-3.5 h-3.5" />
                                 <span>Detail</span>
@@ -2978,9 +3054,9 @@ export default function UserDashboard() {
           const totalFailedAmount = failedDeposits.reduce((sum, tx) => sum + Number(tx.amount), 0);
 
           return (
-            <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-3.5 sm:p-8 backdrop-blur-md">
+            <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-3.5 sm:p-8 backdrop-blur-md">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-indigo-400" />
+                <CreditCard className="w-5 h-5 text-rose-500 dark:text-rose-400" />
                 <span>Riwayat Transaksi</span>
               </h2>
 
@@ -3251,7 +3327,7 @@ export default function UserDashboard() {
                         return (
                           <div key={tx.id} className="bg-white dark:bg-slate-900/40 border border-zinc-200 dark:border-slate-800 p-4 sm:p-5 rounded-[24px] space-y-4 shadow-md shadow-zinc-200/60 dark:shadow-none transition-all">
                             <div className="flex justify-between items-center text-[10px] gap-2">
-                              <span className="font-mono font-extrabold text-indigo-600 dark:text-indigo-400">
+                              <span className="font-mono font-extrabold text-indigo-600 dark:text-rose-500 dark:text-rose-400">
                                 {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 6)}
                               </span>
                               <span className="text-slate-400 dark:text-slate-500 font-medium">{dateStr}</span>
@@ -3260,7 +3336,7 @@ export default function UserDashboard() {
                             <div className="border-t border-b border-slate-200/60 dark:border-slate-900/40 py-3 space-y-2">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-extrabold text-slate-100 dark:text-slate-200">{formatPaymentMethod(tx.payment_method)}</span>
-                                <span className="text-[8px] font-extrabold bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border border-indigo-500/10 px-2 py-0.5 rounded-lg uppercase tracking-widest font-mono">
+                                <span className="text-[8px] font-extrabold bg-rose-50/80 dark:bg-rose-950/15 text-rose-600 dark:text-rose-455 dark:text-rose-500 dark:text-rose-400 border border-indigo-500/10 px-2 py-0.5 rounded-lg uppercase tracking-widest font-mono">
                                   {tx.type}
                                 </span>
                               </div>
@@ -3304,7 +3380,7 @@ export default function UserDashboard() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => setSelectedTxDetail(tx)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/10"
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/10"
                                 >
                                   <span>Detail</span>
                                 </button>
@@ -3519,7 +3595,7 @@ export default function UserDashboard() {
             <div className={`${showCreateTicket ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white dark:bg-slate-900/40 border border-zinc-200 dark:border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-md`}>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-950 dark:text-slate-200">
-                  <MessageSquare className="w-5 h-5 text-indigo-400" />
+                  <MessageSquare className="w-5 h-5 text-rose-500 dark:text-rose-400" />
                   <span>Tiket Saya</span>
                 </h2>
                 {!showCreateTicket && (
@@ -3530,7 +3606,7 @@ export default function UserDashboard() {
                       setTicketImage('');
                       setShowCreateTicket(true);
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md shadow-indigo-650/10 flex items-center gap-1.5 cursor-pointer"
+                    className="bg-rose-500 hover:bg-rose-600 text-white text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md shadow-indigo-650/10 flex items-center gap-1.5 cursor-pointer"
                   >
                     <span>Kirim Tiket</span>
                   </button>
@@ -3607,7 +3683,7 @@ export default function UserDashboard() {
                           <td className="py-4 px-6">
                             <button
                               onClick={() => fetchTicketDetails(ticket.id)}
-                              className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline text-left cursor-pointer flex items-center gap-1.5"
+                              className="font-bold text-indigo-600 dark:text-rose-500 dark:text-rose-400 hover:underline text-left cursor-pointer flex items-center gap-1.5"
                             >
                               <span>{ticket.subject}</span>
                               {ticket.status === 'Pending' && (
@@ -3685,7 +3761,7 @@ export default function UserDashboard() {
                           <span className="text-slate-400 dark:text-slate-500 block text-[8px] uppercase tracking-widest font-black">Subjek</span>
                           <button
                             onClick={() => fetchTicketDetails(ticket.id)}
-                            className="font-extrabold text-indigo-650 dark:text-indigo-400 hover:underline text-left text-sm cursor-pointer"
+                            className="font-extrabold text-rose-600 dark:text-rose-455 dark:text-rose-500 dark:text-rose-400 hover:underline text-left text-sm cursor-pointer"
                           >
                             {ticket.subject}
                           </button>
@@ -3710,7 +3786,7 @@ export default function UserDashboard() {
                       <div className="pt-3 border-t border-slate-200/60 dark:border-slate-900/40 flex justify-end">
                         <button
                           onClick={() => fetchTicketDetails(ticket.id)}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-650/15"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-650/15"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
                           <span>Buka Tiket</span>
@@ -3724,6 +3800,8 @@ export default function UserDashboard() {
           </div>
         )}
       </main>
+        </div>
+      </div>
 
       {/* Floating Bottom Navigation Bar - Mobile only */}
       <div className="lg:hidden fixed bottom-4 left-4 right-4 z-40 px-1 print:hidden">
@@ -3746,7 +3824,7 @@ export default function UserDashboard() {
                 }}
                 className={`flex flex-col items-center gap-0.5 py-0.5 px-0.5 sm:px-3 rounded-xl transition-all cursor-pointer ${
                   isActive
-                    ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+                    ? 'text-indigo-600 dark:text-rose-500 dark:text-rose-400 font-bold'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                 }`}
               >
@@ -3778,7 +3856,7 @@ export default function UserDashboard() {
               </button>
 
               <h3 className="text-2xl font-extrabold mb-2 flex items-center gap-2.5 text-slate-900 dark:text-slate-100">
-                <Wallet className="w-6 h-6 text-indigo-500 dark:text-indigo-400" />
+                <Wallet className="w-6 h-6 text-indigo-500 dark:text-rose-500 dark:text-rose-400" />
                 <span>Top Up Saldo Akun</span>
               </h3>
               <div className="flex items-center gap-1.5 mb-8 text-sm text-slate-400 font-light">
@@ -3786,7 +3864,7 @@ export default function UserDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowDepositGuide(!showDepositGuide)}
-                  className="p-1 rounded-md bg-slate-950 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all cursor-pointer text-slate-500 shrink-0"
+                  className="p-1 rounded-md bg-slate-950 hover:bg-rose-50/80 dark:bg-rose-950/15 hover:text-rose-500 dark:text-rose-400 transition-all cursor-pointer text-slate-500 shrink-0"
                   title="Lihat Panduan & Ketentuan"
                 >
                   <Info className="w-4 h-4" />
@@ -3797,7 +3875,7 @@ export default function UserDashboard() {
               {showDepositGuide && (
                 <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-xs text-slate-350 space-y-4 mb-6 animate-fade-in">
                   <div>
-                    <h4 className="font-extrabold text-[11px] uppercase text-indigo-400 tracking-wider mb-1">Langkah Pembayaran:</h4>
+                    <h4 className="font-extrabold text-[11px] uppercase text-rose-500 dark:text-rose-400 tracking-wider mb-1">Langkah Pembayaran:</h4>
                     <ol className="list-decimal list-inside space-y-1 pl-0 text-slate-450 font-light">
                       <li>Masukkan nominal deposit yang Anda inginkan.</li>
                       <li>Klik tombol <strong className="text-slate-300 font-semibold">"Bayar Sekarang"</strong>.</li>
@@ -3826,7 +3904,7 @@ export default function UserDashboard() {
                     <div className="h-10 w-px bg-slate-200 dark:bg-slate-800" />
                     <div className="text-right">
                       <span className="text-[11px] text-slate-500 uppercase font-extrabold tracking-wider block">Bonus Saldo</span>
-                      <span className="block text-base font-extrabold text-indigo-650 dark:text-indigo-400 mt-1">+{bonusPercent}%</span>
+                      <span className="block text-base font-extrabold text-rose-600 dark:text-rose-455 dark:text-rose-500 dark:text-rose-400 mt-1">+{bonusPercent}%</span>
                     </div>
                   </div>
                 </div>
@@ -3846,7 +3924,7 @@ export default function UserDashboard() {
                         placeholder="Contoh: 50.000"
                         value={formatNumberWithDots(topupAmount)}
                         onChange={(e) => setTopupAmount(parseNumberFromDots(e.target.value))}
-                        className="w-full bg-slate-950/40 dark:bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-slate-200 px-5 pl-12 py-4 rounded-2xl outline-none transition-all text-sm font-semibold"
+                        className="w-full bg-slate-950/40 dark:bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-slate-200 px-5 pl-12 py-4 rounded-2xl outline-none transition-all text-sm font-semibold"
                       />
                     </div>
                   </div>
@@ -3860,7 +3938,7 @@ export default function UserDashboard() {
                         disabled
                         readOnly
                         value={calculatedReceivedBalance.toLocaleString('id-ID')}
-                        className="w-full bg-slate-955/40 dark:bg-slate-955/60 border border-slate-850 text-indigo-650 dark:text-indigo-400 pl-12 pr-5 py-4 rounded-2xl outline-none text-sm font-extrabold"
+                        className="w-full bg-slate-955/40 dark:bg-slate-955/60 border border-slate-850 text-rose-600 dark:text-rose-455 dark:text-rose-500 dark:text-rose-400 pl-12 pr-5 py-4 rounded-2xl outline-none text-sm font-extrabold"
                       />
                     </div>
                   </div>
@@ -3874,7 +3952,7 @@ export default function UserDashboard() {
                         key={amount}
                         type="button"
                         onClick={() => setTopupAmount(amount)}
-                        className="bg-slate-950/40 dark:bg-slate-955 border border-slate-850 hover:border-indigo-500/40 hover:bg-indigo-500/5 dark:hover:bg-indigo-500/10 py-3.5 rounded-2xl text-xs font-extrabold transition-all text-slate-600 dark:text-slate-350 hover:text-indigo-650 dark:hover:text-indigo-400 cursor-pointer text-center flex items-center justify-center hover:scale-102 active:scale-98"
+                        className="bg-slate-950/40 dark:bg-slate-955 border border-slate-850 hover:border-indigo-500/40 hover:bg-indigo-500/5 dark:hover:bg-rose-50/80 dark:bg-rose-950/15 py-3.5 rounded-2xl text-xs font-extrabold transition-all text-slate-600 dark:text-slate-350 hover:text-rose-600 dark:text-rose-455 dark:hover:text-rose-500 dark:text-rose-400 cursor-pointer text-center flex items-center justify-center hover:scale-102 active:scale-98"
                       >
                         +{formatPrice(amount).replace('Rp', '').trim()}
                       </button>
@@ -3883,7 +3961,7 @@ export default function UserDashboard() {
                 </div>
 
                 <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/10 text-xs text-indigo-800 dark:text-slate-350 flex items-start gap-3 leading-relaxed">
-                  <Info className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
+                  <Info className="w-5 h-5 text-indigo-500 dark:text-rose-500 dark:text-rose-400 shrink-0 mt-0.5 animate-pulse" />
                   <span>Pembayaran Anda akan diproses secara instan & aman. QRIS, e-wallet, dan Bank Transfer didukung oleh payment gateway kami.</span>
                 </div>
 
@@ -3919,7 +3997,7 @@ export default function UserDashboard() {
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
           {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />}
           {notification.type === 'error' && <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />}
-          {notification.type === 'info' && <Info className="w-5 h-5 text-indigo-400 shrink-0" />}
+          {notification.type === 'info' && <Info className="w-5 h-5 text-rose-500 dark:text-rose-400 shrink-0" />}
           <span className="text-xs font-semibold text-slate-200 whitespace-nowrap">{notification.message}</span>
           <button 
             onClick={() => setNotification(prev => ({ ...prev, show: false }))} 
@@ -3988,7 +4066,7 @@ export default function UserDashboard() {
             <div className="pt-4 border-t border-zinc-150 flex justify-end">
               <button
                 onClick={() => setSelectedAnnouncement(null)}
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-600/10"
+                className="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-white font-bold rounded-xl text-xs transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-600/10"
               >
                 Tutup
               </button>
@@ -4069,7 +4147,7 @@ export default function UserDashboard() {
               </button>
 
               <h3 className="text-base font-bold mb-6 flex items-center gap-2 border-b border-slate-850 pb-3 text-slate-100">
-                <Info className="w-4 h-4 text-indigo-400" />
+                <Info className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                 <span>Detail {selectedTxDetail.type === 'topup' ? 'Deposit' : 'Transaksi'} #{selectedTxDetail.tx_id || selectedTxDetail.id.slice(0, 8)}</span>
               </h3>
 
@@ -4228,7 +4306,7 @@ export default function UserDashboard() {
               </button>
 
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2 border-b border-slate-850 pb-3 text-slate-100">
-                <Clock className="w-5 h-5 text-indigo-400" />
+                <Clock className="w-5 h-5 text-rose-500 dark:text-rose-400" />
                 <span>Pelacakan Detail Pesanan</span>
               </h3>
 
@@ -4261,7 +4339,7 @@ export default function UserDashboard() {
                         } ${isActive ? 'ring-4 ring-indigo-500/20' : ''}`}>
                           {s.step}
                         </div>
-                        <span className={`text-[10px] font-bold mt-2 tracking-wide uppercase ${isPassed ? 'text-indigo-400' : 'text-slate-500'}`}>{s.label}</span>
+                        <span className={`text-[10px] font-bold mt-2 tracking-wide uppercase ${isPassed ? 'text-rose-500 dark:text-rose-400' : 'text-slate-500'}`}>{s.label}</span>
                       </div>
                     );
                   })}
@@ -4281,7 +4359,7 @@ export default function UserDashboard() {
 
                 <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 gap-4">
                   <span className="text-slate-550 dark:text-slate-500 font-light shrink-0">Target URL</span>
-                  <span className="font-mono text-indigo-400 break-all text-right select-all">{selectedOrderDetail.target_url}</span>
+                  <span className="font-mono text-rose-500 dark:text-rose-400 break-all text-right select-all">{selectedOrderDetail.target_url}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
@@ -4291,7 +4369,7 @@ export default function UserDashboard() {
 
                 <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
                   <span className="text-slate-550 dark:text-slate-500 font-light">Harga Total</span>
-                  <span className="font-extrabold text-indigo-400 text-sm">{formatPrice(selectedOrderDetail.total_price)}</span>
+                  <span className="font-extrabold text-rose-500 dark:text-rose-400 text-sm">{formatPrice(selectedOrderDetail.total_price)}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
@@ -4403,7 +4481,7 @@ export default function UserDashboard() {
                         </tr>
                         <tr className="bg-indigo-50/40 font-bold text-zinc-900 border-t border-zinc-200">
                           <td className="p-4 pl-4 text-right text-[10px] uppercase tracking-wider text-zinc-500">TOTAL BAYAR (LUNAS):</td>
-                          <td className="p-4 text-right pr-4 text-indigo-650 text-sm font-extrabold">{formatPrice(selectedInvoiceDetail.amount)}</td>
+                          <td className="p-4 text-right pr-4 text-rose-600 dark:text-rose-455 text-sm font-extrabold">{formatPrice(selectedInvoiceDetail.amount)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -4419,7 +4497,7 @@ export default function UserDashboard() {
               <div className="mt-8 pt-4 border-t border-zinc-200 flex gap-3 print:hidden">
                 <button
                   onClick={() => window.print()}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl transition-all shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                  className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-white font-bold py-3.5 rounded-2xl transition-all shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-1.5 text-xs cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Cetak / Simpan PDF</span>
@@ -4449,7 +4527,7 @@ export default function UserDashboard() {
 
             <div className="mb-6 border-b border-slate-800 pb-4">
               <h2 className="text-xl font-bold flex items-center gap-2 text-slate-100">
-                <User className="w-5 h-5 text-indigo-400" />
+                <User className="w-5 h-5 text-rose-500 dark:text-rose-400" />
                 <span>Pengaturan Profil & Keamanan</span>
               </h2>
               <p className="text-xs text-slate-400 mt-1">Ubah data profil Anda atau lakukan pembaruan kata sandi</p>
@@ -4496,7 +4574,7 @@ export default function UserDashboard() {
                       placeholder="Masukkan nama lengkap Anda"
                       value={profileFullName}
                       onChange={(e) => setProfileFullName(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
                     />
                   </div>
 
@@ -4509,7 +4587,7 @@ export default function UserDashboard() {
                       placeholder="Masukkan username Anda"
                       value={profileUsername}
                       onChange={(e) => setProfileUsername(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
                     />
                   </div>
 
@@ -4522,7 +4600,7 @@ export default function UserDashboard() {
                       placeholder="Contoh: 08123456789"
                       value={profileWhatsApp}
                       onChange={(e) => setProfileWhatsApp(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
                     />
                   </div>
 
@@ -4570,7 +4648,7 @@ export default function UserDashboard() {
                       placeholder="Masukkan password sekarang"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
                     />
                   </div>
 
@@ -4582,7 +4660,7 @@ export default function UserDashboard() {
                       placeholder="Password baru (min. 6 karakter)"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
                     />
                   </div>
 
@@ -4594,7 +4672,7 @@ export default function UserDashboard() {
                       placeholder="Ulangi password baru"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
                     />
                   </div>
 
