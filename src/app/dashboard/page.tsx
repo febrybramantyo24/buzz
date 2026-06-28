@@ -62,6 +62,76 @@ const parseNumberFromDots = (str: string): number => {
   return parseInt(clean, 10) || 0;
 };
 
+const getTargetGuide = (category: string) => {
+  const cat = (category || '').toLowerCase();
+  
+  if (cat.includes('instagram')) {
+    return {
+      placeholder: 'Contoh: mustakinnur atau https://www.instagram.com/p/BxilTdssedewBn_p/',
+      guide: 'Followers/Story/Live/Visit: Username tanpa @ (mustakinnur). Likes/Views/Comments/Reels: Link postingan (https://www.instagram.com/p/BxilTdssedewBn_p/)'
+    };
+  }
+  if (cat.includes('youtube')) {
+    return {
+      placeholder: 'Contoh: https://www.youtube.com/watch?v=NdgFndfdnFQqII',
+      guide: 'Likes/Views/Comments/Share/Live: Link video (https://www.youtube.com/watch?v=...). Subscribers: Link channel (https://www.youtube.com/channel/...)'
+    };
+  }
+  if (cat.includes('tiktok')) {
+    return {
+      placeholder: 'Contoh: https://tiktok.com/@username/ atau https://vt.tiktok.com/xxxxx/',
+      guide: 'Followers: Link profile TikTok / username tanpa @. Likes/Views: Link video TikTok (https://vt.tiktok.com/xxxxx/)'
+    };
+  }
+  if (cat.includes('facebook')) {
+    return {
+      placeholder: 'Contoh: https://www.facebook.com/telkomsel/',
+      guide: 'Page Likes/Followers: Link fanspage. Post Likes/Video: Link post. Friends: Link profile. Group: Link grup.'
+    };
+  }
+  if (cat.includes('twitter') || cat.includes(' x')) {
+    return {
+      placeholder: 'Contoh: TelkomCare atau https://twitter.com/TelkomCare/status/...',
+      guide: 'Followers: Username tanpa @ (TelkomCare). Retweet/Favorite: Link tweet postingan.'
+    };
+  }
+  if (cat.includes('shopee')) {
+    return {
+      placeholder: 'Contoh: mustakin001 atau https://shopee.co.id/...',
+      guide: 'Followers: Username akun Shopee (mustakin001). Product Likes: Link produk Shopee.'
+    };
+  }
+  if (cat.includes('tokopedia')) {
+    return {
+      placeholder: 'Contoh: https://www.tokopedia.com/cleanandcleanshop',
+      guide: 'Followers: Username / link profile toko. Wishlist/Favorite: Link produk Tokopedia.'
+    };
+  }
+  if (cat.includes('telegram')) {
+    return {
+      placeholder: 'Contoh: https://t.me/medanpediaSMM atau https://t.me/medanpediaSMM/1195',
+      guide: 'Channel/Group: Link channel/grup. Post Views/Reactions/Story: Link post (https://t.me/username/1195).'
+    };
+  }
+  if (cat.includes('whatsapp')) {
+    return {
+      placeholder: 'Contoh: https://whatsapp.com/channel/XXXXXXXXXXXXXXXXX',
+      guide: 'Channel/Group Members: Link Channel atau Group WhatsApp.'
+    };
+  }
+  if (cat.includes('traffic') || cat.includes('website') || cat.includes('web')) {
+    return {
+      placeholder: 'Contoh: https://medanpedia.co.id',
+      guide: 'Website Traffic: Link URL lengkap Website Anda.'
+    };
+  }
+
+  return {
+    placeholder: 'https://instagram.com/username atau link video',
+    guide: 'Pastikan periksa kembali target pesanan Anda sebelum pesanan dibuat sehingga pesanan dapat diproses.'
+  };
+};
+
 const getCategoryBadgeClass = (category: string): string => {
   const cat = category ? category.toLowerCase() : '';
   if (cat === 'instagram') return 'bg-pink-500/10 text-pink-500 dark:text-pink-400 border border-pink-500/20 backdrop-blur-md shadow-sm shadow-pink-500/5';
@@ -231,18 +301,15 @@ export default function UserDashboard() {
     setFormError(null);
   };
 
-  // Refetch data automatically on tab navigation
+  // Refetch data automatically on tab navigation and reset all inputs
   useEffect(() => {
     if (user) {
       fetchProfileAndTransactions(user.id);
       fetchOrders(user.id);
     }
-  }, [activeTab]);
-
-  // Clear form when user changes or logs in
-  useEffect(() => {
     clearOrderForm();
-  }, [user]);
+    setTopupAmount(0);
+  }, [activeTab, user]);
 
   // Prevent body scroll when any modal is open
   useEffect(() => {
@@ -694,90 +761,32 @@ export default function UserDashboard() {
     };
 
     try {
-      // 1. Deduct balance immediately in local state & localStorage fallback
-      const newBalance = balance - totalPrice;
-      localStorage.setItem(`balance_${user.id}`, String(newBalance));
-      setBalance(newBalance);
+      const response = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          service_id: selectedService.id,
+          target_url: targetUrl,
+          quantity: quantity
+        })
+      });
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ balance: newBalance })
-        .eq('id', user.id);
-
-      const txPayload = {
-        user_id: user.id,
-        amount: -totalPrice,
-        type: 'order_payment' as const,
-        status: 'success' as const,
-        payment_method: 'wallet',
-      };
-
-      let createdOrder: Order;
-
-      const { data, error } = await supabase
-        .from('orders')
-        .insert(orderPayload)
-        .select()
-        .single();
-
-      if (error || profileError) {
-        // Handle client fallback if supabase table does not exist
-        console.warn('Database insert failed, using localStorage fallback');
-        const fallbackOrderId = Math.random().toString(36).substring(2, 9);
-        const fallbackOrder: Order = {
-          id: fallbackOrderId,
-          ...orderPayload,
-          created_at: new Date().toISOString()
-        };
-        const currentOrders = [fallbackOrder, ...orders];
-        setOrders(currentOrders);
-        localStorage.setItem(`orders_${user.id}`, JSON.stringify(currentOrders));
-        createdOrder = fallbackOrder;
-
-        const localTx = {
-          id: `TX-${Math.random().toString(36).substring(2, 9)}`,
-          user_id: user.id,
-          amount: -totalPrice,
-          type: 'order_payment' as const,
-          status: 'success' as const,
-          reference_id: fallbackOrderId,
-          payment_method: 'wallet',
-          created_at: new Date().toISOString()
-        };
-        const updatedTxs = [localTx, ...transactions];
-        setTransactions(updatedTxs);
-        localStorage.setItem(`transactions_${user.id}`, JSON.stringify(updatedTxs));
-      } else {
-        createdOrder = data;
-
-        // Create transaction log
-        const localTxId = `TX-${Math.random().toString(36).substring(2, 9)}`;
-        const localTx = {
-          id: localTxId,
-          user_id: user.id,
-          amount: -totalPrice,
-          type: 'order_payment' as const,
-          status: 'success' as const,
-          reference_id: createdOrder.id,
-          payment_method: 'wallet',
-          created_at: new Date().toISOString()
-        };
-        const updatedTxs = [localTx, ...transactions];
-        setTransactions(updatedTxs);
-        localStorage.setItem(`transactions_${user.id}`, JSON.stringify(updatedTxs));
-
-        await supabase
-          .from('transactions')
-          .insert({
-            ...txPayload,
-            reference_id: createdOrder.id
-          });
-
-        await Promise.all([
-          fetchOrders(user.id),
-          fetchProfileAndTransactions(user.id)
-        ]);
+      const result = await response.json();
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Gagal membuat pesanan');
       }
+
+      // Update local state balance
+      setBalance(result.newBalance);
+      localStorage.setItem(`balance_${user.id}`, String(result.newBalance));
+
+      // Refresh state
+      await Promise.all([
+        fetchOrders(user.id),
+        fetchProfileAndTransactions(user.id)
+      ]);
 
       confetti({
         particleCount: 100,
@@ -1054,53 +1063,35 @@ export default function UserDashboard() {
         (window as any).snap.pay(snapToken, {
           onSuccess: async function (snapResult: any) {
             console.log('Topup payment success!', snapResult);
-
-            await supabase
-              .from('transactions')
-              .update({ status: 'success', payment_method: snapResult.payment_type || 'midtrans' })
-              .eq('id', dbTxId);
-
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('balance')
-              .eq('id', user.id)
-              .single();
-
-            if (profile) {
-              const currentBalance = Number(profile.balance || 0);
-              const newBalance = currentBalance + topupAmount;
-              await supabase
-                .from('profiles')
-                .update({ balance: newBalance })
-                .eq('id', user.id);
+            setLoading(true);
+            try {
+              const res = await fetch('/api/payment/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: dbTxId })
+              });
+              const verifyRes = await res.json();
+              if (verifyRes.success) {
+                setBalance(verifyRes.newBalance);
+                localStorage.setItem(`balance_${user.id}`, String(verifyRes.newBalance));
+                showToast('Top Up berhasil! Saldo Anda telah ditambahkan.', 'success');
+              } else {
+                showToast('Pembayaran berhasil! Saldo Anda sedang diproses oleh sistem.', 'success');
+              }
+            } catch (verifyErr) {
+              console.error('Payment verification failed:', verifyErr);
+              showToast('Pembayaran berhasil! Saldo Anda akan diperbarui otomatis dalam beberapa saat.', 'success');
+            } finally {
+              setLoading(false);
+              await fetchProfileAndTransactions(user.id);
+              setShowTopupModal(false);
+              setTopupAmount(0);
+              confetti({
+                particleCount: 120,
+                spread: 80,
+                origin: { y: 0.5 }
+              });
             }
-
-            // Always sync local storage fallback
-            const localTx = {
-              id: dbTxId,
-              ...txPayload,
-              status: 'success' as const,
-              payment_method: snapResult.payment_type || 'midtrans',
-              created_at: new Date().toISOString()
-            };
-            const updatedTxs = [localTx, ...transactions.filter(t => t.id !== dbTxId)];
-            setTransactions(updatedTxs);
-            localStorage.setItem(`transactions_${user.id}`, JSON.stringify(updatedTxs));
-
-            const newLocalBalance = balance + topupAmount;
-            setBalance(newLocalBalance);
-            localStorage.setItem(`balance_${user.id}`, String(newLocalBalance));
-
-            await fetchProfileAndTransactions(user.id);
-
-            setShowTopupModal(false);
-            setTopupAmount(0);
-            confetti({
-              particleCount: 120,
-              spread: 80,
-              origin: { y: 0.5 }
-            });
-            showToast('Top Up berhasil! Saldo Anda telah ditambahkan.', 'success');
           },
           onPending: async function (snapResult: any) {
             console.log('Topup payment pending', snapResult);
@@ -1188,35 +1179,37 @@ export default function UserDashboard() {
       if ((window as any).snap && snapToken) {
         (window as any).snap.pay(snapToken, {
           onSuccess: async function (snapResult: any) {
-            await supabase
-              .from('transactions')
-              .update({ status: 'success', payment_method: snapResult.payment_type || 'midtrans' })
-              .eq('id', tx.id);
-
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('balance')
-              .eq('id', user.id)
-              .single();
-
-            if (profile) {
-              const currentBalance = Number(profile.balance || 0);
-              const newBalance = currentBalance + tx.amount;
-              await supabase
-                .from('profiles')
-                .update({ balance: newBalance })
-                .eq('id', user.id);
+            console.log('Topup payment success!', snapResult);
+            setLoading(true);
+            try {
+              const res = await fetch('/api/payment/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: tx.id })
+              });
+              const verifyRes = await res.json();
+              if (verifyRes.success) {
+                setBalance(verifyRes.newBalance);
+                localStorage.setItem(`balance_${user.id}`, String(verifyRes.newBalance));
+                showToast('Top Up berhasil! Saldo Anda telah ditambahkan.', 'success');
+              } else {
+                showToast('Pembayaran berhasil! Saldo Anda sedang diproses oleh sistem.', 'success');
+              }
+            } catch (verifyErr) {
+              console.error('Payment verification failed:', verifyErr);
+              showToast('Pembayaran berhasil! Saldo Anda akan diperbarui otomatis dalam beberapa saat.', 'success');
+            } finally {
+              setLoading(false);
+              await fetchProfileAndTransactions(user.id);
+              confetti({
+                particleCount: 120,
+                spread: 80,
+                origin: { y: 0.5 }
+              });
             }
-
-            await fetchProfileAndTransactions(user.id);
-
-            confetti({
-              particleCount: 120,
-              spread: 80,
-              origin: { y: 0.5 }
-            });
-            showToast('Top Up berhasil! Saldo Anda telah ditambahkan.', 'success');
           },
+
+
           onPending: async function (snapResult: any) {
             const chosenMethod = snapResult?.payment_type || 'midtrans';
             await supabase
@@ -2331,17 +2324,28 @@ export default function UserDashboard() {
                       </div>
                     </div>
 
-                    {/* Target URL */}
+                     {/* Target URL */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Data Target / URL Profil / Link Video</label>
-                      <input
-                        type="url"
-                        required
-                        placeholder="https://instagram.com/username atau link video"
-                        value={targetUrl}
-                        onChange={(e) => setTargetUrl(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm"
-                      />
+                      {(() => {
+                        const targetGuide = getTargetGuide(selectedCategory);
+                        return (
+                          <>
+                            <input
+                              type="text"
+                              required
+                              placeholder={targetGuide.placeholder}
+                              value={targetUrl}
+                              onChange={(e) => setTargetUrl(e.target.value)}
+                              className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm font-medium"
+                            />
+                            <p className="mt-2 text-[11px] text-indigo-500 dark:text-indigo-400 font-semibold leading-relaxed bg-indigo-500/5 dark:bg-indigo-950/10 border border-indigo-500/10 rounded-xl p-3.5 flex gap-1.5 items-start">
+                              <span className="font-extrabold uppercase shrink-0 text-indigo-650 dark:text-indigo-400">[Petunjuk]:</span>
+                              <span className="text-slate-500 dark:text-slate-350 font-normal">{targetGuide.guide}</span>
+                            </p>
+                          </>
+                        );
+                      })()}
                     </div>
 
                     <div className="grid sm:grid-cols-2 gap-6">
@@ -3431,7 +3435,7 @@ export default function UserDashboard() {
                                 if (tx.type === 'topup') {
                                   const bonusMin = parseInt(siteSettings.deposit_bonus_min) || 10000;
                                   const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
-                                  const hasBonus = tx.status === 'success' && baseAmount >= bonusMin && bonusPercent > 0;
+                                  const hasBonus = baseAmount >= bonusMin && bonusPercent > 0;
                                   const bonusAmount = hasBonus ? Math.round(baseAmount * bonusPercent / 100) : 0;
                                   creditedAmount = baseAmount + bonusAmount;
                                 }
@@ -3530,7 +3534,7 @@ export default function UserDashboard() {
                             if (tx.type === 'topup') {
                               const bonusMin = parseInt(siteSettings.deposit_bonus_min) || 10000;
                               const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
-                              const hasBonus = tx.status === 'success' && baseAmount >= bonusMin && bonusPercent > 0;
+                              const hasBonus = baseAmount >= bonusMin && bonusPercent > 0;
                               const bonusAmount = hasBonus ? Math.round(baseAmount * bonusPercent / 100) : 0;
                               creditedAmount = baseAmount + bonusAmount;
                             }
@@ -4092,8 +4096,11 @@ export default function UserDashboard() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
             <div className="w-full max-w-[520px] bg-slate-900 border border-slate-800 p-6 sm:p-10 rounded-[24px] sm:rounded-[32px] shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto">
               <button
-                onClick={() => setShowTopupModal(false)}
-                className="absolute top-6 right-6 text-slate-500 hover:text-slate-350 transition-colors p-2 hover:bg-slate-850 rounded-xl"
+                onClick={() => {
+                  setShowTopupModal(false);
+                  setTopupAmount(0);
+                }}
+                className="absolute top-6 right-6 text-slate-500 hover:text-slate-355 transition-colors p-2 hover:bg-slate-850 rounded-xl"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -4416,7 +4423,7 @@ export default function UserDashboard() {
                   const baseAmount = Number(selectedTxDetail.amount);
                   const bonusMin = parseInt(siteSettings.deposit_bonus_min) || 10000;
                   const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
-                  const hasBonus = selectedTxDetail.status === 'success' && baseAmount >= bonusMin && bonusPercent > 0;
+                  const hasBonus = baseAmount >= bonusMin && bonusPercent > 0;
                   const bonusAmount = hasBonus ? Math.round(baseAmount * bonusPercent / 100) : 0;
                   const creditedAmount = baseAmount + bonusAmount;
 

@@ -73,10 +73,17 @@ export async function POST(request: Request) {
       ? `T-${dbTxId}` 
       : `O-${dbTxId}`;
 
+    const origin = request.headers.get('origin') || 'http://localhost:3000';
+
     const payload = {
       transaction_details: {
         order_id: uniqueOrderId,
         gross_amount: Math.round(grossAmount),
+      },
+      callbacks: {
+        finish: `${origin}/dashboard`,
+        unfinish: `${origin}/dashboard`,
+        error: `${origin}/dashboard`,
       },
       credit_card: {
         secure: true,

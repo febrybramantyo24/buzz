@@ -142,10 +142,24 @@ export async function POST(
 
     // RLS emulation: Force user_id to current user for non-admins
     if (user && user.role !== 'admin') {
-      if (table === 'orders' || table === 'transactions') {
+      if (table === 'orders') {
         body.user_id = user.userId;
-      } else if (table === 'profiles') {
-        body.id = user.userId;
+        // Make sure status is pending and payment_status is unpaid by default if created directly
+        body.status = 'pending';
+        body.payment_status = 'unpaid';
+      } else if (table === 'transactions') {
+        body.user_id = user.userId;
+        // SECURITY FIX: Prevent non-admin from inserting positive transactions or successful transactions!
+        const amount = parseFloat(body.amount);
+        if (amount >= 0) {
+          return NextResponse.json({ error: 'Forbidden: Cannot insert positive transactions' }, { status: 403 });
+        }
+        if (body.type !== 'order_payment') {
+          return NextResponse.json({ error: 'Forbidden: Invalid transaction type' }, { status: 403 });
+        }
+        body.status = 'success'; // spent money is marked as success immediately
+      } else {
+        return NextResponse.json({ error: 'Forbidden: Access denied' }, { status: 403 });
       }
     }
 
@@ -220,10 +234,42 @@ export async function PATCH(
         rlsFilterVal = user.userId;
         // Make sure non-admin cannot alter their role
         delete body.role;
-      } else if (table === 'orders' || table === 'transactions') {
+        
+        // SECURITY FIX: Prevent non-admin from increasing their balance!
+        if (body.balance !== undefined) {
+          const currentRes = await query('SELECT balance FROM profiles WHERE id = $1', [user.userId]);
+          const currentBalance = parseFloat(currentRes.rows[0]?.balance || '0');
+          const newBalance = parseFloat(body.balance);
+          if (newBalance > currentBalance) {
+            return NextResponse.json({ error: 'Forbidden: Cannot increase balance' }, { status: 403 });
+          }
+          if (newBalance < 0) {
+            return NextResponse.json({ error: 'Bad Request: Balance cannot be negative' }, { status: 400 });
+          }
+        }
+        // Prevent altering email
+        delete body.email;
+      } else if (table === 'orders') {
         // Keep primary filter column (like id) intact, but enforce user ownership check
         extraWhereClause = ` AND user_id = $${Object.keys(body).length + 2}`;
         extraParams.push(user.userId);
+        
+        // SECURITY FIX: Prevent non-admin from updating status or payment_status to paid directly!
+        if (body.payment_status === 'paid' || body.status === 'processing' || body.status === 'success') {
+          return NextResponse.json({ error: 'Forbidden: Cannot update order status directly' }, { status: 403 });
+        }
+      } else if (table === 'transactions') {
+        // Keep primary filter column (like id) intact, but enforce user ownership check
+        extraWhereClause = ` AND user_id = $${Object.keys(body).length + 2}`;
+        extraParams.push(user.userId);
+        
+        // SECURITY FIX: Prevent non-admin from updating status to success directly!
+        if (body.status === 'success') {
+          return NextResponse.json({ error: 'Forbidden: Cannot approve transactions directly' }, { status: 403 });
+        }
+      } else {
+        // services, announcements
+        return NextResponse.json({ error: 'Forbidden: Access denied' }, { status: 403 });
       }
     }
 
@@ -288,16 +334,10 @@ export async function DELETE(
     let rlsFilterCol = filterCol;
     let rlsFilterVal = filterVal;
     let extraWhereClause = '';
-    const extraParams = [];
+    const extraParams: any[] = [];
 
     if (user && user.role !== 'admin') {
-      if (table === 'profiles') {
-        return NextResponse.json({ error: 'Profiles cannot be deleted by users' }, { status: 403 });
-      } else if (table === 'orders' || table === 'transactions') {
-        // Keep primary filter column (like id) intact, but enforce user ownership check
-        extraWhereClause = ` AND user_id = $2`;
-        extraParams.push(user.userId);
-      }
+      return NextResponse.json({ error: 'Forbidden: Access denied' }, { status: 403 });
     }
 
     const cleanFilterCol = rlsFilterCol.replace(/[^a-zA-Z0-9_]/g, '');
