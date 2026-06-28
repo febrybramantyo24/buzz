@@ -1723,7 +1723,7 @@ export default function UserDashboard() {
                       }`}
                   >
                     <CreditCard className="w-4 h-4" />
-                    <span>Log Saldo / Topup</span>
+                    <span>Riwayat Saldo</span>
                   </button>
 
                   <button
