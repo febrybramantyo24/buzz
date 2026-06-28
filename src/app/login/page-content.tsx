@@ -11,13 +11,16 @@ import {
   Eye, 
   EyeOff, 
   Sparkles, 
-  Loader2, 
-  User, 
-  Phone, 
-  UserCheck, 
-  ShieldCheck, 
-  ArrowLeft 
+  Loader2,
+  User,
+  Phone,
+  UserCheck,
+  ShieldCheck,
+  CheckCircle,
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
+
 import PremiumThemeToggle from '@/components/PremiumThemeToggle';
 
 export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boolean }) {
@@ -42,6 +45,17 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
   const [showPassword, setShowPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isAutoSubmit, setIsAutoSubmit] = useState(false);
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   useEffect(() => {
     if (isAdminFlow) {
@@ -100,9 +114,8 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
     }
     checkUser();
   }, [router]);
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAuth = async (e?: React.FormEvent, forceAgree: boolean = false) => {
+    if (e) e.preventDefault();
     setLoading(true);
     setMessage(null);
 
@@ -137,13 +150,17 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
 
         if (password !== confirmPassword) {
           throw new Error('Password dan Ketik Ulang Password tidak cocok.');
-        }
-        if (!agreeTerms) {
-          throw new Error('Anda harus menyetujui Syarat dan Ketentuan.');
+        }        if (!agreeTerms && !forceAgree) {
+          setIsAutoSubmit(true);
+          setShowTermsModal(true);
+          setLoading(false);
+          return;
         }
 
         // Sign Up
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
+
+
           email,
           password,
           username,
@@ -153,37 +170,16 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
 
         if (error) throw error;
 
-        if (data.user) {
-          // Create user profile in profiles table
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: data.user.id,
-              email: email,
-              role: 'user', // Default role
-              full_name: fullName,
-              username: username,
-              whatsapp: whatsapp,
-              balance: 0 // Initial balance is 0
-            });
+        setShowSuccessModal(true);
+        // Clear registration fields
+        setFullName('');
+        setUsername('');
+        setEmail('');
+        setWhatsapp('');
+        setPassword('');
+        setConfirmPassword('');
+        setAgreeTerms(false);
 
-          if (profileError) {
-            console.warn('Error creating profile:', profileError);
-          }
-
-          // Local fallback balance setting
-          localStorage.setItem(`balance_${data.user.id}`, '0');
-
-          setMessage({
-            type: 'success',
-            text: 'Registrasi berhasil! Silakan login dengan akun Anda.',
-          });
-          setIsRegister(false);
-          // Clear registration fields
-          setConfirmPassword('');
-          setFullName('');
-          setWhatsapp('');
-        }
       } else {
         // Sign In
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -474,15 +470,19 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
             {isRegister ? 'Mulai kelola kebutuhan buzzer sosial media Anda' : (isAdminFlow ? 'Kelola layanan, pesanan, dan pengguna Buzzify' : 'Kelola pesanan, riwayat, dan info rekomendasi')}
           </p>
         </div>
-
         {/* Alert message */}
         {message && (
-          <div className={`p-4 mb-6 rounded-2xl text-sm leading-relaxed border ${
+          <div className={`p-4 mb-6 rounded-2xl border flex items-center gap-3 shadow-sm ${
             message.type === 'success' 
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-              : 'bg-red-500/10 border-red-500/30 text-red-400'
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-300' 
+              : 'bg-rose-500/10 border-rose-500/20 text-rose-800 dark:text-rose-300'
           }`}>
-            {message.text}
+            {message.type === 'success' ? (
+              <CheckCircle className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400 shrink-0" />
+            )}
+            <span className="text-xs font-bold leading-relaxed">{message.text}</span>
           </div>
         )}
 
@@ -594,21 +594,35 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                   </div>
                 </div>
               </div>
-
               {/* Syarat & Ketentuan Checkbox */}
               <div className="flex items-start gap-2.5 pt-1">
                 <input
                   type="checkbox"
                   id="agreeTerms"
                   checked={agreeTerms}
-                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setIsAutoSubmit(false);
+                      setShowTermsModal(true);
+                    } else {
+                      setAgreeTerms(false);
+                    }
+                  }}
                   className="mt-1 w-4 h-4 accent-indigo-600 rounded cursor-pointer"
                 />
-                <label className="text-xs text-slate-400 font-light leading-relaxed cursor-pointer selection:bg-transparent">
+                <label 
+                  htmlFor="agreeTerms"
+                  className="text-xs text-slate-400 font-light leading-relaxed cursor-pointer selection:bg-transparent"
+                >
                   Saya menyetujui{' '}
                   <button 
                     type="button" 
-                    onClick={() => setShowTermsModal(true)} 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsAutoSubmit(false);
+                      setShowTermsModal(true);
+                    }} 
                     className="text-indigo-400 font-semibold hover:underline cursor-pointer focus:outline-none"
                   >
                     Syarat & Ketentuan
@@ -765,20 +779,52 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                   <li>Buzzify tidak pernah meminta password akun sosial media Anda. Kami hanya membutuhkan link/URL target publik untuk pengerjaan jasa buzzer.</li>
                 </ul>
               </div>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-slate-800 flex justify-end shrink-0">
+            </div>            <div className="mt-6 pt-4 border-t border-slate-800 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => {
                   setAgreeTerms(true);
                   setShowTermsModal(false);
+                  if (isAutoSubmit) {
+                    handleAuth(undefined, true);
+                  }
                 }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md active:scale-95"
               >
                 Setuju & Lanjutkan
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Registration Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl relative text-center flex flex-col items-center animate-in zoom-in-95 duration-200">
+            <div className="bg-emerald-500/10 border border-emerald-500/25 p-4 rounded-full text-emerald-400 mb-5">
+              <ShieldCheck className="w-10 h-10" />
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-100 mb-2">Registrasi Berhasil!</h3>
+            <p className="text-slate-400 text-xs font-light leading-relaxed mb-6">
+              Akun Anda telah berhasil dibuat. Silakan masuk untuk mulai menggunakan layanan sosial media di Buzzify.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessModal(false);
+                setIsRegister(false);
+                setMessage({
+                  type: 'success',
+                  text: 'Registrasi berhasil! Silakan masuk dengan akun baru Anda.'
+                });
+              }}
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3.5 rounded-xl text-xs transition-all shadow-lg active:scale-95 cursor-pointer"
+            >
+              Masuk Sekarang
+            </button>
           </div>
         </div>
       )}

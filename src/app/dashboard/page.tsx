@@ -42,7 +42,9 @@ import {
   Layers,
   MessageSquare,
   Send,
-  Upload
+  Upload,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -132,6 +134,9 @@ export default function UserDashboard() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [changePasswordError, setChangePasswordError] = useState('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState('');
 
@@ -177,6 +182,58 @@ export default function UserDashboard() {
       fetchOrders(user.id);
     }
   }, [activeTab]);
+
+  // Prevent body scroll when any modal is open
+  useEffect(() => {
+    const isModalOpen = !!(
+      showTopupModal ||
+      selectedOrderDetail ||
+      selectedInvoiceDetail ||
+      showProfileModal ||
+      selectedTicket ||
+      showCreateTicket ||
+      selectedAnnouncement ||
+      selectedTxDetail
+    );
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [
+    showTopupModal,
+    selectedOrderDetail,
+    selectedInvoiceDetail,
+    showProfileModal,
+    selectedTicket,
+    showCreateTicket,
+    selectedAnnouncement,
+    selectedTxDetail
+  ]);
+
+  // Dynamically load Midtrans snap.js script to prevent Next.js Fast Refresh unmounting bugs
+  useEffect(() => {
+    const scriptId = 'midtrans-snap-script';
+    if (document.getElementById(scriptId)) return;
+
+    const snapSrc = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true'
+      ? 'https://app.midtrans.com/snap/snap.js'
+      : (process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'false'
+          ? 'https://app.sandbox.midtrans.com/snap/snap.js'
+          : ((process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '').startsWith('SB-Mid-')
+              ? 'https://app.sandbox.midtrans.com/snap/snap.js'
+              : 'https://app.midtrans.com/snap/snap.js'));
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = snapSrc;
+    script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '');
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
 
   // Premium notifications & dialogs
   const [notification, setNotification] = useState<{
@@ -489,11 +546,12 @@ export default function UserDashboard() {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       setOrders(data || []);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("Error fetching orders:", err.message || err);
     }
+
   };
 
   // Change service options when category changes
@@ -1141,10 +1199,14 @@ export default function UserDashboard() {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       setChangePasswordError('Konfirmasi password baru tidak cocok.');
+      showToast('Konfirmasi password baru tidak cocok.', 'error');
+      setTimeout(() => setChangePasswordError(''), 5000);
       return;
     }
     if (newPassword.length < 6) {
       setChangePasswordError('Password baru minimal harus 6 karakter.');
+      showToast('Password baru minimal harus 6 karakter.', 'error');
+      setTimeout(() => setChangePasswordError(''), 5000);
       return;
     }
     setChangePasswordLoading(true);
@@ -1160,14 +1222,20 @@ export default function UserDashboard() {
       const data = await res.json();
       if (!res.ok) {
         setChangePasswordError(data.error || 'Gagal mengubah password.');
+        showToast(data.error || 'Gagal mengubah password.', 'error');
+        setTimeout(() => setChangePasswordError(''), 5000);
       } else {
         setChangePasswordSuccess(data.message || 'Password berhasil diperbarui!');
+        showToast(data.message || 'Password berhasil diperbarui!', 'success');
+        setTimeout(() => setChangePasswordSuccess(''), 5000);
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       }
     } catch (err) {
       setChangePasswordError('Terjadi kesalahan koneksi.');
+      showToast('Terjadi kesalahan koneksi.', 'error');
+      setTimeout(() => setChangePasswordError(''), 5000);
     } finally {
       setChangePasswordLoading(false);
     }
@@ -1192,8 +1260,12 @@ export default function UserDashboard() {
       const data = await res.json();
       if (!res.ok) {
         setProfileError(data.error || 'Gagal memperbarui profil.');
+        showToast(data.error || 'Gagal memperbarui profil.', 'error');
+        setTimeout(() => setProfileError(''), 5000);
       } else {
         setProfileSuccess(data.message || 'Profil berhasil diperbarui!');
+        showToast(data.message || 'Profil berhasil diperbarui!', 'success');
+        setTimeout(() => setProfileSuccess(''), 5000);
         // Refresh local state profile
         if (user) {
           fetchProfileAndTransactions(user.id);
@@ -1201,6 +1273,8 @@ export default function UserDashboard() {
       }
     } catch (err) {
       setProfileError('Terjadi kesalahan koneksi.');
+      showToast('Terjadi kesalahan koneksi.', 'error');
+      setTimeout(() => setProfileError(''), 5000);
     } finally {
       setProfileLoading(false);
     }
@@ -1214,8 +1288,18 @@ export default function UserDashboard() {
       setProfileWhatsApp(userProfile.whatsapp || '');
       setProfileError('');
       setProfileSuccess('');
+      
+      // Reset password states
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setChangePasswordError('');
+      setChangePasswordSuccess('');
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
     }
-  }, [showProfileModal, userProfile]);
+  }, [showProfileModal]);
 
   const toggleFavorite = (serviceId: string) => {
     if (!user) return;
@@ -1477,10 +1561,10 @@ export default function UserDashboard() {
       <div className="flex min-h-screen">
         
         {/* Left Sidebar */}
-        <aside className={`fixed md:sticky top-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 ${
+        <aside className={`fixed md:sticky top-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-hidden ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}>
-          <div className="space-y-6">
+          <div className="space-y-6 flex-1 overflow-y-auto scrollbar-thin pr-1">
             {/* Logo/Brand */}
             <div className="flex items-center gap-2.5 px-2">
               <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2.5 rounded-2xl shadow-md shadow-pink-500/10">
@@ -3907,8 +3991,8 @@ export default function UserDashboard() {
           : topupAmount;
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-            <div className="w-full max-w-[520px] bg-slate-900 border border-slate-800 p-8 sm:p-10 rounded-[32px] shadow-2xl relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
+            <div className="w-full max-w-[520px] bg-slate-900 border border-slate-800 p-6 sm:p-10 rounded-[24px] sm:rounded-[32px] shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto">
               <button
                 onClick={() => setShowTopupModal(false)}
                 className="absolute top-6 right-6 text-slate-500 hover:text-slate-350 transition-colors p-2 hover:bg-slate-850 rounded-xl"
@@ -3977,7 +4061,7 @@ export default function UserDashboard() {
                   <div>
                     <label className="block text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-2">Jumlah Deposit</label>
                     <div className="relative group">
-                      <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-450 dark:text-slate-500 text-sm transition-colors group-focus-within:text-indigo-500">Rp</span>
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-455 dark:text-slate-500 text-sm transition-colors group-focus-within:text-indigo-500">Rp</span>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -3985,7 +4069,7 @@ export default function UserDashboard() {
                         placeholder="Contoh: 50.000"
                         value={formatNumberWithDots(topupAmount)}
                         onChange={(e) => setTopupAmount(parseNumberFromDots(e.target.value))}
-                        className="w-full bg-slate-950/40 dark:bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-slate-200 px-5 pl-12 py-4 rounded-2xl outline-none transition-all text-sm font-semibold"
+                        className="w-full bg-slate-950/40 border border-slate-800 text-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 px-5 pl-12 py-4 rounded-2xl outline-none transition-all text-sm font-semibold"
                       />
                     </div>
                   </div>
@@ -3998,8 +4082,9 @@ export default function UserDashboard() {
                         type="text"
                         disabled
                         readOnly
-                        value={calculatedReceivedBalance.toLocaleString('id-ID')}
-                        className="w-full bg-slate-955/40 dark:bg-slate-955/60 border border-slate-850 text-slate-900 pl-12 pr-5 py-4 rounded-2xl outline-none text-sm font-extrabold"
+                        value={calculatedReceivedBalance === 0 ? '' : calculatedReceivedBalance.toLocaleString('id-ID')}
+                        placeholder="0"
+                        className="w-full bg-slate-950/40 border border-slate-800 text-slate-200 pl-12 pr-5 py-4 rounded-2xl outline-none text-sm font-extrabold"
                       />
                     </div>
                   </div>
@@ -4039,30 +4124,17 @@ export default function UserDashboard() {
         );
       })()}
 
-      <Script
-        src={
-          process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true'
-            ? 'https://app.midtrans.com/snap/snap.js'
-            : (process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'false'
-                ? 'https://app.sandbox.midtrans.com/snap/snap.js'
-                : ((process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '').startsWith('SB-Mid-')
-                    ? 'https://app.sandbox.midtrans.com/snap/snap.js'
-                    : 'https://app.midtrans.com/snap/snap.js'))
-        }
-        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
-        strategy="lazyOnload"
-      />
 
       {/* Premium Toast Notification */}
       {notification.show && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300 max-w-[90vw] sm:max-w-md w-max">
           {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />}
           {notification.type === 'error' && <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />}
           {notification.type === 'info' && <Info className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0" />}
-          <span className="text-xs font-semibold text-slate-200 whitespace-nowrap">{notification.message}</span>
+          <span className="text-xs font-semibold text-slate-200 break-words leading-relaxed">{notification.message}</span>
           <button 
             onClick={() => setNotification(prev => ({ ...prev, show: false }))} 
-            className="text-slate-500 hover:text-slate-350 transition-colors ml-2"
+            className="text-slate-500 hover:text-slate-355 transition-colors ml-2 shrink-0"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -4489,10 +4561,9 @@ export default function UserDashboard() {
               >
                 <X className="w-5 h-5" />
               </button>
-
               {/* Invoice Layout */}
               <div id="print-area">
-                <div className="flex justify-between items-start border-b border-zinc-200 pb-6">
+                <div className="flex justify-between items-start border-b border-zinc-200 pb-6 pr-10">
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <div className="bg-indigo-600 p-1.5 rounded-lg text-white">
@@ -4573,20 +4644,18 @@ export default function UserDashboard() {
             </div>
           </div>
         );
-      })()}
-
-      {/* Profile Modal */}
+      })()}      {/* Profile Modal */}
       {showProfileModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200 scrollbar-thin scrollbar-thumb-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="w-full max-w-4xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-2xl sm:rounded-[32px] shadow-2xl relative my-auto animate-in zoom-in-95 duration-200 scrollbar-thin scrollbar-thumb-slate-800">
+
             <button
               onClick={() => setShowProfileModal(false)}
               className="absolute top-6 right-6 text-slate-400 hover:text-slate-200 transition-colors p-2 hover:bg-slate-800 rounded-xl cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
-
-            <div className="mb-6 border-b border-slate-800 pb-4">
+            <div className="mb-6 border-b border-slate-800 pb-4 pr-12">
               <h2 className="text-xl font-bold flex items-center gap-2 text-slate-100">
                 <User className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
                 <span>Pengaturan Profil & Keamanan</span>
@@ -4599,19 +4668,19 @@ export default function UserDashboard() {
               <div>
                 <form onSubmit={handleUpdateProfile} className="space-y-4">
                   <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Informasi Akun</h3>
-
                   {profileError && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs font-semibold">
-                      {profileError}
+                    <div className="bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 p-4 rounded-2xl text-xs font-bold flex items-center gap-2.5 shadow-sm">
+                      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                      <span>{profileError}</span>
                     </div>
                   )}
 
                   {profileSuccess && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-xl text-xs font-semibold">
-                      {profileSuccess}
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 p-4 rounded-2xl text-xs font-bold flex items-center gap-2.5 shadow-sm">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>{profileSuccess}</span>
                     </div>
                   )}
-
                   {/* Email (Non-editable) */}
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Email (Akun)</label>
@@ -4687,56 +4756,81 @@ export default function UserDashboard() {
               {/* Right Column: Change Password */}
               <div className="border-t md:border-t-0 md:border-l border-slate-800 pt-6 md:pt-0 md:pl-8">
                 <form onSubmit={handleChangePassword} className="space-y-4">
-                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Ganti Password</h3>
-
-                  {changePasswordError && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs font-semibold">
-                      {changePasswordError}
+                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Ganti Password</h3>                  {changePasswordError && (
+                    <div className="bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 p-4 rounded-2xl text-xs font-bold flex items-center gap-2.5 shadow-sm">
+                      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                      <span>{changePasswordError}</span>
                     </div>
                   )}
-
                   {changePasswordSuccess && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-xl text-xs font-semibold">
-                      {changePasswordSuccess}
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 p-4 rounded-2xl text-xs font-bold flex items-center gap-2.5 shadow-sm">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>{changePasswordSuccess}</span>
                     </div>
                   )}
 
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Password Saat Ini</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="Masukkan password sekarang"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showCurrentPassword ? "text" : "password"}
+                        required
+                        placeholder="Masukkan password sekarang"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className="w-full bg-slate-950 dark:bg-slate-955 border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors p-1"
+                      >
+                        {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Password Baru</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="Password baru (min. 6 karakter)"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        required
+                        placeholder="Password baru (min. 6 karakter)"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full bg-slate-955 dark:bg-slate-955 border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors p-1"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Konfirmasi Password Baru</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="Ulangi password baru"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
+                        placeholder="Ulangi password baru"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full bg-slate-955 dark:bg-slate-955 border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors p-1"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
-
                   <div className="pt-2 flex gap-3">
                     <button
                       type="button"

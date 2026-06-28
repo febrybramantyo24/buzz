@@ -29,10 +29,38 @@ export async function POST(request: Request) {
     // 2. Parse request body
     const { username, fullName, whatsapp } = await request.json();
 
+    // Validation matching registration rules
+    if (!username || !fullName || !whatsapp) {
+      return NextResponse.json({ error: 'Semua kolom data wajib diisi' }, { status: 400 });
+    }
+
+    if (fullName.trim().length < 3) {
+      return NextResponse.json({ error: 'Nama Lengkap minimal 3 karakter' }, { status: 400 });
+    }
+    if (!/^[a-zA-Z\s]+$/.test(fullName)) {
+      return NextResponse.json({ error: 'Nama Lengkap hanya boleh berisi huruf dan spasi' }, { status: 400 });
+    }
+
+    const usernameRegex = /^[a-z0-9_]{3,16}$/;
+    if (!usernameRegex.test(username)) {
+      return NextResponse.json({ error: 'Username harus 3-16 karakter dan hanya boleh berisi huruf kecil, angka, dan underscore (_)' }, { status: 400 });
+    }
+
+    const whatsappClean = (whatsapp || '').replace('+', '');
+    if (!/^[0-9]{9,15}$/.test(whatsappClean)) {
+      return NextResponse.json({ error: 'Nomor Whatsapp harus berupa angka dengan panjang 9-15 digit' }, { status: 400 });
+    }
+
+    // Check if username is already taken by another user
+    const usernameCheck = await query('SELECT id FROM profiles WHERE username = $1 AND id != $2', [username, decoded.userId]);
+    if (usernameCheck.rows.length > 0) {
+      return NextResponse.json({ error: 'Username sudah digunakan oleh orang lain' }, { status: 400 });
+    }
+
     // 3. Update database profiles
     await query(
       'UPDATE profiles SET username = $1, full_name = $2, whatsapp = $3 WHERE id = $4',
-      [username || '', fullName || '', whatsapp || '', decoded.userId]
+      [username, fullName, whatsapp, decoded.userId]
     );
 
     return NextResponse.json({

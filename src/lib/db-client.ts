@@ -115,12 +115,14 @@ class DbQueryBuilder {
           'Content-Type': 'application/json'
         },
         body: this.body ? JSON.stringify(this.body) : undefined
-      });
-
-      const data = await res.json();
+      });      const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401 && typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
         return { data: null, error: { message: data.error || 'Database operation failed' } };
       }
+
 
       return { data, error: null };
     } catch (err: any) {
