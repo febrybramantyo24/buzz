@@ -68,5 +68,6 @@ export interface Announcement {
   badge?: string;
   image_url?: string | null;
   is_active: boolean;
+  is_pinned?: boolean;
   created_at: string;
 }

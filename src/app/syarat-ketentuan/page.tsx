@@ -3,8 +3,11 @@
 import Link from 'next/link';
 import { ArrowLeft, ShieldCheck, Zap, BookOpen, AlertCircle, RefreshCw, Eye } from 'lucide-react';
 import PremiumThemeToggle from '@/components/PremiumThemeToggle';
+import { useBrand } from '@/components/DynamicBrandProvider';
 
 export default function TermsPage() {
+  const { logoUrl, brandName } = useBrand();
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white overflow-x-hidden relative">
       {/* Background Gradients */}
@@ -15,11 +18,20 @@ export default function TermsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-              <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-                <Zap className="w-6 h-6 text-white animate-pulse" />
+              <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20 w-10 h-10 flex items-center justify-center overflow-hidden">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-cover rounded-lg" />
+                ) : (
+                  <Zap className="w-6 h-6 text-white animate-pulse" />
+                )}
               </div>
               <span className="font-extrabold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-400">
-                Buzz<span className="text-indigo-400">ify</span>
+                {brandName === 'Buzzify' ? (
+                  <>Buzz<span className="text-indigo-400">ify</span></>
+                ) : (
+                  brandName
+                )}
               </span>
             </Link>
           </div>
@@ -57,7 +69,7 @@ export default function TermsPage() {
         <div className="mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-semibold mb-4">
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Dokumen Resmi Buzzify</span>
+            <span>Dokumen Resmi {brandName}</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
             Syarat & <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">Ketentuan Layanan</span>
@@ -173,7 +185,7 @@ export default function TermsPage() {
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 py-8 text-center text-xs text-slate-500 relative z-10">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>&copy; {new Date().getFullYear()} Buzzify. All Rights Reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {brandName}. All Rights Reserved.</p>
           <div className="flex gap-4">
             <Link href="/" className="hover:text-indigo-400 transition-colors">Beranda</Link>
             <Link href="/login" className="hover:text-indigo-400 transition-colors">Masuk</Link>

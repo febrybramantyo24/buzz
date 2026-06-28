@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { dbClient as supabase } from '@/lib/db-client';
 import { Service, Order, Announcement, Transaction } from '@/lib/types';
 import PremiumThemeToggle from '@/components/PremiumThemeToggle';
+import { useBrand } from '@/components/DynamicBrandProvider';
 import {
   Zap,
   AlertCircle,
@@ -37,7 +38,8 @@ import {
   Star,
   MessageSquare,
   Send,
-  Upload
+  Upload,
+  Pin
 } from 'lucide-react';
 
 const formatNumberWithDots = (num: number | string | null | undefined): string => {
@@ -64,7 +66,8 @@ const getCategoryBadgeClass = (category: string): string => {
 const getAnnouncementBadgeClass = (badge: string): string => {
   const b = badge ? badge.toUpperCase() : '';
   if (b === 'HOT') return 'bg-red-500/10 text-red-500 dark:text-red-400 border border-red-500/20 backdrop-blur-md shadow-sm shadow-red-500/5';
-  if (b === 'RECOMMENDED' || b === 'DISCOUNT' || b === 'PROMO') return 'bg-indigo-500/10 text-indigo-550 dark:text-indigo-400 border border-indigo-500/20 backdrop-blur-md shadow-sm shadow-indigo-500/5';
+  if (b === 'RECOMMENDED') return 'bg-indigo-500/10 text-indigo-550 dark:text-indigo-400 border border-indigo-500/20 backdrop-blur-md shadow-sm shadow-indigo-500/5';
+  if (b === 'DISCOUNT' || b === 'PROMO') return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 backdrop-blur-md shadow-sm shadow-amber-500/5';
   return 'bg-slate-500/10 text-slate-600 dark:text-slate-450 border border-slate-500/20 backdrop-blur-md shadow-sm';
 };
 
@@ -95,6 +98,7 @@ const getTicketStatusBadgeClass = (status: string): string => {
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { logoUrl, brandName } = useBrand();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Admin user status
@@ -326,6 +330,9 @@ export default function AdminDashboard() {
     stats_clients: '15K+',
     stats_success: '99.9%',
     stats_speed: '< 5 Menit',
+    site_title: 'Buzzify',
+    logo_url: '',
+    favicon_url: '',
     warning_title_instagram: 'Penting Instagram (Followers):',
     warning_desc_instagram: 'Jika Anda tidak melihat pengikut baru masuk, kemungkinan besar karena akun Anda menyaring atau menahan pengikut untuk ditinjau. Ikuti langkah berikut agar followers langsung masuk otomatis tanpa tersaring ke spam:\n\n1. Buka menu **Pengaturan dan Privasi**.\n2. Pilih **Ikuti dan Undang Teman**.\n3. Nonaktifkan opsi **Tandai untuk Ditinjau (Flag for Review)**.\n4. Jika baru dinonaktifkan, silakan tes pesan dengan jumlah kecil dulu.',
     warning_image_url_instagram: '/instagram_instruction.jpg',
@@ -662,8 +669,7 @@ export default function AdminDashboard() {
     try {
       const { data, error } = await supabase
         .from('announcements')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
       if (error) throw error;
       setAnnouncements(data || []);
@@ -880,6 +886,23 @@ export default function AdminDashboard() {
         }
       }
     });
+  };
+
+  // Toggle Pin Announcement
+  const handleTogglePinAnnouncement = async (ann: Announcement) => {
+    const newVal = !ann.is_pinned;
+    try {
+      const { error } = await supabase
+        .from('announcements')
+        .update({ is_pinned: newVal })
+        .eq('id', ann.id);
+
+      if (error) throw error;
+      await fetchAnnouncements();
+    } catch (err: any) {
+      console.error('Error toggling pin:', err);
+      setAnnouncements(announcements.map(a => a.id === ann.id ? { ...a, is_pinned: newVal } : a));
+    }
   };
 
   // Open Order Status Editor Drawer
@@ -1208,12 +1231,17 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             {/* Logo/Brand */}
             <div className="flex items-center gap-2.5 px-2">
-              <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2.5 rounded-2xl shadow-md shadow-indigo-500/10">
-                <Zap className="w-5 h-5 text-white" />
+              <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2.5 rounded-2xl shadow-md shadow-indigo-500/10 w-10 h-10 flex items-center justify-center overflow-hidden shrink-0">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-cover rounded-xl" />
+                ) : (
+                  <Zap className="w-5 h-5 text-white" />
+                )}
               </div>
               <div className="flex flex-col">
                 <span className="font-black text-sm leading-tight text-slate-900 dark:text-slate-100 tracking-tight">
-                  Buzzify
+                  {brandName}
                 </span>
                 <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest leading-none mt-0.5">
                   Admin Panel
@@ -1377,14 +1405,14 @@ export default function AdminDashboard() {
             {/* Provider Balance Info & Theme Toggle */}
             <div className="flex items-center gap-3">
               {providerBalance !== null && (
-                <div className="bg-slate-800 text-slate-300 dark:text-slate-400 font-bold px-3 py-1.5 rounded-xl border border-slate-800/80 text-[10px] tracking-tight flex items-center gap-1.5" title="Saldo BuzzerPanel">
-                  <Wallet className="w-3.5 h-3.5 text-slate-400" />
+                <div className="h-10 px-4 rounded-xl bg-slate-800 text-slate-300 dark:text-slate-400 font-extrabold border border-slate-800/80 text-xs tracking-tight flex items-center gap-2" title="Saldo BuzzerPanel">
+                  <Wallet className="w-4.5 h-4.5 text-slate-400 shrink-0" />
                   <span className="hidden lg:inline">BuzzerPanel:</span> <span>{formatPrice(parseInt(providerBalance))}</span>
                 </div>
               )}
               {medanpediaBalance !== null && (
-                <div className="bg-slate-800 text-slate-300 dark:text-slate-400 font-bold px-3 py-1.5 rounded-xl border border-slate-800/80 text-[10px] tracking-tight flex items-center gap-1.5" title="Saldo MedanPedia">
-                  <Wallet className="w-3.5 h-3.5 text-slate-400" />
+                <div className="h-10 px-4 rounded-xl bg-slate-800 text-slate-300 dark:text-slate-400 font-extrabold border border-slate-800/80 text-xs tracking-tight flex items-center gap-2" title="Saldo MedanPedia">
+                  <Wallet className="w-4.5 h-4.5 text-slate-400 shrink-0" />
                   <span className="hidden lg:inline">MedanPedia:</span> <span>{formatPrice(parseInt(medanpediaBalance))}</span>
                 </div>
               )}
@@ -2870,11 +2898,21 @@ export default function AdminDashboard() {
                                 </span>
                               )}
                               <span className="font-bold text-slate-200">{ann.title}</span>
+                              {ann.is_pinned && (
+                                <Pin className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0 transform rotate-45" />
+                              )}
                             </div>
                             <p className="text-slate-400 mt-1 font-light leading-relaxed">{ann.content}</p>
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handleTogglePinAnnouncement(ann)}
+                              className={`p-2 border rounded-xl cursor-pointer transition-all ${ann.is_pinned ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 'bg-slate-800/40 text-slate-450 border-slate-700/50 hover:bg-slate-800 hover:text-slate-200'}`}
+                              title={ann.is_pinned ? "Lepas Pin" : "Pin Info"}
+                            >
+                              <Pin className={`w-3.5 h-3.5 ${ann.is_pinned ? 'fill-amber-500' : ''}`} />
+                            </button>
                             <button
                               onClick={() => {
                                 setEditingAnnId(ann.id);
@@ -3193,6 +3231,127 @@ export default function AdminDashboard() {
                   <div className="py-12 text-center text-slate-400">Loading settings...</div>
                 ) : (
                   <form onSubmit={handleSaveLandingSettings} className="space-y-6">
+                    <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-900 space-y-4">
+                      <h4 className="font-bold text-sm text-indigo-500 dark:text-indigo-400 border-b border-slate-900 pb-2">Branding (Logo & Favicon)</h4>
+
+                      <div className="grid sm:grid-cols-3 gap-6">
+                        {/* Brand Title */}
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Nama Website / Brand</label>
+                          <input
+                            type="text"
+                            value={landingSettings.site_title || ''}
+                            onChange={(e) => setLandingSettings(prev => ({ ...prev, site_title: e.target.value }))}
+                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs font-semibold"
+                            placeholder="e.g. Buzzify"
+                          />
+                        </div>
+
+                        {/* Logo Upload / URL */}
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Logo Website</label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    setLandingSettings(prev => ({ ...prev, logo_url: reader.result as string }));
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="hidden"
+                              id="brand-logo-upload"
+                            />
+                            <label
+                              htmlFor="brand-logo-upload"
+                              className="bg-slate-950 border border-slate-800 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-xl cursor-pointer text-xs font-bold transition-all flex items-center gap-2 hover:text-white shrink-0"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Upload Logo</span>
+                            </label>
+                            {landingSettings.logo_url && (
+                              <button
+                                type="button"
+                                onClick={() => setLandingSettings(prev => ({ ...prev, logo_url: '' }))}
+                                className="text-xs text-rose-500 hover:text-rose-400 font-bold cursor-pointer"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            value={landingSettings.logo_url || ''}
+                            onChange={(e) => setLandingSettings(prev => ({ ...prev, logo_url: e.target.value }))}
+                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none text-[10px] font-mono"
+                            placeholder="Atau masukkan URL logo..."
+                          />
+                          {landingSettings.logo_url && (
+                            <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-950 border border-slate-805 flex items-center justify-center p-1 mt-2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={landingSettings.logo_url} alt="Preview Logo" className="w-full h-full object-contain" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Favicon Upload / URL */}
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Favicon Icon</label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    setLandingSettings(prev => ({ ...prev, favicon_url: reader.result as string }));
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="hidden"
+                              id="brand-favicon-upload"
+                            />
+                            <label
+                              htmlFor="brand-favicon-upload"
+                              className="bg-slate-950 border border-slate-800 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-xl cursor-pointer text-xs font-bold transition-all flex items-center gap-2 hover:text-white shrink-0"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Upload Favicon</span>
+                            </label>
+                            {landingSettings.favicon_url && (
+                              <button
+                                type="button"
+                                onClick={() => setLandingSettings(prev => ({ ...prev, favicon_url: '' }))}
+                                className="text-xs text-rose-500 hover:text-rose-400 font-bold cursor-pointer"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            value={landingSettings.favicon_url || ''}
+                            onChange={(e) => setLandingSettings(prev => ({ ...prev, favicon_url: e.target.value }))}
+                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none text-[10px] font-mono"
+                            placeholder="Atau masukkan URL favicon..."
+                          />
+                          {landingSettings.favicon_url && (
+                            <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-950 border border-slate-805 flex items-center justify-center p-1 mt-2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={landingSettings.favicon_url} alt="Preview Favicon" className="w-full h-full object-contain" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Hero Section settings */}
                     <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-900 space-y-4">

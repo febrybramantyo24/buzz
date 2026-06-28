@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     badge VARCHAR(50) DEFAULT 'INFO',
     image_url TEXT,
     is_active BOOLEAN DEFAULT TRUE,
+    is_pinned BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

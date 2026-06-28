@@ -5,15 +5,16 @@ import Link from 'next/link';
 import { dbClient as supabase } from '@/lib/db-client';
 import { Service } from '@/lib/types';
 import PremiumThemeToggle from '@/components/PremiumThemeToggle';
-import { 
-  Zap, 
-  ShieldCheck, 
-  Users, 
-  TrendingUp, 
-  Sparkles, 
-  ArrowRight, 
-  Clock, 
-  Layers, 
+import { useBrand } from '@/components/DynamicBrandProvider';
+import {
+  Zap,
+  ShieldCheck,
+  Users,
+  TrendingUp,
+  Sparkles,
+  ArrowRight,
+  Clock,
+  Layers,
   ChevronRight,
   ChevronDown,
   ChevronUp,
@@ -25,12 +26,21 @@ import {
 } from 'lucide-react';
 
 export default function LandingPage() {
+  const { logoUrl, brandName } = useBrand();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [showAllServices, setShowAllServices] = useState(false);
+  const [servicesPage, setServicesPage] = useState(1);
   const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null);
   const [settings, setSettings] = useState<Record<string, string>>({});
+  const [activeStep, setActiveStep] = useState(1);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveStep(prev => (prev === 3 ? 1 : prev + 1));
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     async function fetchServicesAndSettings() {
@@ -40,8 +50,9 @@ export default function LandingPage() {
           .from('services')
           .select('*')
           .eq('is_active', true);
-        
+
         if (servicesError) throw servicesError;
+        setServices(servicesData || []);
       } catch (err: any) {
         // eslint-disable-next-line no-console
         console.error('Error fetching services:', err?.message || err);
@@ -127,13 +138,19 @@ export default function LandingPage() {
     fetchServicesAndSettings();
   }, []);
 
+  useEffect(() => {
+    setServicesPage(1);
+  }, [selectedCategory]);
+
   const categories = ['All', ...Array.from(new Set(services.map(s => s.category)))];
 
   const filteredServices = selectedCategory === 'All'
     ? services
     : services.filter(s => s.category === selectedCategory);
 
-  const displayedServices = showAllServices ? filteredServices : filteredServices.slice(0, 6);
+  const servicesItemsPerPage = 10;
+  const totalPages = Math.ceil(filteredServices.length / servicesItemsPerPage);
+  const displayedServices = filteredServices.slice((servicesPage - 1) * servicesItemsPerPage, servicesPage * servicesItemsPerPage);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -183,11 +200,20 @@ export default function LandingPage() {
         <header className="backdrop-blur-md bg-slate-950/60 dark:bg-slate-950/65 border border-slate-900/60 rounded-2xl shadow-xl transition-all duration-300">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
-                <Zap className="w-5 h-5 text-white animate-pulse" />
+              <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20 w-9 h-9 flex items-center justify-center overflow-hidden">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-cover rounded-lg" />
+                ) : (
+                  <Zap className="w-5 h-5 text-white animate-pulse" />
+                )}
               </div>
               <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-250 to-indigo-400">
-                Buzz<span className="text-indigo-400">ify</span>
+                {brandName === 'Buzzify' ? (
+                  <>Buzz<span className="text-indigo-400">ify</span></>
+                ) : (
+                  brandName
+                )}
               </span>
             </div>
 
@@ -199,14 +225,14 @@ export default function LandingPage() {
 
             <div className="flex items-center gap-3">
               <PremiumThemeToggle />
-              <Link 
-                href="/login" 
+              <Link
+                href="/login"
                 className="text-xs sm:text-sm font-extrabold bg-white dark:bg-slate-900 hover:bg-zinc-55 dark:hover:bg-slate-800 border border-zinc-300 dark:border-slate-800 text-zinc-800 dark:text-slate-200 px-4 py-2 rounded-xl transition-all shadow-sm hover:-translate-y-0.5 active:scale-95 select-none"
               >
                 Masuk
               </Link>
-              <Link 
-                href="/login?tab=register" 
+              <Link
+                href="/login?tab=register"
                 className="hidden sm:inline-flex text-xs sm:text-sm font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-650 hover:to-purple-700 text-white px-4 py-2 rounded-xl transition-all shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0"
               >
                 Daftar Sekarang
@@ -216,84 +242,147 @@ export default function LandingPage() {
         </header>
       </div>
 
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:pt-28 md:pb-32 flex flex-col items-center text-center">
-        {settings.hero_badge && (
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-md text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-indigo-400 mb-8 animate-float shadow-lg shadow-indigo-500/5">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-            <span>{settings.hero_badge}</span>
-          </div>
-        )}
-        
-        {settings.hero_title && (
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight max-w-4xl leading-tight sm:leading-none animate-fade-in-up">
-            {renderRichText(settings.hero_title)}
-          </h1>
-        )}
-        
-        {settings.hero_subtitle && (
-          <p className="mt-6 text-lg sm:text-xl text-slate-400 max-w-2xl font-light leading-relaxed animate-fade-in-up animation-delay-100">
-            {settings.hero_subtitle}
-          </p>
-        )}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 md:pt-24 md:pb-32 grid lg:grid-cols-12 gap-12 items-center">
 
-        {(settings.hero_cta_text || settings.hero_cta_sub_text) && (
-          <div className="mt-10 flex flex-col sm:flex-row gap-5 sm:gap-4 justify-center w-full max-w-md animate-fade-in-up animation-delay-200">
-            {settings.hero_cta_text && (
-              <Link 
-                href="/login" 
-                className="shimmer-btn flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:-translate-y-1"
-              >
-                <span>{settings.hero_cta_text}</span>
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            )}
-            {settings.hero_cta_sub_text && (
-              <a 
-                href="#services" 
-                style={{ color: 'var(--color-slate-50)' }}
-                className="flex items-center justify-center bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800/80 border-2 border-zinc-300 dark:border-slate-800 hover:text-black dark:hover:text-white font-black px-8 py-4 rounded-2xl transition-all shadow-sm active:scale-[0.98] select-none"
-              >
-                {settings.hero_cta_sub_text}
-              </a>
-            )}
-          </div>
-        )}
-
-        {(() => {
-          const statsList = [
-            { key: 'stats_orders', value: settings.stats_orders, label: 'Pesanan Sukses', colorClass: 'text-slate-105' },
-            { key: 'stats_clients', value: settings.stats_clients, label: 'Pelanggan Aktif', colorClass: 'text-slate-105' },
-            { key: 'stats_success', value: settings.stats_success, label: 'Tingkat Keberhasilan', colorClass: 'text-indigo-400' },
-            { key: 'stats_speed', value: settings.stats_speed, label: 'Proses Cepat', colorClass: 'text-purple-400' }
-          ].filter(stat => !!stat.value);
-
-          if (statsList.length === 0) return null;
-
-          const gridColClasses = {
-            1: 'md:grid-cols-1',
-            2: 'md:grid-cols-2',
-            3: 'md:grid-cols-3',
-            4: 'md:grid-cols-4'
-          }[statsList.length as 1 | 2 | 3 | 4] || 'md:grid-cols-4';
-
-          const mobileGridClass = statsList.length === 1 ? 'grid-cols-1' : 'grid-cols-2';
-
-          return (
-            <div className={`mt-20 grid ${mobileGridClass} ${gridColClasses} gap-6 w-full max-w-4xl bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 p-8 rounded-3xl animate-fade-in-up animation-delay-300 premium-card-glow`}>
-              {statsList.map((stat, idx) => (
-                <div 
-                  key={stat.key} 
-                  className={`text-center border-slate-800 last:border-0 odd:border-r even:border-0 md:border-r md:last:border-0 ${
-                    idx === 2 && statsList.length === 3 ? 'col-span-2 md:col-span-1 !border-r-0 border-t border-slate-800/40 pt-4 md:border-t-0 md:pt-0' : ''
-                  }`}
-                >
-                  <div className={`text-3xl sm:text-4xl font-extrabold ${stat.colorClass}`}>{stat.value}</div>
-                  <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider">{stat.label}</div>
-                </div>
-              ))}
+        {/* Left side: Premium Call-to-Action Content */}
+        <div className="lg:col-span-7 flex flex-col items-start text-left">
+          {settings.hero_badge && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-md text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-indigo-400 mb-8 animate-float shadow-lg shadow-indigo-500/5">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+              <span>{settings.hero_badge}</span>
             </div>
-          );
-        })()}
+          )}
+
+          {settings.hero_title && (
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.1] sm:leading-none animate-fade-in-up">
+              {renderRichText(settings.hero_title)}
+            </h1>
+          )}
+
+          {settings.hero_subtitle && (
+            <p className="mt-6 text-lg sm:text-xl text-slate-400 max-w-2xl font-light leading-relaxed animate-fade-in-up animation-delay-100">
+              {settings.hero_subtitle}
+            </p>
+          )}
+
+          {(settings.hero_cta_text || settings.hero_cta_sub_text) && (
+            <div className="mt-10 flex flex-col sm:flex-row gap-4 w-full sm:w-auto animate-fade-in-up animation-delay-200">
+              {settings.hero_cta_text && (
+                <Link
+                  href="/login"
+                  className="shimmer-btn flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:-translate-y-1"
+                >
+                  <span>{settings.hero_cta_text}</span>
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+              )}
+              {settings.hero_cta_sub_text && (
+                <a
+                  href="#services"
+                  style={{ color: 'var(--color-slate-50)' }}
+                  className="flex items-center justify-center bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800/80 border-2 border-zinc-300 dark:border-slate-800 hover:text-black dark:hover:text-white font-black px-8 py-4 rounded-2xl transition-all shadow-sm active:scale-[0.98] select-none"
+                >
+                  {settings.hero_cta_sub_text}
+                </a>
+              )}
+            </div>
+          )}
+
+          {(() => {
+            const statsList = [
+              { key: 'stats_orders', value: settings.stats_orders, label: 'Pesanan Sukses', colorClass: 'text-slate-100' },
+              { key: 'stats_clients', value: settings.stats_clients, label: 'Pelanggan Aktif', colorClass: 'text-slate-100' },
+              { key: 'stats_success', value: settings.stats_success, label: 'Keberhasilan', colorClass: 'text-indigo-400' },
+              { key: 'stats_speed', value: settings.stats_speed, label: 'Proses Cepat', colorClass: 'text-purple-400' }
+            ].filter(stat => !!stat.value);
+
+            if (statsList.length === 0) return null;
+
+            return (
+              <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-6 w-full bg-slate-900/30 backdrop-blur-sm border border-slate-900/60 p-6 sm:p-8 rounded-3xl premium-card-glow">
+                {statsList.map((stat, idx) => (
+                  <div
+                    key={stat.key}
+                    className="text-left"
+                  >
+                    <div className={`text-2xl sm:text-3xl font-extrabold ${stat.colorClass}`}>{stat.value}</div>
+                    <div className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Right side: Modern Dribbble Mockups & SaaS Visualizations */}
+        <div className="lg:col-span-5 relative w-full h-[350px] sm:h-[400px] lg:h-[480px] flex items-center justify-center mt-12 lg:mt-0 select-none">
+          {/* Circular Glow Blobs */}
+          <div className="absolute w-72 h-72 rounded-full bg-indigo-500/10 dark:bg-indigo-500/15 blur-3xl -top-10 -right-10 pointer-events-none"></div>
+          <div className="absolute w-60 h-60 rounded-full bg-purple-500/10 dark:bg-purple-500/10 blur-3xl -bottom-10 -left-10 pointer-events-none"></div>
+
+          {/* Core Mockup Container */}
+          <div className="relative w-full max-w-sm sm:max-w-md h-full flex flex-col justify-center gap-4">
+
+            {/* Card 1: Active Order Status Tracker (Premium Glassmorphism) */}
+            <div className="absolute top-12 left-0 right-4 sm:right-8 z-20 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-4 rounded-2xl shadow-2xl hover:scale-[1.02] transition-transform duration-300">
+              <div className="flex items-center justify-between mb-3 border-b border-slate-850 pb-2">
+                <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">Live Order Booster</span>
+                <span className="flex items-center gap-1.5 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span>Processing</span>
+                </span>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-500">
+                      <Heart className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-extrabold text-slate-200">Instagram Followers</div>
+                      <div className="text-[10px] text-slate-500">@creative_digital</div>
+                    </div>
+                  </div>
+                  <span className="font-mono text-indigo-400 font-extrabold">84%</span>
+                </div>
+                <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 h-full rounded-full w-[84%]"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Interactive Statistics Growth Card */}
+            <div className="absolute bottom-16 right-0 left-8 sm:left-12 z-10 bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 p-5 rounded-3xl shadow-xl hover:scale-[1.02] transition-transform duration-300">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-300">Monthly Interaction</span>
+                </div>
+                <span className="text-[10px] font-bold text-slate-400">+148.2%</span>
+              </div>
+
+              {/* Micro bar chart visualization */}
+              <div className="flex items-end justify-between gap-2 h-16 pt-2">
+                <div className="w-full bg-slate-800/50 rounded-md h-[40%] hover:bg-indigo-500 transition-colors duration-200"></div>
+                <div className="w-full bg-slate-800/50 rounded-md h-[55%] hover:bg-indigo-500 transition-colors duration-200"></div>
+                <div className="w-full bg-slate-800/50 rounded-md h-[70%] hover:bg-indigo-500 transition-colors duration-200"></div>
+                <div className="w-full bg-slate-800/50 rounded-md h-[50%] hover:bg-indigo-500 transition-colors duration-200"></div>
+                <div className="w-full bg-slate-850 rounded-md h-[80%] bg-gradient-to-t from-indigo-600 to-purple-500"></div>
+                <div className="w-full bg-slate-800/50 rounded-md h-[60%] hover:bg-indigo-500 transition-colors duration-200"></div>
+                <div className="w-full bg-slate-800/50 rounded-md h-[95%] hover:bg-indigo-500 transition-colors duration-200"></div>
+              </div>
+            </div>
+
+            {/* Glowing platforms bubbles */}
+            <div className="absolute top-1/2 left-[38%] -translate-y-1/2 w-14 h-14 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center shadow-lg shadow-indigo-500/5 animate-bounce-slow">
+              <Zap className="w-6 h-6 text-indigo-400" />
+            </div>
+
+          </div>
+        </div>
+
       </section>
 
       {/* Features Section */}
@@ -310,62 +399,89 @@ export default function LandingPage() {
             <p className="text-slate-400 mt-4 text-base sm:text-lg font-light leading-relaxed">Kami mengutamakan kualitas, kecepatan, keamanan, dan kepuasan Anda dalam setiap transaksi.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="premium-card-glow bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-indigo-500/30">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 mb-6 shadow-inner">
-                <Clock className="w-6 h-6" />
+          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+            {/* Bento Card 1: Large (Processes) */}
+            <div className="md:col-span-2 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-indigo-500/30 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3 text-slate-100 group-hover:text-indigo-400 transition-colors">Proses Serba Otomatis</h3>
+                <p className="text-slate-400 text-sm font-light leading-relaxed max-w-lg">
+                  Pesanan Anda diproses langsung dalam hitungan detik setelah transaksi diverifikasi secara otomatis oleh sistem kecerdasan terintegrasi kami. Tanpa delay, tanpa manual.
+                </p>
               </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-100">Proses Cepat</h3>
-              <p className="text-slate-400 text-sm font-light leading-relaxed">
-                Pesanan Anda akan diproses secara cepat atau dalam hitungan menit secara otomatis setelah pembayaran sukses diterima.
-              </p>
+              <div className="mt-8 pt-6 border-t border-slate-900/60 flex items-center gap-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Average Dispatch Time: &lt; 2 Minutes</span>
+              </div>
             </div>
 
-            {/* Feature 2 */}
-            <div className="premium-card-glow bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-purple-500/30">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-purple-400 mb-6 shadow-inner">
-                <ShieldCheck className="w-6 h-6" />
+            {/* Bento Card 2: Small (Security) */}
+            <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-purple-500/30 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-purple-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-purple-400 transition-colors">Aman & Rahasia</h3>
+                <p className="text-slate-400 text-xs font-light leading-relaxed">
+                  Keamanan privasi Anda prioritas utama. Kami sama sekali tidak memerlukan kata sandi akun sosial media Anda. Hanya username / URL target saja!
+                </p>
               </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-100">100% Aman</h3>
-              <p className="text-slate-400 text-sm font-light leading-relaxed">
-                Kami tidak membutuhkan password akun media sosial Anda. Cukup masukkan URL target atau username profil Anda saja.
-              </p>
             </div>
 
-            {/* Feature 3 */}
-            <div className="premium-card-glow bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-emerald-500/30">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 mb-6 shadow-inner">
-                <Users className="w-6 h-6" />
+            {/* Bento Card 3: Small (Quality) */}
+            <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-emerald-500/30 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-emerald-400 transition-colors">Buzzer Berkualitas</h3>
+                <p className="text-slate-400 text-xs font-light leading-relaxed">
+                  Kami menyediakan optimasi promosi menggunakan jaringan buzzer dengan tingkat kestabilan tinggi untuk menjaga kualitas promosi jangka panjang.
+                </p>
               </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-100">Layanan Berkualitas</h3>
-              <p className="text-slate-400 text-sm font-light leading-relaxed">
-                Kami menyediakan buzzer real dan permanent dengan tingkat drop rate sangat rendah demi kepuasan promosi Anda.
-              </p>
             </div>
+
+            {/* Bento Card 4: Large (Interface) */}
+            <div className="md:col-span-2 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-pink-500/30 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/25 flex items-center justify-center text-pink-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                  <Layers className="w-6 h-6" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3 text-slate-100 group-hover:text-pink-400 transition-colors">Interaksi Transparan</h3>
+                <p className="text-slate-400 text-sm font-light leading-relaxed max-w-lg">
+                  Semua kemajuan kampanye buzzer terintegrasi langsung ke halaman dashboard Anda secara interaktif. Riwayat lengkap dan status dapat dikontrol kapan saja secara real-time.
+                </p>
+              </div>
+              <div className="mt-8 pt-6 border-t border-slate-900/60 flex items-center gap-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
+                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">All-in-One Dashboard Monitor</span>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
       {/* Services List Section */}
       <section id="services" className="py-20 border-t border-slate-900 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div className="flex flex-col mb-8 gap-6">
           <div>
             <h2 className="text-3xl font-bold">Daftar Layanan Kami</h2>
             <p className="text-slate-400 mt-2 font-light">Kami menawarkan harga buzzer media sosial terbaik yang sangat bersaing.</p>
           </div>
 
-          {/* Categories Tab */}
-          <div className="flex flex-wrap gap-2">
+          {/* Categories Tab - Scrollable without scrollbar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 w-full scrollbar-none whitespace-nowrap flex-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                  selectedCategory === cat
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex-shrink-0 cursor-pointer ${selectedCategory === cat
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
-                }`}
+                  }`}
               >
                 {cat}
               </button>
@@ -433,8 +549,8 @@ export default function LandingPage() {
                 {displayedServices.map(service => {
                   const isExpanded = expandedServiceId === service.id;
                   return (
-                    <div 
-                      key={service.id} 
+                    <div
+                      key={service.id}
                       onClick={() => setExpandedServiceId(isExpanded ? null : service.id)}
                       className="p-5 space-y-4 shadow-sm cursor-pointer transition-all duration-200 hover:bg-zinc-50/50 dark:hover:bg-slate-900/30"
                     >
@@ -455,7 +571,7 @@ export default function LandingPage() {
                           })()}
                           <span className="text-xs font-extrabold text-slate-100 dark:text-slate-200">{service.category}</span>
                         </div>
-                        
+
                         <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 dark:bg-indigo-500/10 px-2.5 py-1 rounded-xl border border-indigo-500/15">
                           {formatPrice(service.price_per_k)} / 1K
                         </span>
@@ -491,15 +607,25 @@ export default function LandingPage() {
                 })}
               </div>
 
-              {/* Tampilkan Lebih Banyak Toggler */}
-              {filteredServices.length > 6 && (
-                <div className="p-4 border-t border-slate-850 dark:border-slate-850/60 bg-slate-900/10 dark:bg-slate-950/20 flex justify-center">
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="p-4 border-t border-zinc-200 dark:border-slate-850/60 bg-zinc-50/50 dark:bg-slate-950/20 flex justify-between items-center text-xs px-6">
                   <button
-                    onClick={() => setShowAllServices(!showAllServices)}
-                    className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold transition-all active:scale-95 shadow-md shadow-indigo-600/15 cursor-pointer"
+                    type="button"
+                    disabled={servicesPage === 1}
+                    onClick={() => setServicesPage(prev => Math.max(1, prev - 1))}
+                    className="px-4 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 text-zinc-750 dark:text-slate-300 font-bold transition-all cursor-pointer border border-zinc-200 dark:border-slate-700"
                   >
-                    <span>{showAllServices ? 'Tampilkan Lebih Sedikit' : `Tampilkan Lebih Banyak (${filteredServices.length - 6}+)`}</span>
-                    {showAllServices ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    &larr; Prev
+                  </button>
+                  <span className="text-zinc-600 dark:text-slate-400 font-semibold">Halaman {servicesPage} dari {totalPages}</span>
+                  <button
+                    type="button"
+                    disabled={servicesPage >= totalPages}
+                    onClick={() => setServicesPage(prev => Math.min(totalPages, prev + 1))}
+                    className="px-4 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 text-zinc-750 dark:text-slate-300 font-bold transition-all cursor-pointer border border-zinc-200 dark:border-slate-700"
+                  >
+                    Next &rarr;
                   </button>
                 </div>
               )}
@@ -527,50 +653,137 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 lg:gap-12 relative">
-            {/* Connecting Line (Desktop) */}
-            <div className="hidden md:block absolute top-[60px] left-[15%] right-[15%] h-[1px] bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 -z-10"></div>
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
-            {/* Step 1 */}
-            <div className="premium-card-glow group relative z-10 bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-indigo-500/20">
-              <div className="absolute top-6 right-6 text-7xl font-black text-slate-900/40 select-none font-mono group-hover:text-indigo-500/10 transition-colors">
-                01
-              </div>
-              <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 mb-8 shadow-inner group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
-                <Users className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-indigo-300 transition-colors">Daftar Akun</h3>
-              <p className="text-slate-400 font-light leading-relaxed text-sm">
-                Lengkapi formulir pendaftaran dengan Nama, Username, Email, dan nomor WhatsApp aktif Anda untuk langsung mengakses dasbor utama.
-              </p>
+            {/* Left side: Interactive Steps Trigger List */}
+            <div className="lg:col-span-6 space-y-4">
+              {[
+                {
+                  step: 1,
+                  title: "Daftar Akun",
+                  desc: "Lengkapi formulir pendaftaran dengan Nama, Username, Email, dan nomor WhatsApp aktif Anda untuk langsung mengakses dasbor utama.",
+                  icon: <Users className="w-5 h-5" />,
+                  glowColor: "group-hover:border-indigo-500/30"
+                },
+                {
+                  step: 2,
+                  title: "Top Up Saldo",
+                  desc: "Isi saldo akun Anda melalui deposit cepat otomatis menggunakan QRIS, e-wallet, atau transfer bank. Saldo akan langsung bertambah dalam hitungan detik.",
+                  icon: <Wallet className="w-5 h-5" />,
+                  glowColor: "group-hover:border-purple-500/30"
+                },
+                {
+                  step: 3,
+                  title: "Pilih Layanan & Order",
+                  desc: "Gunakan saldo Anda untuk memesan layanan media sosial yang diinginkan. Sistem cerdas kami akan langsung memproses pesanan Anda secara otomatis dan cepat!",
+                  icon: <Zap className="w-5 h-5" />,
+                  glowColor: "group-hover:border-pink-500/30"
+                }
+              ].map((s) => {
+                const isActive = activeStep === s.step;
+                return (
+                  <div
+                    key={s.step}
+                    onClick={() => setActiveStep(s.step)}
+                    className={`group relative z-10 flex gap-4 p-6 rounded-3xl border transition-all duration-300 cursor-pointer text-left ${isActive
+                        ? "bg-slate-900/60 dark:bg-slate-900/50 border-indigo-500/40 shadow-xl shadow-indigo-500/5"
+                        : "bg-slate-900/10 border-slate-900/80 hover:bg-slate-900/20 hover:border-slate-800"
+                      }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isActive
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-105"
+                        : "bg-slate-950 text-slate-400 group-hover:text-slate-200"
+                      }`}>
+                      {s.icon}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className={`font-bold text-base transition-colors ${isActive ? "text-slate-100" : "text-slate-350"}`}>
+                          {s.title}
+                        </h3>
+                        <span className={`text-xs font-mono font-black ${isActive ? "text-indigo-400" : "text-slate-600"}`}>
+                          0{s.step}
+                        </span>
+                      </div>
+                      <p className={`text-xs mt-2 leading-relaxed font-light transition-colors ${isActive ? "text-slate-350" : "text-slate-500"}`}>
+                        {s.desc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Step 2 */}
-            <div className="premium-card-glow group relative z-10 bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-purple-500/20">
-              <div className="absolute top-6 right-6 text-7xl font-black text-slate-900/40 select-none font-mono group-hover:text-purple-500/10 transition-colors">
-                02
-              </div>
-              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-purple-400 mb-8 shadow-inner group-hover:bg-purple-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
-                <Wallet className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-purple-300 transition-colors">Top Up Saldo</h3>
-              <p className="text-slate-400 font-light leading-relaxed text-sm">
-                Isi saldo akun Anda melalui deposit cepat otomatis menggunakan QRIS, e-wallet, atau transfer bank. Saldo akan langsung bertambah dalam hitungan detik.
-              </p>
-            </div>
+            {/* Right side: Modern Dynamic Preview Area */}
+            <div className="lg:col-span-6 bg-slate-900/20 backdrop-blur-xl border border-slate-900/85 p-6 sm:p-8 rounded-[36px] min-h-[340px] flex items-center justify-center relative overflow-hidden transition-all duration-500 premium-card-glow h-full">
+              {/* Dynamic screen changes depending on activeStep */}
 
-            {/* Step 3 */}
-            <div className="premium-card-glow group relative z-10 bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-pink-500/20">
-              <div className="absolute top-6 right-6 text-7xl font-black text-slate-900/40 select-none font-mono group-hover:text-pink-500/10 transition-colors">
-                03
+              {/* Step 1 Preview Screen */}
+              <div className={`w-full max-w-sm space-y-4 transition-all duration-500 ${activeStep === 1 ? "opacity-100 translate-y-0 relative z-10" : "opacity-0 translate-y-4 absolute pointer-events-none"}`}>
+                <div className="bg-slate-950/85 border border-slate-850 p-4 rounded-2xl shadow-xl space-y-3">
+                  <div className="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">Buzzify Registration</div>
+                  <div className="space-y-2">
+                    <div className="h-8 bg-slate-900 border border-slate-800 rounded-lg flex items-center px-3 text-[11px] text-slate-300 font-semibold">User: rizki</div>
+                    <div className="h-8 bg-slate-900 border border-slate-800 rounded-lg flex items-center px-3 text-[11px] text-slate-300 font-semibold">Email: rizki@domain.com</div>
+                    <div className="h-8 bg-slate-900 border border-slate-800 rounded-lg flex items-center px-3 text-[11px] text-slate-300 font-semibold">WhatsApp: +62 812-3456-XXXX</div>
+                  </div>
+                  <div className="h-9 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg flex items-center justify-center text-xs font-bold shadow-lg shadow-indigo-600/20">
+                    Registering...
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-emerald-400 font-bold bg-emerald-500/10 py-2 rounded-xl border border-emerald-500/15 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>Registrasi Berhasil! Akses Terbuka.</span>
+                </div>
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-pink-500/10 border border-pink-500/25 flex items-center justify-center text-pink-400 mb-8 shadow-inner group-hover:bg-pink-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
-                <Zap className="w-7 h-7" />
+
+              {/* Step 2 Preview Screen */}
+              <div className={`w-full max-w-xs space-y-4 transition-all duration-500 ${activeStep === 2 ? "opacity-100 translate-y-0 relative z-10" : "opacity-0 translate-y-4 absolute pointer-events-none"}`}>
+                <div className="bg-slate-950/85 border border-slate-850 p-5 rounded-2xl shadow-xl text-center space-y-4">
+                  <div className="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Quick QRIS Deposit</div>
+                  <div className="mx-auto w-32 h-32 bg-white p-2.5 rounded-xl border border-slate-850 flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-transparent animate-scan h-full"></div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BuzzifyQRISDemo" alt="QRIS Demo" className="w-full h-full opacity-90" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[10px] text-slate-500 font-semibold">Virtual Account / QRIS</div>
+                    <div className="text-sm font-bold text-slate-200">Amount: Rp 100.000</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-indigo-400 font-bold bg-indigo-500/10 py-2 rounded-xl border border-indigo-500/15 animate-bounce">
+                  <span>Balance Update: +Rp 100.000</span>
+                </div>
               </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-pink-300 transition-colors">Pilih Layanan & Order</h3>
-              <p className="text-slate-400 font-light leading-relaxed text-sm">
-                Gunakan saldo Anda untuk memesan layanan media sosial yang diinginkan. Sistem cerdas kami akan langsung memproses pesanan Anda secara otomatis dan cepat!
-              </p>
+
+              {/* Step 3 Preview Screen */}
+              <div className={`w-full max-w-sm space-y-4 transition-all duration-500 ${activeStep === 3 ? "opacity-100 translate-y-0 relative z-10" : "opacity-0 translate-y-4 absolute pointer-events-none"}`}>
+                <div className="bg-slate-950/85 border border-slate-850 p-4 rounded-2xl shadow-xl space-y-3">
+                  <div className="text-[10px] uppercase font-bold text-pink-400 tracking-wider">Instant Order Form</div>
+                  <div className="space-y-2">
+                    <div className="h-8 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between px-3 text-[10px] text-slate-400 font-semibold">
+                      <span>Service Category</span>
+                      <span className="text-slate-200 font-bold">TikTok Followers</span>
+                    </div>
+                    <div className="h-8 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between px-3 text-[10px] text-slate-400 font-semibold">
+                      <span>Target Profile URL</span>
+                      <span className="text-slate-200 font-bold">tiktok.com/@creative_mind</span>
+                    </div>
+                    <div className="h-8 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between px-3 text-[10px] text-slate-400 font-semibold">
+                      <span>Order Quantity</span>
+                      <span className="text-slate-200 font-bold">1,000</span>
+                    </div>
+                  </div>
+                  <div className="h-9 bg-gradient-to-r from-pink-500 to-indigo-500 text-white rounded-lg flex items-center justify-center text-xs font-bold shadow-lg shadow-pink-600/20">
+                    Confirm Order
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-indigo-400 font-bold bg-indigo-500/10 py-2 rounded-xl border border-indigo-500/15">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping"></span>
+                  <span>Order #9201 Diproses Otomatis!</span>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -579,7 +792,7 @@ export default function LandingPage() {
       {/* CTA Footer */}
       <section className="py-24 border-t border-slate-900 relative overflow-hidden bg-slate-950/40">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-[0.06] dark:opacity-[0.1] blur-[150px] bg-indigo-500 rounded-full animate-pulse-glow"></div>
-        
+
         <div className="max-w-5xl mx-auto px-4 relative z-10">
           <div className="bg-slate-900/35 backdrop-blur-xl border border-slate-900 p-12 sm:p-16 rounded-[40px] text-center relative overflow-hidden shadow-2xl">
             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 via-purple-500/5 to-transparent pointer-events-none"></div>
@@ -588,8 +801,8 @@ export default function LandingPage() {
               Daftar akun gratis sekarang dan nikmati layanan order otomatis 24/7 proses cepat.
             </p>
             <div className="mt-10 flex justify-center">
-              <Link 
-                href="/login?tab=register" 
+              <Link
+                href="/login?tab=register"
                 className="shimmer-btn inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-600/20 hover:shadow-indigo-600/35 hover:-translate-y-1"
               >
                 <span>Daftar Sekarang</span>
@@ -603,7 +816,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 py-8 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>&copy; {new Date().getFullYear()} Buzzify. All Rights Reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {brandName}. All Rights Reserved.</p>
           <div className="flex gap-4">
             <Link href="/syarat-ketentuan" className="hover:text-indigo-400 transition-colors">
               Syarat & Ketentuan

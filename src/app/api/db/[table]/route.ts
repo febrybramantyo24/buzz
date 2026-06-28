@@ -87,6 +87,8 @@ export async function GET(
       const cleanOrderCol = orderCol.replace(/[^a-zA-Z0-9_]/g, '');
       const cleanDir = orderDir.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
       sql += ` ORDER BY ${cleanOrderCol} ${cleanDir}`;
+    } else if (table === 'announcements') {
+      sql += ` ORDER BY is_pinned DESC, created_at DESC`;
     }
 
     if (single || maybeSingle) {

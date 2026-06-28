@@ -43,6 +43,7 @@ export async function GET(request: Request) {
       await query("ALTER TABLE services ADD COLUMN IF NOT EXISTS is_recommended BOOLEAN DEFAULT FALSE;");
       await query("ALTER TABLE services ADD COLUMN IF NOT EXISTS average_duration VARCHAR(255) DEFAULT '15 Menit';");
       await query("ALTER TABLE announcements ADD COLUMN IF NOT EXISTS image_url TEXT;");
+      await query("ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;");
       await query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS description TEXT;");
     } catch (e) {
       console.error('Migration failed:', e);

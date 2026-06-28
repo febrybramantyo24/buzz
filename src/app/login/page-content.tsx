@@ -22,10 +22,12 @@ import {
 } from 'lucide-react';
 
 import PremiumThemeToggle from '@/components/PremiumThemeToggle';
+import { useBrand } from '@/components/DynamicBrandProvider';
 
 export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { logoUrl, brandName } = useBrand();
   
   const [isRegister, setIsRegister] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -92,6 +94,20 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
       setIsResetPassword(false);
     }
   }, [searchParams, isAdminFlow]);
+
+  // Clear inputs when switching between login and register tabs
+  useEffect(() => {
+    setEmail('');
+    setUsername('');
+    setFullName('');
+    setWhatsapp('');
+    setPassword('');
+    setConfirmPassword('');
+    setAgreeTerms(false);
+    setShowPassword(false);
+    setResetEmail('');
+    setMessage(null);
+  }, [isRegister]);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -307,7 +323,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
   if (isResetPassword) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-indigo-500 selection:text-white">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-full"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full"></div>
         
         <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 animate-fade-in">
           <div className="text-center mb-8">
@@ -381,7 +397,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
   if (isForgotPassword) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-indigo-500 selection:text-white">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-full"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full"></div>
         
         <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 animate-fade-in">
           <button 
@@ -449,18 +465,27 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
       </div>
       
       {/* Background radial highlight */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-full"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full"></div>
 
       <div className={`w-full ${isRegister ? 'max-w-xl' : 'max-w-md'} bg-slate-900/90 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 transition-all duration-300`}>
         
         {/* Logo / Header */}
         <div className="flex flex-col items-center mb-8">
           <Link href="/" className="flex items-center gap-2 mb-4 group">
-            <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2.5 rounded-xl group-hover:scale-105 transition-transform">
-              <Zap className="w-5 h-5 text-white" />
+            <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2 rounded-xl group-hover:scale-105 transition-transform w-10 h-10 flex items-center justify-center overflow-hidden">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-cover rounded-lg" />
+              ) : (
+                <Zap className="w-5 h-5 text-white" />
+              )}
             </div>
-            <span className="font-extrabold text-xl tracking-tight">
-              Buzz<span className="text-indigo-400">ify</span>
+            <span className="font-extrabold text-xl tracking-tight text-slate-100">
+              {brandName === 'Buzzify' ? (
+                <>Buzz<span className="text-indigo-400">ify</span></>
+              ) : (
+                brandName
+              )}
             </span>
           </Link>
           <h2 className="text-2xl font-bold text-center">
@@ -644,6 +669,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Masukkan username atau email"
+                    autoComplete="off"
                     className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-100 pl-12 pr-4 py-3.5 rounded-2xl outline-none transition-colors text-sm"
                   />
                 </div>
@@ -671,6 +697,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-100 pl-12 pr-12 py-3.5 rounded-2xl outline-none transition-colors text-sm"
                   />
                   <button
@@ -693,10 +720,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <>
-                <span>{isRegister ? 'Daftar Akun' : 'Masuk'}</span>
-                <Sparkles className="w-4 h-4" />
-              </>
+              <span>{isRegister ? 'Daftar Akun' : 'Masuk'}</span>
             )}
           </button>
         </form>
