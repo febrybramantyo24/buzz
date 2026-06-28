@@ -1561,9 +1561,10 @@ export default function UserDashboard() {
       <div className="flex min-h-screen">
         
         {/* Left Sidebar */}
-        <aside className={`fixed md:sticky top-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-hidden ${
+        <aside className={`fixed md:sticky top-0 z-50 w-68 h-screen self-start bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-hidden ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}>
+
           <div className="space-y-6 flex-1 overflow-y-auto scrollbar-thin pr-1">
             {/* Logo/Brand */}
             <div className="flex items-center gap-2.5 px-2">
