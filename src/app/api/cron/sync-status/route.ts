@@ -11,10 +11,10 @@ export async function GET(request: Request) {
        SET status = 'failed' 
        WHERE type = 'topup' 
          AND status = 'pending' 
-         AND created_at < NOW() - INTERVAL '24 hours'`
+         AND created_at < NOW() - INTERVAL '2 hours'`
     );
     if (expireRes.rowCount && expireRes.rowCount > 0) {
-      console.log(`Expired ${expireRes.rowCount} pending topup transactions (24 hours limit reached).`);
+      console.log(`Expired ${expireRes.rowCount} pending topup transactions (2 hours limit reached).`);
     }
 
     // 1. Fetch active orders connected to any SMM provider

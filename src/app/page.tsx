@@ -42,8 +42,8 @@ export default function LandingPage() {
           .eq('is_active', true);
         
         if (servicesError) throw servicesError;
-        setServices(servicesData || []);
       } catch (err: any) {
+        // eslint-disable-next-line no-console
         console.error('Error fetching services:', err?.message || err);
         // Add some mock services in case database tables are not yet created
         setServices([

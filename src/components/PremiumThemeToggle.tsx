@@ -36,24 +36,24 @@ export default function PremiumThemeToggle() {
   };
 
   if (!mounted) {
-    return <div className="w-10 h-10 rounded-xl bg-slate-900/60 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800" />;
+    return <div className="w-[30px] h-[30px] rounded-xl bg-slate-900/60 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800" />;
   }
 
   return (
     <button
       onClick={toggleTheme}
-      className="relative group p-2.5 rounded-xl bg-slate-900/60 dark:bg-slate-950/60 hover:bg-slate-850 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 backdrop-blur-xl shadow-sm hover:shadow-indigo-500/10 cursor-pointer overflow-hidden transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center"
+      className="relative group p-1.5 rounded-xl bg-slate-900/60 dark:bg-slate-950/60 hover:bg-slate-850 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 backdrop-blur-xl shadow-sm hover:shadow-indigo-500/10 cursor-pointer overflow-hidden transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center"
       aria-label="Toggle Theme"
     >
       {/* Glow effect */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-indigo-500/15 to-purple-500/15 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
 
       {/* Icons */}
-      <div className="relative w-5 h-5 flex items-center justify-center">
+      <div className="relative w-3.5 h-3.5 flex items-center justify-center">
         {theme === 'dark' ? (
-          <Sun className="w-4.5 h-4.5 text-amber-400 rotate-0 scale-100 transition-all duration-500 ease-out" />
+          <Sun className="w-3.5 h-3.5 text-amber-400 rotate-0 scale-100 transition-all duration-500 ease-out" />
         ) : (
-          <Moon className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400 -rotate-90 scale-100 transition-all duration-500 ease-out" />
+          <Moon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 -rotate-90 scale-100 transition-all duration-500 ease-out" />
         )}
       </div>
     </button>
