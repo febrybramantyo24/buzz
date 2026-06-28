@@ -15,6 +15,8 @@ import {
   Clock, 
   Layers, 
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Activity,
   Heart,
   Eye,
@@ -26,6 +28,8 @@ export default function LandingPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [showAllServices, setShowAllServices] = useState(false);
+  const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null);
   const [settings, setSettings] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -129,6 +133,8 @@ export default function LandingPage() {
     ? services
     : services.filter(s => s.category === selectedCategory);
 
+  const displayedServices = showAllServices ? filteredServices : filteredServices.slice(0, 6);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -192,13 +198,13 @@ export default function LandingPage() {
             <PremiumThemeToggle />
             <Link 
               href="/login" 
-              className="text-sm font-semibold hover:text-slate-100 transition-colors text-slate-300 px-4 py-2"
+              className="text-xs sm:text-sm font-extrabold bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 border border-zinc-300 dark:border-slate-800 text-zinc-800 dark:text-slate-200 px-4 py-2 rounded-xl transition-all shadow-sm hover:-translate-y-0.5 active:scale-95 select-none"
             >
               Masuk
             </Link>
             <Link 
               href="/login?tab=register" 
-              className="text-sm font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
+              className="hidden sm:inline-flex text-sm font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
             >
               Daftar Sekarang
             </Link>
@@ -227,11 +233,11 @@ export default function LandingPage() {
         )}
 
         {(settings.hero_cta_text || settings.hero_cta_sub_text) && (
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center w-full max-w-md animate-fade-in-up animation-delay-200">
+          <div className="mt-10 flex flex-col sm:flex-row gap-5 sm:gap-4 justify-center w-full max-w-md animate-fade-in-up animation-delay-200">
             {settings.hero_cta_text && (
               <Link 
                 href="/login" 
-                className="shimmer-btn flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:-translate-y-1"
+                className="shimmer-btn flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:-translate-y-1"
               >
                 <span>{settings.hero_cta_text}</span>
                 <ArrowRight className="w-5 h-5" />
@@ -240,7 +246,8 @@ export default function LandingPage() {
             {settings.hero_cta_sub_text && (
               <a 
                 href="#services" 
-                className="flex items-center justify-center bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-semibold px-8 py-4 rounded-2xl transition-all"
+                style={{ color: 'var(--color-slate-50)' }}
+                className="flex items-center justify-center bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800/80 border-2 border-zinc-300 dark:border-slate-800 hover:text-black dark:hover:text-white font-black px-8 py-4 rounded-2xl transition-all shadow-sm active:scale-[0.98] select-none"
               >
                 {settings.hero_cta_sub_text}
               </a>
@@ -250,8 +257,8 @@ export default function LandingPage() {
 
         {(() => {
           const statsList = [
-            { key: 'stats_orders', value: settings.stats_orders, label: 'Pesanan Sukses', colorClass: 'text-slate-100' },
-            { key: 'stats_clients', value: settings.stats_clients, label: 'Pelanggan Aktif', colorClass: 'text-slate-100' },
+            { key: 'stats_orders', value: settings.stats_orders, label: 'Pesanan Sukses', colorClass: 'text-slate-105' },
+            { key: 'stats_clients', value: settings.stats_clients, label: 'Pelanggan Aktif', colorClass: 'text-slate-105' },
             { key: 'stats_success', value: settings.stats_success, label: 'Tingkat Keberhasilan', colorClass: 'text-indigo-400' },
             { key: 'stats_speed', value: settings.stats_speed, label: 'Proses Cepat', colorClass: 'text-purple-400' }
           ].filter(stat => !!stat.value);
@@ -265,10 +272,17 @@ export default function LandingPage() {
             4: 'md:grid-cols-4'
           }[statsList.length as 1 | 2 | 3 | 4] || 'md:grid-cols-4';
 
+          const mobileGridClass = statsList.length === 1 ? 'grid-cols-1' : 'grid-cols-2';
+
           return (
-            <div className={`mt-20 grid grid-cols-2 ${gridColClasses} gap-6 w-full max-w-4xl bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 p-8 rounded-3xl animate-fade-in-up animation-delay-300 premium-card-glow`}>
-              {statsList.map((stat) => (
-                <div key={stat.key} className="text-center border-slate-800 last:border-0 odd:border-r even:border-0 md:border-r md:last:border-0">
+            <div className={`mt-20 grid ${mobileGridClass} ${gridColClasses} gap-6 w-full max-w-4xl bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 p-8 rounded-3xl animate-fade-in-up animation-delay-300 premium-card-glow`}>
+              {statsList.map((stat, idx) => (
+                <div 
+                  key={stat.key} 
+                  className={`text-center border-slate-800 last:border-0 odd:border-r even:border-0 md:border-r md:last:border-0 ${
+                    idx === 2 && statsList.length === 3 ? 'col-span-2 md:col-span-1 !border-r-0 border-t border-slate-800/40 pt-4 md:border-t-0 md:pt-0' : ''
+                  }`}
+                >
                   <div className={`text-3xl sm:text-4xl font-extrabold ${stat.colorClass}`}>{stat.value}</div>
                   <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider">{stat.label}</div>
                 </div>
@@ -356,27 +370,72 @@ export default function LandingPage() {
           ) : filteredServices.length === 0 ? (
             <div className="py-20 text-center text-slate-400">Belum ada layanan tersedia.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-850 bg-slate-900/50 text-slate-300 text-sm font-medium">
-                    <th className="py-5 px-6">Kategori</th>
-                    <th className="py-5 px-6">Nama Layanan</th>
-                    <th className="py-5 px-6">Harga / 1K</th>
-                    <th className="py-5 px-6">Min Order</th>
-                    <th className="py-5 px-6">Max Order</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850/60 text-sm">
-                  {filteredServices.map(service => (
-                    <tr key={service.id} className="hover:bg-slate-900/40 transition-colors">
-                      <td className="py-4 px-6 font-medium text-slate-200">
-                        <div className="flex items-center gap-2.5">
+            <>
+              {/* Desktop View: Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-850 bg-slate-900/50 text-slate-300 text-sm font-medium">
+                      <th className="py-5 px-6">Kategori</th>
+                      <th className="py-5 px-6">Nama Layanan</th>
+                      <th className="py-5 px-6">Harga / 1K</th>
+                      <th className="py-5 px-6">Min Order</th>
+                      <th className="py-5 px-6">Max Order</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850/60 text-sm">
+                    {displayedServices.map(service => (
+                      <tr key={service.id} className="hover:bg-slate-900/40 transition-colors">
+                        <td className="py-4 px-6 font-medium text-slate-200">
+                          <div className="flex items-center gap-2.5">
+                            {(() => {
+                              const categoryIcon = services.find(s => s.category === service.category && s.icon_url)?.icon_url;
+                              if (categoryIcon) {
+                                return (
+                                  <div className="w-6 h-6 rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={categoryIcon} alt="icon" className="w-full h-full object-cover" />
+                                  </div>
+                                );
+                              }
+                              return getCategoryIcon(service.category);
+                            })()}
+                            {service.category}
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-slate-300">
+                          <div className="font-medium text-slate-200">{service.name}</div>
+                          {service.description && (
+                            <div className="text-xs text-slate-500 mt-1 font-light leading-relaxed max-w-sm">{service.description}</div>
+                          )}
+                        </td>
+                        <td className="py-4 px-6 text-indigo-400 font-bold">{formatPrice(service.price_per_k)}</td>
+                        <td className="py-4 px-6 text-slate-400">{service.min_order.toLocaleString()}</td>
+                        <td className="py-4 px-6 text-slate-400">{service.max_order.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View: Service Cards */}
+              <div key={selectedCategory} className="block md:hidden divide-y divide-zinc-200 dark:divide-slate-800 bg-white dark:bg-slate-900/40 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+                {displayedServices.map(service => {
+                  const isExpanded = expandedServiceId === service.id;
+                  return (
+                    <div 
+                      key={service.id} 
+                      onClick={() => setExpandedServiceId(isExpanded ? null : service.id)}
+                      className="p-5 space-y-4 shadow-sm cursor-pointer transition-all duration-200 hover:bg-zinc-50/50 dark:hover:bg-slate-900/30"
+                    >
+                      {/* Header: Category Icon & Price */}
+                      <div className="flex justify-between items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
                           {(() => {
                             const categoryIcon = services.find(s => s.category === service.category && s.icon_url)?.icon_url;
                             if (categoryIcon) {
                               return (
-                                <div className="w-6 h-6 rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+                                <div className="w-5 h-5 rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={categoryIcon} alt="icon" className="w-full h-full object-cover" />
                                 </div>
@@ -384,23 +443,57 @@ export default function LandingPage() {
                             }
                             return getCategoryIcon(service.category);
                           })()}
-                          {service.category}
+                          <span className="text-xs font-extrabold text-slate-100 dark:text-slate-200">{service.category}</span>
                         </div>
-                      </td>
-                      <td className="py-4 px-6 text-slate-300">
-                        <div className="font-medium text-slate-200">{service.name}</div>
-                        {service.description && (
-                          <div className="text-xs text-slate-500 mt-1 font-light leading-relaxed max-w-sm">{service.description}</div>
-                        )}
-                      </td>
-                      <td className="py-4 px-6 text-indigo-400 font-bold">{formatPrice(service.price_per_k)}</td>
-                      <td className="py-4 px-6 text-slate-400">{service.min_order.toLocaleString()}</td>
-                      <td className="py-4 px-6 text-slate-400">{service.max_order.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        
+                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 dark:bg-indigo-500/10 px-2.5 py-1 rounded-xl border border-indigo-500/15">
+                          {formatPrice(service.price_per_k)} / 1K
+                        </span>
+                      </div>
+
+                      {/* Service Name & Chevron Indicator */}
+                      <div className="flex justify-between items-start gap-4">
+                        <h4 className="font-extrabold text-sm text-zinc-900 dark:text-slate-100 leading-snug flex-1">{service.name}</h4>
+                        <div className="pt-0.5 shrink-0">
+                          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : ''}`} />
+                        </div>
+                      </div>
+
+                      {/* Expandable Section */}
+                      {isExpanded && (
+                        <div className="space-y-4 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                          {service.description && (
+                            <div className="space-y-1.5">
+                              <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block">Deskripsi Layanan</span>
+                              <p className="text-[11px] text-zinc-550 dark:text-slate-450 leading-relaxed font-normal border-t border-zinc-150/80 dark:border-slate-850/40 pt-2.5">{service.description}</p>
+                            </div>
+                          )}
+
+                          {/* Min / Max details in a clean sub-box */}
+                          <div className="flex justify-between items-center text-[10px] text-zinc-550 dark:text-slate-400 font-medium bg-zinc-50 dark:bg-slate-950/40 p-2.5 rounded-xl border border-zinc-150/80 dark:border-slate-850/60">
+                            <span>Min Order: <strong className="text-zinc-800 dark:text-slate-200">{service.min_order.toLocaleString()}</strong></span>
+                            <span>Max Order: <strong className="text-zinc-800 dark:text-slate-200">{service.max_order.toLocaleString()}</strong></span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Tampilkan Lebih Banyak Toggler */}
+              {filteredServices.length > 6 && (
+                <div className="p-4 border-t border-slate-850 dark:border-slate-850/60 bg-slate-900/10 dark:bg-slate-950/20 flex justify-center">
+                  <button
+                    onClick={() => setShowAllServices(!showAllServices)}
+                    className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold transition-all active:scale-95 shadow-md shadow-indigo-600/15 cursor-pointer"
+                  >
+                    <span>{showAllServices ? 'Tampilkan Lebih Sedikit' : `Tampilkan Lebih Banyak (${filteredServices.length - 6}+)`}</span>
+                    {showAllServices ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>

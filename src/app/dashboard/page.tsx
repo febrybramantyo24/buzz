@@ -1471,7 +1471,7 @@ export default function UserDashboard() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <PremiumThemeToggle />
             <button 
               onClick={() => {
@@ -1482,7 +1482,7 @@ export default function UserDashboard() {
                 setChangePasswordSuccess('');
                 setShowProfileModal(true);
               }}
-              className="flex items-center gap-2 bg-slate-900 hover:bg-slate-850 px-3 py-2 sm:px-3.5 sm:py-1.5 rounded-xl border border-slate-800 text-xs text-slate-300 hover:text-slate-100 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 sm:gap-2 bg-slate-900 hover:bg-slate-855 px-2.5 py-2 sm:px-3.5 sm:py-1.5 rounded-xl border border-slate-800 text-xs text-slate-300 hover:text-slate-100 transition-all cursor-pointer"
               title="Buka Profil & Ganti Password"
             >
               <User className="w-3.5 h-3.5 text-indigo-400" />
@@ -1490,10 +1490,10 @@ export default function UserDashboard() {
             </button>
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3.5 py-2 rounded-xl transition-all border border-red-500/20"
+              className="flex items-center gap-1 sm:gap-1.5 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2.5 py-2 sm:px-3.5 rounded-xl transition-all border border-red-500/20"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Keluar</span>
+              <span className="hidden sm:inline">Keluar</span>
             </button>
           </div>
         </div>
@@ -1505,7 +1505,7 @@ export default function UserDashboard() {
         {/* Wallet and Stats Cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           {/* Balance Card */}
-          <div className="relative overflow-hidden bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md">
+          <div className="relative overflow-hidden bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 p-4 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md">
             <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-500/5 dark:bg-indigo-500/10 blur-3xl rounded-full"></div>
             <div className="flex justify-between items-start">
               <div>
@@ -1528,7 +1528,7 @@ export default function UserDashboard() {
           </div>
 
           {/* Total Orders Card */}
-          <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
+          <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
             <div>
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Pesanan</span>
               <div className="text-3xl font-extrabold text-slate-150 mt-1">{orders.length}</div>
@@ -1539,7 +1539,7 @@ export default function UserDashboard() {
           </div>
 
           {/* Active Orders Card */}
-          <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
+          <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
             <div>
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Layanan Aktif</span>
               <div className="text-3xl font-extrabold text-slate-150 mt-1">
@@ -1625,7 +1625,7 @@ export default function UserDashboard() {
         {activeTab === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in duration-300">
             {/* SVG Line Chart Card */}
-            <div className="bg-slate-900/40 border border-slate-800/80 p-6 sm:p-8 rounded-3xl backdrop-blur-md">
+            <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 lg:p-8 rounded-3xl backdrop-blur-md">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
@@ -1683,7 +1683,7 @@ export default function UserDashboard() {
                   : '';
 
                 return (
-                  <div className="w-full overflow-x-auto scrollbar-none">
+                  <div className="w-full max-w-full overflow-x-auto scrollbar-none">
                     <div className="relative h-[180px] min-w-[555px] w-full">
                       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                         {/* Gradients */}
@@ -1742,7 +1742,7 @@ export default function UserDashboard() {
             <div className="grid lg:grid-cols-2 gap-8 items-start">
               {/* Left Column: Info & Pengumuman Penting */}
               {announcements.length > 0 ? (
-                <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md space-y-4">
+                <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 rounded-3xl backdrop-blur-md space-y-4">
                   <div className="flex items-center gap-2 pb-3 border-b border-slate-850">
                     <Megaphone className="w-4 h-4 text-indigo-400" />
                     <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Info & Pengumuman Penting</span>
@@ -1836,7 +1836,7 @@ export default function UserDashboard() {
                         return recommended.map((service, index) => (
                           <div 
                             key={service.id}
-                            className="p-4 rounded-2xl bg-slate-950/40 border border-slate-850 flex items-center justify-between gap-4 hover:border-indigo-500/30 transition-all group"
+                            className="p-4 rounded-2xl bg-slate-950/40 border border-slate-850 flex items-center justify-between gap-4 hover:border-indigo-500/30 transition-all group min-w-0 w-full"
                           >
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -1847,7 +1847,7 @@ export default function UserDashboard() {
                                   {service.category}
                                 </span>
                               </div>
-                              <h4 className="text-xs font-bold text-slate-355 dark:text-slate-350 truncate group-hover:text-indigo-400 transition-colors" title={service.name}>
+                              <h4 className="text-xs font-bold text-slate-355 dark:text-slate-350 whitespace-normal break-words leading-relaxed group-hover:text-indigo-400 transition-colors" title={service.name}>
                                 {service.name}
                               </h4>
                               <p className="text-[11px] text-indigo-400 font-extrabold mt-1">
@@ -1943,22 +1943,22 @@ export default function UserDashboard() {
                         setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
                         setIsServiceDropdownOpen(false);
                       }}
-                      className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm text-left cursor-pointer min-w-0 max-w-full"
+                      className="w-full flex items-center justify-between bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-800 dark:text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm text-left cursor-pointer min-w-0 max-w-full"
                     >
                       <span className="truncate block w-full">{selectedCategory || 'Pilih Kategori...'}</span>
                       <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
-
+ 
                     {/* Custom Category Dropdown List */}
                     {isCategoryDropdownOpen && (
-                      <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 border border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
-                        <div className="p-3 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                      <div className="absolute left-0 right-0 mt-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                        <div className="p-3 border-b border-slate-100 dark:border-slate-900 bg-white dark:bg-slate-950/80 sticky top-0 backdrop-blur-md">
                           <input
                             type="text"
                             placeholder="Cari Kategori..."
                             value={categorySearchQuery}
                             onChange={(e) => setCategorySearchQuery(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
+                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-850 dark:text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
                             autoFocus
                           />
                         </div>
@@ -1975,7 +1975,7 @@ export default function UserDashboard() {
                                   setCategorySearchQuery('');
                                 }}
                                 className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors ${
-                                  selectedCategory === cat ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-355'
+                                  selectedCategory === cat ? 'bg-indigo-600/20 text-indigo-450 font-semibold' : 'text-slate-700 dark:text-slate-355'
                                 }`}
                               >
                                 {cat}
@@ -1988,7 +1988,7 @@ export default function UserDashboard() {
                       </div>
                     )}
                   </div>
-
+ 
                   {/* Service Selection */}
                   <div className="space-y-2 relative min-w-0">
                     <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Layanan</label>
@@ -2000,12 +2000,12 @@ export default function UserDashboard() {
                           setIsServiceDropdownOpen(!isServiceDropdownOpen);
                           setIsCategoryDropdownOpen(false);
                         }}
-                        className="flex-1 flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm text-left cursor-pointer min-w-0 max-w-[calc(100vw-140px)] sm:max-w-none"
+                        className="flex-1 flex items-center justify-between bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-800 dark:text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm text-left cursor-pointer min-w-0 max-w-[calc(100vw-140px)] sm:max-w-none"
                       >
                         <span className="truncate block w-full">{selectedService?.name || 'Pilih Layanan...'}</span>
                         <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isServiceDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
-
+ 
                       {selectedService && (
                         <button
                           type="button"
@@ -2013,7 +2013,7 @@ export default function UserDashboard() {
                           className={`p-3.5 rounded-2xl border transition-all active:scale-95 flex items-center justify-center shrink-0 cursor-pointer ${
                             favorites.includes(selectedService.id)
                               ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
-                              : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                              : 'bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700 hover:border-slate-300'
                           }`}
                           title={favorites.includes(selectedService.id) ? 'Hapus dari Layanan Favorit' : 'Simpan ke Layanan Favorit'}
                         >
@@ -2021,17 +2021,17 @@ export default function UserDashboard() {
                         </button>
                       )}
                     </div>
-
+ 
                     {/* Custom Service Dropdown List */}
                     {isServiceDropdownOpen && (
-                      <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 border border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
-                        <div className="p-3 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                      <div className="absolute left-0 right-0 mt-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                        <div className="p-3 border-b border-slate-100 dark:border-slate-900 bg-white dark:bg-slate-950/80 sticky top-0 backdrop-blur-md">
                           <input
                             type="text"
                             placeholder="Cari Layanan..."
                             value={serviceSearchQuery}
                             onChange={(e) => setServiceSearchQuery(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
+                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-850 dark:text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
                             autoFocus
                           />
                         </div>
@@ -2048,7 +2048,7 @@ export default function UserDashboard() {
                                   setServiceSearchQuery('');
                                 }}
                                 className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors flex flex-col gap-0.5 ${
-                                  selectedService?.id === service.id ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-355'
+                                  selectedService?.id === service.id ? 'bg-indigo-600/20 text-indigo-450 font-semibold' : 'text-slate-700 dark:text-slate-355'
                                 }`}
                               >
                                 <span className="block truncate">{service.name}</span>
@@ -2065,7 +2065,7 @@ export default function UserDashboard() {
                     )}
                   </div>
                 </div>
-
+ 
                 {/* Target URL */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Data Target / URL Profil / Link Video</label>
@@ -2075,10 +2075,10 @@ export default function UserDashboard() {
                     placeholder="https://instagram.com/username atau link video"
                     value={targetUrl}
                     onChange={(e) => setTargetUrl(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm"
+                    className="w-full bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-800 dark:text-slate-205 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm"
                   />
                 </div>
-
+ 
                 <div className="grid sm:grid-cols-2 gap-6">
                   {/* Quantity Input */}
                   <div>
@@ -2090,21 +2090,21 @@ export default function UserDashboard() {
                       value={formatNumberWithDots(quantity)}
                       onChange={(e) => setQuantity(parseNumberFromDots(e.target.value))}
                       placeholder="Contoh: 1.000"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm font-semibold"
+                      className="w-full bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-800 dark:text-slate-205 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm font-semibold"
                     />
                   </div>
-
+ 
                   {/* Calculations Display */}
-                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl flex flex-col justify-between">
+                  <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/5 border border-indigo-500/15 p-4 rounded-2xl flex flex-col justify-between">
                     <div>
                       <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Harga per 1.000 (1K)</span>
-                      <div className="text-base font-bold text-slate-200">
+                      <div className="text-base font-bold text-slate-100 dark:text-slate-200">
                         {selectedService ? formatPrice(selectedService.price_per_k) : 'IDR 0'}
                       </div>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-slate-900 flex justify-between items-end">
+                    <div className="mt-2 pt-2 border-t border-indigo-500/10 flex justify-between items-end">
                       <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Total Harga</span>
-                      <span className="text-lg font-extrabold text-indigo-400">{formatPrice(totalPrice)}</span>
+                      <span className="text-lg font-black text-indigo-650 dark:text-indigo-400">{formatPrice(totalPrice)}</span>
                     </div>
                   </div>
                 </div>
@@ -2210,7 +2210,7 @@ export default function UserDashboard() {
                 <button
                   type="submit"
                   disabled={submittingOrder || !selectedService}
-                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 text-white font-bold py-4 rounded-2xl transition-all shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 flex items-center justify-center gap-2"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-600/15 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {submittingOrder ? 'Membuat Permintaan...' : 'Buat Permintaan & Bayar'}
                 </button>
@@ -2525,10 +2525,10 @@ export default function UserDashboard() {
               {/* Mobile layout */}
               <div className="flex sm:hidden flex-col gap-3 w-full">
                 {/* primary actions */}
-                <div className="flex gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={handleCopySelectedOrderIds}
-                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 active:scale-95 cursor-pointer whitespace-nowrap"
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 active:scale-95 cursor-pointer whitespace-nowrap"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     <span>Copy ID Pesanan</span>
@@ -2537,7 +2537,7 @@ export default function UserDashboard() {
                   <select
                     value={orderYearFilter}
                     onChange={(e) => setOrderYearFilter(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-850 text-slate-700 dark:text-slate-300 font-bold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
                   >
                     <option value="all">Semua Tahun</option>
                     <option value="2026">2026</option>
@@ -2554,10 +2554,10 @@ export default function UserDashboard() {
                     return (
                       <button
                         onClick={() => handleToggleSelectAll(currentPageOrders)}
-                        className={`w-full flex items-center justify-center gap-2 border font-bold py-2.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap ${
+                        className={`w-full flex items-center justify-center gap-2 border font-bold py-3 rounded-xl text-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap ${
                           isPageAllSelected 
-                            ? 'bg-indigo-650/15 border-indigo-500/35 text-indigo-400' 
-                            : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-850 text-slate-700 dark:text-slate-300'
+                            ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-550 dark:text-indigo-400' 
+                            : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-350'
                         }`}
                       >
                         <input
@@ -2574,7 +2574,7 @@ export default function UserDashboard() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-855 text-slate-700 dark:text-slate-300 font-bold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
                   >
                     <option value="all">Semua Status</option>
                     <option value="pending">PENDING</option>
@@ -2589,7 +2589,7 @@ export default function UserDashboard() {
                 {selectedOrderIds.length > 0 && orders.filter(o => selectedOrderIds.includes(o.id) && o.payment_status === 'unpaid').length > 0 && (
                   <button
                     onClick={handleBulkPayOrders}
-                    className="w-full flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl text-xs transition-all shadow-md active:scale-95 cursor-pointer"
+                    className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-650 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold py-3 rounded-xl text-xs transition-all shadow-md active:scale-95 cursor-pointer"
                   >
                     <CheckCircle className="w-4 h-4" />
                     <span>Bayar Terpilih ({orders.filter(o => selectedOrderIds.includes(o.id) && o.payment_status === 'unpaid').length})</span>
@@ -2767,10 +2767,10 @@ export default function UserDashboard() {
                       });
 
                       return (
-                        <div key={order.id} className={`p-4.5 rounded-2xl border transition-colors space-y-3 shadow-md dark:shadow-none ${
+                        <div key={order.id} className={`p-5 rounded-[24px] border transition-all duration-300 space-y-4.5 shadow-md ${
                           isSelected 
-                            ? 'bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/30' 
-                            : 'bg-white/90 dark:bg-slate-950/20 border-slate-300 dark:border-slate-850/50'
+                            ? 'bg-gradient-to-br from-indigo-500/10 to-purple-500/5 border-indigo-500/40 shadow-indigo-500/10' 
+                            : 'bg-white dark:bg-slate-900/40 border-zinc-200 dark:border-slate-800 shadow-zinc-200/60 dark:shadow-none'
                         }`}>
                           {/* Header: Select Checkbox, ID, Date */}
                           <div className="flex justify-between items-center text-[10px] gap-2">
@@ -2779,10 +2779,10 @@ export default function UserDashboard() {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => handleToggleSelectOrder(order.id)}
-                                className="w-4 h-4 rounded border-slate-350 dark:border-slate-850 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+                                className="w-4 h-4 rounded-lg border-slate-350 dark:border-slate-800 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
                               />
-                              <div className="flex items-center border border-slate-200 dark:border-slate-800/80 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900/50 shadow-sm">
-                                <span className="px-2 py-0.5 font-mono text-[9px] text-slate-700 dark:text-slate-300 select-all truncate max-w-[80px] font-semibold">
+                              <div className="flex items-center border border-slate-200 dark:border-slate-800/60 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50 shadow-sm">
+                                <span className="px-2.5 py-1 font-mono text-[9px] text-slate-200 dark:text-slate-300 select-all truncate max-w-[80px] font-bold">
                                   {order.order_id ? String(order.order_id) : order.id.slice(0, 6)}
                                 </span>
                                 <button
@@ -2791,74 +2791,86 @@ export default function UserDashboard() {
                                     navigator.clipboard.writeText(idToCopy);
                                     showToast('ID Pesanan berhasil disalin!', 'success');
                                   }}
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white p-1 transition-colors cursor-pointer flex items-center justify-center border-l border-indigo-500 w-6 h-6"
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 transition-colors cursor-pointer flex items-center justify-center border-l border-indigo-500 w-7 h-7"
                                   title="Salin ID"
                                 >
                                   <Copy className="w-3 h-3" />
                                 </button>
                               </div>
                             </div>
-                            <span className="text-slate-500 font-light">{dateStr}</span>
+                            <span className="text-slate-400 dark:text-slate-500 font-medium">{dateStr}</span>
                           </div>
 
                           {/* Body: Service & Category */}
-                          <div className="border-t border-b border-slate-300 dark:border-slate-900/60 py-2.5 space-y-1.5">
+                          <div className="space-y-3">
                             <div>
-                              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">{order.service_name}</span>
-                              <span className="text-[9px] text-slate-500 font-light uppercase tracking-wider">{order.category}</span>
+                              <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                <span className="px-2 py-0.5 rounded-lg text-[8px] font-extrabold bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border border-indigo-500/10 uppercase tracking-widest">
+                                  {order.category}
+                                </span>
+                              </div>
+                              <span className="text-xs font-extrabold text-slate-100 dark:text-slate-150 block leading-snug">{order.service_name}</span>
                             </div>
-                            <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 break-all">
-                              <span className="text-slate-500 dark:text-slate-550 block text-[9px] uppercase tracking-wider mb-0.5">Target:</span>
-                              <a href={order.target_url} target="_blank" rel="noreferrer" className="hover:text-indigo-400 hover:underline">
+                            
+                            {/* Target URL */}
+                            <div className="text-[10px] space-y-0.5">
+                              <span className="text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black text-[8px]">Target URL</span>
+                              <a 
+                                href={order.target_url} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 break-all select-all font-semibold hover:underline block"
+                              >
                                 {order.target_url}
                               </a>
                             </div>
                           </div>
 
-                          {/* Stats: Qty, Price, Start Count */}
-                          <div className="grid grid-cols-3 gap-2 text-xs py-1">
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-3 gap-3 text-xs pt-1">
                             <div>
-                              <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Jumlah</span>
-                              <span className="font-bold text-slate-700 dark:text-slate-250">{order.quantity.toLocaleString()}</span>
+                              <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Jumlah</span>
+                              <span className="font-extrabold text-slate-100 dark:text-slate-200 text-xs">{order.quantity.toLocaleString()}</span>
                             </div>
                             <div>
-                              <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Harga</span>
-                              <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{formatPrice(order.total_price)}</span>
+                              <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Harga</span>
+                              <span className="font-extrabold text-indigo-600 dark:text-indigo-400 text-xs">{formatPrice(order.total_price)}</span>
                             </div>
                             <div>
-                              <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Mulai</span>
-                              <span className="font-mono text-slate-500 dark:text-slate-400">{order.start_count ? order.start_count.toLocaleString() : '-'}</span>
+                              <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Mulai</span>
+                              <span className="font-mono font-extrabold text-slate-100 dark:text-slate-300 text-xs">{order.start_count ? order.start_count.toLocaleString() : '-'}</span>
                             </div>
                           </div>
 
                           {/* Footer: Status, Action Buttons */}
-                          <div className="flex justify-between items-center pt-3 border-t border-slate-300 dark:border-slate-900/50 gap-2">
-                            <div className="flex flex-col items-start gap-1">
-                              <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide inline-block ${
-                                order.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                order.status === 'inprogress' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                                order.status === 'processing' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
-                                order.status === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                                order.status === 'partial' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
-                                'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center pt-3 border-t border-slate-200 dark:border-slate-900/40 gap-3.5">
+                            <div className="flex justify-between items-center sm:flex-col sm:items-start gap-1.5 w-full sm:w-auto">
+                              <span className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest inline-block border ${
+                                order.status === 'success' ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20' :
+                                order.status === 'inprogress' ? 'bg-blue-500/10 text-blue-500 dark:text-blue-400 border-blue-500/20' :
+                                order.status === 'processing' ? 'bg-purple-500/10 text-purple-500 dark:text-purple-400 border-purple-500/20' :
+                                order.status === 'failed' ? 'bg-rose-500/10 text-rose-500 dark:text-rose-455 border-rose-500/20' :
+                                order.status === 'partial' ? 'bg-orange-500/10 text-orange-500 dark:text-orange-400 border-orange-500/20' :
+                                'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20'
                               }`}>
                                 {order.status === 'failed' ? 'ERROR' : order.status}
                               </span>
                               {order.payment_status === 'unpaid' && (
                                 <button
                                   onClick={() => handlePayOrderWithBalance(order)}
-                                  className="px-2 py-0.5 rounded bg-indigo-650 text-[9px] font-bold text-white whitespace-nowrap mt-0.5"
+                                  className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[9px] font-black text-white whitespace-nowrap sm:mt-0.5 transition-transform active:scale-95 cursor-pointer shadow-md shadow-indigo-600/10"
                                 >
                                   Bayar via Saldo
                                 </button>
                               )}
                             </div>
 
-                            <div className="flex gap-1.5">
+                            <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
                               <button
                                 onClick={() => setSelectedOrderDetail(order)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-750 text-white text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                className="inline-flex items-center gap-1 px-3.5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/15"
                               >
+                                <FileText className="w-3.5 h-3.5" />
                                 <span>Detail</span>
                               </button>
                               {order.payment_status === 'paid' && (
@@ -2873,16 +2885,16 @@ export default function UserDashboard() {
                                       description: `Pembelian Layanan: ${order.service_name}`,
                                       status: order.status
                                     })}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                    className="inline-flex items-center gap-1 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-zinc-50 dark:hover:bg-slate-700 text-black dark:text-slate-200 text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-sm border border-zinc-300 dark:border-slate-700"
                                   >
                                     <Printer className="w-3.5 h-3.5" />
                                     <span>Invoice</span>
                                   </button>
                                   <button
                                     onClick={() => handleReorder(order)}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                    className="inline-flex items-center gap-1 px-3.5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-emerald-650/15"
                                   >
-                                    <RefreshCw className="w-3 h-3" />
+                                    <RefreshCw className="w-3.5 h-3.5" />
                                     <span>Pesan Lagi</span>
                                   </button>
                                 </>
@@ -3208,36 +3220,36 @@ export default function UserDashboard() {
                         }
 
                         return (
-                          <div key={tx.id} className="bg-white/40 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850/50 p-4.5 rounded-2xl space-y-3 shadow-sm dark:shadow-none">
-                            <div className="flex justify-between items-center text-[10px]">
-                              <span className="font-mono font-bold text-indigo-400">
+                          <div key={tx.id} className="bg-white dark:bg-slate-900/40 border border-zinc-200 dark:border-slate-800 p-5 rounded-[24px] space-y-4 shadow-md shadow-zinc-200/60 dark:shadow-none transition-all">
+                            <div className="flex justify-between items-center text-[10px] gap-2">
+                              <span className="font-mono font-extrabold text-indigo-600 dark:text-indigo-400">
                                 {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 6)}
                               </span>
-                              <span className="text-slate-500 font-light">{dateStr}</span>
+                              <span className="text-slate-400 dark:text-slate-500 font-medium">{dateStr}</span>
                             </div>
 
-                            <div className="border-t border-b border-slate-200/80 dark:border-slate-900/60 py-2.5 space-y-1.5">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-200">{formatPaymentMethod(tx.payment_method)}</span>
-                                <span className="text-[9px] text-slate-450 px-1.5 py-0.5 rounded bg-slate-950/45 border border-slate-850 uppercase font-mono">
+                            <div className="border-t border-b border-slate-200/60 dark:border-slate-900/40 py-3 space-y-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-extrabold text-slate-100 dark:text-slate-200">{formatPaymentMethod(tx.payment_method)}</span>
+                                <span className="text-[8px] font-extrabold bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border border-indigo-500/10 px-2 py-0.5 rounded-lg uppercase tracking-widest font-mono">
                                   {tx.type}
                                 </span>
                               </div>
                               {tx.description && (
-                                <div className="text-[10px] text-slate-400 leading-relaxed font-light">{tx.description}</div>
+                                <div className="text-[10px] text-slate-450 dark:text-slate-400 leading-relaxed font-normal">{tx.description}</div>
                               )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2 text-xs py-1">
+                            <div className="grid grid-cols-2 gap-4 text-xs">
                               <div>
-                                <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Saldo Didapat</span>
-                                <span className={`font-extrabold text-sm ${isAddition ? 'text-emerald-450' : 'text-rose-450'}`}>
+                                <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Saldo Didapat</span>
+                                <span className={`font-extrabold text-xs ${isAddition ? 'text-emerald-600' : 'text-rose-500'}`}>
                                   {isAddition ? '+' : '-'}{formatPrice(Math.abs(tx.type === 'topup' ? creditedAmount : baseAmount))}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-0.5">Total Bayar</span>
-                                <span className={`font-extrabold text-sm ${
+                                <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Total Bayar</span>
+                                <span className={`font-extrabold text-xs ${
                                   tx.type === 'topup' ? 'text-slate-100 dark:text-white' :
                                   tx.type === 'refund' ? 'text-slate-400 dark:text-slate-350' :
                                   'text-rose-500 dark:text-rose-400'
@@ -3249,11 +3261,11 @@ export default function UserDashboard() {
                               </div>
                             </div>
 
-                            <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-900/50">
-                              <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider inline-block border ${
-                                tx.status === 'success' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-500/20' :
-                                tx.status === 'failed' ? 'bg-rose-50 dark:bg-red-500/10 text-rose-700 dark:text-red-400 border-rose-200/60 dark:border-red-500/20' :
-                                'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-450 border-amber-200/60 dark:border-amber-500/20'
+                            <div className="flex justify-between items-center pt-3 border-t border-slate-200/60 dark:border-slate-900/40 gap-2">
+                              <span className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest inline-block border ${
+                                tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20' :
+                                tx.status === 'failed' ? 'bg-rose-500/10 text-rose-500 dark:text-rose-455 border-rose-500/20' :
+                                'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20'
                               }`}>
                                 {tx.status === 'success' ? 'Sukses' :
                                  tx.status === 'failed' ? 'Dibatalkan' :
@@ -3263,7 +3275,7 @@ export default function UserDashboard() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => setSelectedTxDetail(tx)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-750 text-white text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/10"
                                 >
                                   <span>Detail</span>
                                 </button>
@@ -3278,7 +3290,7 @@ export default function UserDashboard() {
                                       description: tx.type === 'topup' ? 'Top Up Saldo Akun' : tx.type === 'refund' ? 'Refund Saldo Pesanan' : 'Pembayaran Layanan SMM',
                                       status: tx.status
                                     })}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-2xl bg-white dark:bg-slate-800 hover:bg-zinc-50 dark:hover:bg-slate-700 text-black dark:text-slate-200 text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-sm border border-zinc-300 dark:border-slate-700"
                                   >
                                     <Printer className="w-3.5 h-3.5" />
                                     <span>Invoice</span>
@@ -3523,7 +3535,7 @@ export default function UserDashboard() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-zinc-150 dark:border-slate-850">
+              <div className="hidden md:block overflow-x-auto rounded-2xl border border-zinc-150 dark:border-slate-850">
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="bg-zinc-50 dark:bg-slate-950 border-b border-zinc-150 dark:border-slate-850 text-zinc-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider">
@@ -3595,6 +3607,90 @@ export default function UserDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile View (Responsive Card List) */}
+              <div className="block md:hidden space-y-4">
+                {(() => {
+                  const filteredTickets = tickets.filter(ticket => {
+                    const q = ticketSearchQuery.toLowerCase().trim();
+                    if (!q) return true;
+                    if (ticketSearchType === 'id') {
+                      return String(ticket.id).includes(q);
+                    } else {
+                      return String(ticket.subject).toLowerCase().includes(q);
+                    }
+                  });
+
+                  if (filteredTickets.length === 0) {
+                    return (
+                      <div className="py-12 text-center text-zinc-400 dark:text-slate-500 text-xs bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-zinc-150 dark:border-slate-850">
+                        Tidak ada tiket bantuan ditemukan.
+                      </div>
+                    );
+                  }
+
+                  return filteredTickets.map(ticket => (
+                    <div 
+                      key={ticket.id} 
+                      className="p-5 rounded-[24px] border border-zinc-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-md shadow-zinc-200/60 dark:shadow-none space-y-3.5 transition-all"
+                    >
+                      {/* Row 1: ID & Date */}
+                      <div className="flex justify-between items-center text-[10px] gap-2">
+                        <span className="px-2.5 py-1 font-mono text-[9px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/60 rounded-xl font-bold">
+                          ID: #{ticket.id}
+                        </span>
+                        <span className="text-slate-400 dark:text-slate-550 font-medium">
+                          {new Date(ticket.updated_at).toLocaleString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+
+                      {/* Row 2: Subject & Status */}
+                      <div className="flex justify-between items-start gap-4 pt-1">
+                        <div className="space-y-1">
+                          <span className="text-slate-400 dark:text-slate-500 block text-[8px] uppercase tracking-widest font-black">Subjek</span>
+                          <button
+                            onClick={() => fetchTicketDetails(ticket.id)}
+                            className="font-extrabold text-indigo-650 dark:text-indigo-400 hover:underline text-left text-sm cursor-pointer"
+                          >
+                            {ticket.subject}
+                          </button>
+                        </div>
+
+                        <div className="text-right space-y-1">
+                          <span className="text-slate-400 dark:text-slate-500 block text-[8px] uppercase tracking-widest font-black">Status</span>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
+                            ticket.status === 'Answered' ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20' :
+                            ticket.status === 'Closed' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' :
+                            'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20'
+                          }`}>
+                            {ticket.status}
+                          </span>
+                          {ticket.status === 'Pending' && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded-lg text-[8px] font-black bg-rose-500/10 text-rose-500 border border-rose-500/20 uppercase tracking-widest">NEW</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 3: Action Button */}
+                      <div className="pt-3 border-t border-slate-200/60 dark:border-slate-900/40 flex justify-end">
+                        <button
+                          onClick={() => fetchTicketDetails(ticket.id)}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-650/15"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Buka Tiket</span>
+                        </button>
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
             </div>
           </div>
         )}
@@ -3618,7 +3714,7 @@ export default function UserDashboard() {
                 setActiveTab(item.id as any);
                 if (item.action && user?.id) item.action();
               }}
-              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center gap-1 py-1 px-1.5 sm:px-3 rounded-xl transition-all cursor-pointer ${
                 isActive
                   ? 'text-indigo-600 dark:text-indigo-400 font-bold'
                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
@@ -3706,8 +3802,8 @@ export default function UserDashboard() {
               )}
 
               <form onSubmit={handleInitiateTopup} className="space-y-8">
-                {/* Two input fields side-by-side */}
-                <div className="grid grid-cols-2 gap-5">
+                {/* Two input fields side-by-side or stacked on mobile */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                   <div>
                     <label className="block text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-2">Jumlah Deposit</label>
                     <div className="relative group">
@@ -4312,7 +4408,7 @@ export default function UserDashboard() {
       {/* Profile Modal */}
       {showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200 scrollbar-thin scrollbar-thumb-slate-800">
             <button
               onClick={() => setShowProfileModal(false)}
               className="absolute top-6 right-6 text-slate-400 hover:text-slate-200 transition-colors p-2 hover:bg-slate-800 rounded-xl cursor-pointer"
