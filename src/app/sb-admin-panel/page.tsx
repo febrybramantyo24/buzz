@@ -54,6 +54,7 @@ const parseNumberFromDots = (str: string): number => {
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Admin user status
   const [adminUser, setAdminUser] = useState<any>(null);
@@ -1148,215 +1149,311 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-955 text-slate-100 selection:bg-indigo-500 selection:text-white font-sans transition-colors duration-300">
       
-      {/* Header */}
-      <header className="border-b border-slate-900 bg-slate-950/80 sticky top-0 z-30 backdrop-blur-md">
-        <div className="max-w-[95%] xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2 rounded-lg">
-              <Zap className="w-5 h-5 text-white" />
+      {/* Sidebar Overlay (Mobile) */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-50 dark:bg-slate-950/50 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
+        />
+      )}
+
+      <div className="flex min-h-screen">
+        
+        {/* Left Sidebar */}
+        <aside className={`fixed md:sticky top-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}>
+          <div className="space-y-6">
+            {/* Logo/Brand */}
+            <div className="flex items-center gap-2.5 px-2">
+              <div className="bg-gradient-to-tr from-pink-500 to-indigo-600 p-2.5 rounded-2xl shadow-md shadow-pink-500/10">
+                <Zap className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-black text-sm leading-tight text-slate-100 dark:text-slate-100 tracking-tight">
+                  Buzzify
+                </span>
+                <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest leading-none mt-0.5">
+                  Admin Panel
+                </span>
+              </div>
             </div>
-            <span className="font-extrabold text-lg tracking-tight">
-              Buzz<span className="text-indigo-400">ify</span> <span className="text-xs bg-indigo-500 text-white font-extrabold px-1.5 py-0.5 rounded-md uppercase ml-1">Admin</span>
-            </span>
+
+            {/* Navigation Tabs */}
+            <div className="space-y-6 pt-4">
+              <div>
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block px-3 mb-2.5">Ringkasan & Log</span>
+                <nav className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveTab('orders');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'orders'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Manajemen Order</span>
+                    <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold ${
+                      activeTab === 'orders'
+                        ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400'
+                        : 'bg-slate-800 text-slate-400 dark:text-slate-400'
+                    }`}>{orders.length}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('transactions');
+                      fetchAdminData();
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'transactions'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Log Transaksi</span>
+                    <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold ${
+                      activeTab === 'transactions'
+                        ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400'
+                        : 'bg-slate-800 text-slate-400 dark:text-slate-400'
+                    }`}>{transactions.length}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('tickets');
+                      fetchTickets();
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'tickets'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Tiket Bantuan</span>
+                    <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold ${
+                      activeTab === 'tickets'
+                        ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                        : 'bg-slate-800 text-slate-400 dark:text-slate-400'
+                    }`}>{tickets.filter(t => t.status === 'Pending').length}</span>
+                  </button>
+                </nav>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block px-3 mb-2.5">Pengaturan Sistem</span>
+                <nav className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveTab('services');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'services'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>Atur Layanan</span>
+                    <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold ${
+                      activeTab === 'services'
+                        ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400'
+                        : 'bg-slate-800 text-slate-400 dark:text-slate-400'
+                    }`}>{services.length}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('announcements');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'announcements'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-850/45 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Megaphone className="w-4 h-4" />
+                    <span>Info & Rekomendasi</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('landing');
+                      fetchLandingSettings();
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'landing'
+                        ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-500 dark:text-rose-450'
+                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-850/45 hover:text-slate-200 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>Landing Page</span>
+                  </button>
+                </nav>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {providerBalance !== null && (
-              <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold px-3 py-2 rounded-xl border border-amber-500/20 text-xs tracking-tight shadow-inner flex items-center gap-1.5" title="Saldo BuzzerPanel">
-                <Wallet className="w-3.5 h-3.5" />
-                <span>BuzzerPanel: {formatPrice(parseInt(providerBalance))}</span>
-              </div>
-            )}
-            {medanpediaBalance !== null && (
-              <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold px-3 py-2 rounded-xl border border-emerald-500/20 text-xs tracking-tight shadow-inner flex items-center gap-1.5" title="Saldo MedanPedia">
-                <Wallet className="w-3.5 h-3.5" />
-                <span>MedanPedia: {formatPrice(parseInt(medanpediaBalance))}</span>
-              </div>
-            )}
-            <PremiumThemeToggle />
-            <button 
+          {/* Sidebar Footer Logout */}
+          <div className="pt-4 border-t border-slate-800 dark:border-slate-800/60">
+            <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3.5 py-2 rounded-xl transition-all border border-red-500/20"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/10 transition-all cursor-pointer text-left"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Keluar</span>
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span>Keluar Akun</span>
             </button>
           </div>
-        </div>
-      </header>
+        </aside>
 
-      {/* Main Container */}
-      <main className="max-w-[95%] xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 mb-8 border-b border-slate-900 pb-4">
-          <button
-            onClick={() => setActiveTab('orders')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'orders'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Manajemen Order ({orders.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('services')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'services'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            <span>Atur Layanan ({services.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('announcements')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'announcements'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <Megaphone className="w-4 h-4" />
-            <span>Info & Rekomendasi ({announcements.length})</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('transactions');
-              fetchAdminData();
-            }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'transactions'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>Log Transaksi ({transactions.length})</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('landing');
-              fetchLandingSettings();
-            }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'landing'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <Award className="w-4 h-4 text-purple-400" />
-            <span>Landing Page</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('tickets');
-              fetchTickets();
-            }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'tickets'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4 text-emerald-450" />
-            <span>Tiket Bantuan ({tickets.filter(t => t.status === 'Pending').length})</span>
-          </button>
-        </div>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 font-sans">
+          
+          {/* Top Navbar */}
+          <header className="h-16 bg-slate-900 border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+            <div className="flex items-center gap-4">
+              {/* Mobile Burger Toggle */}
+              <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-450 transition-colors"
+              >
+                <Zap className="w-5 h-5 text-rose-500" />
+              </button>
+              
+              <h1 className="text-xs font-black text-slate-100 dark:text-slate-100 uppercase tracking-wider hidden sm:block">
+                {activeTab === 'orders' && 'Manajemen Pesanan'}
+                {activeTab === 'services' && 'Pengaturan Layanan'}
+                {activeTab === 'announcements' && 'Informasi & Rekomendasi'}
+                {activeTab === 'transactions' && 'Log & Saldo Transaksi'}
+                {activeTab === 'landing' && 'Konfigurasi Landing Page'}
+                {activeTab === 'tickets' && 'Tiket Bantuan Pelanggan'}
+              </h1>
+            </div>
 
-        {/* Tab 1: Orders Management */}
+            {/* Provider Balance Info & Theme Toggle */}
+            <div className="flex items-center gap-3">
+              {providerBalance !== null && (
+                <div className="bg-slate-800 text-slate-300 dark:text-slate-400 font-bold px-3 py-1.5 rounded-xl border border-slate-800/80 text-[10px] tracking-tight flex items-center gap-1.5" title="Saldo BuzzerPanel">
+                  <Wallet className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="hidden lg:inline">BuzzerPanel:</span> <span>{formatPrice(parseInt(providerBalance))}</span>
+                </div>
+              )}
+              {medanpediaBalance !== null && (
+                <div className="bg-slate-800 text-slate-300 dark:text-slate-400 font-bold px-3 py-1.5 rounded-xl border border-slate-800/80 text-[10px] tracking-tight flex items-center gap-1.5" title="Saldo MedanPedia">
+                  <Wallet className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="hidden lg:inline">MedanPedia:</span> <span>{formatPrice(parseInt(medanpediaBalance))}</span>
+                </div>
+              )}
+              <PremiumThemeToggle />
+            </div>
+          </header>
+
+          {/* Main Dashboard Container */}
+          <main className="p-6 md:p-8 space-y-6 flex-1 overflow-y-auto bg-slate-955">
+      
+
+         {/* Tab 1: Orders Management */}
         {activeTab === 'orders' && (
           <div className="space-y-6">
               
               {/* Stats Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* Card 1: Omset */}
-                <div className="bg-slate-900/40 border border-slate-850 p-6 rounded-3xl backdrop-blur-md flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-indigo-500/30 hover:bg-slate-900/60 transition-all duration-300">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-slate-700/30 hover:bg-slate-900/60 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-slate-500/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
                   <div className="min-w-0">
                     <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider block mb-1">Total Omset (Sales)</span>
                     <span className="text-2xl font-extrabold text-slate-100 tracking-tight block">{formatPrice(totalSales)}</span>
-                    <span className="text-[10px] text-indigo-400 font-semibold block mt-1.5 bg-indigo-500/10 px-2 py-0.5 rounded-lg w-fit border border-indigo-500/10">
+                    <span className="text-[10px] text-slate-400 font-bold block mt-1.5 bg-slate-800 px-2 py-0.5 rounded-lg w-fit border border-slate-800/80">
                       💸 {paidOrders.length} Pesanan Lunas
                     </span>
                   </div>
-                  <div className="bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/20 text-indigo-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
+                  <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
                     <Wallet className="w-5 h-5" />
                   </div>
                 </div>
 
                 {/* Card 2: Profit */}
-                <div className="bg-slate-900/40 border border-slate-850 p-6 rounded-3xl backdrop-blur-md flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-emerald-500/30 hover:bg-slate-900/60 transition-all duration-300">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-slate-700/30 hover:bg-slate-900/60 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-slate-500/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
                   <div className="min-w-0">
                     <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider block mb-1">Estimasi Profit Bersih</span>
-                    <span className="text-2xl font-extrabold text-emerald-400 tracking-tight block">{formatPrice(totalProfit)}</span>
+                    <span className="text-2xl font-extrabold text-slate-100 tracking-tight block">{formatPrice(totalProfit)}</span>
                     <div className="flex flex-col gap-0.5 mt-1">
-                      <span className="text-[10px] text-slate-400 font-light block">
-                        Margin Keuntungan: <strong className="text-emerald-400">~{profitMarginPercent}%</strong>
+                      <span className="text-[10px] text-slate-450 font-light block">
+                        Margin Keuntungan: <strong className="text-slate-200">~{profitMarginPercent}%</strong>
                       </span>
                       <span className="text-[9px] text-slate-500 font-light block">
                         Modal Pusat: {formatPrice(totalCost)}
                       </span>
                     </div>
                   </div>
-                  <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20 text-emerald-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
+                  <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
                     <ArrowUpRight className="w-5 h-5" />
                   </div>
                 </div>
 
                 {/* Card 3: Orders Count */}
-                <div className="bg-slate-900/40 border border-slate-850 p-6 rounded-3xl backdrop-blur-md flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-purple-500/30 hover:bg-slate-900/60 transition-all duration-300">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-slate-700/30 hover:bg-slate-900/60 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-slate-500/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
                   <div className="min-w-0">
                     <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider block mb-1">Total Orderan Masuk</span>
                     <span className="text-2xl font-extrabold text-slate-100 tracking-tight block">{orders.length} Order</span>
                     <div className="flex gap-1.5 mt-2 flex-wrap">
-                      <span className="text-[8px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded border border-emerald-500/10">
+                      <span className="text-[8px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded border border-emerald-500/20">
                         {successCount} Sukses
                       </span>
-                      <span className="text-[8px] bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/10">
+                      <span className="text-[8px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/20">
                         {pendingCount + processingCount} Proses
                       </span>
-                      <span className="text-[8px] bg-red-500/15 text-red-600 dark:text-red-400 font-bold px-1.5 py-0.5 rounded border border-red-500/10">
+                      <span className="text-[8px] bg-red-500/10 text-red-600 dark:text-red-400 font-bold px-1.5 py-0.5 rounded border border-red-500/20">
                         {failedCount} Gagal
                       </span>
                     </div>
                   </div>
-                  <div className="bg-purple-500/10 p-3 rounded-2xl border border-purple-500/20 text-purple-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
+                  <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
                     <ShoppingBag className="w-5 h-5" />
                   </div>
                 </div>
 
                 {/* Card 4: Best Seller */}
-                <div className="bg-slate-900/40 border border-slate-850 p-6 rounded-3xl backdrop-blur-md flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-amber-500/30 hover:bg-slate-900/60 transition-all duration-300">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-slate-700/30 hover:bg-slate-900/60 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-slate-500/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
                   <div className="min-w-0 flex-1 pr-3">
                     <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider block mb-1">Layanan Terlaris</span>
-                    <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400 block truncate leading-tight" title={bestSellerName}>
+                    <span className="text-sm font-extrabold text-slate-100 block truncate leading-tight" title={bestSellerName}>
                       {bestSellerName}
                     </span>
                     {bestSellerCount > 0 ? (
                       <span className="text-[10px] text-slate-450 font-light block mt-1.5">
-                        Dipesan <strong className="text-amber-600 dark:text-amber-300 font-bold">{bestSellerCount} kali</strong> ({bestSellerCategory})
+                        Dipesan <strong className="text-slate-200 font-bold">{bestSellerCount} kali</strong> ({bestSellerCategory})
                       </span>
                     ) : (
                       <span className="text-[10px] text-slate-500 font-light block mt-1.5">Belum ada orderan</span>
                     )}
                   </div>
-                  <div className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
+                  <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
                     <Award className="w-5 h-5" />
                   </div>
                 </div>
               </div>
             
             {/* Search & Filters */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/40 border border-slate-850 p-6 rounded-3xl backdrop-blur-md">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
@@ -1364,7 +1461,7 @@ export default function AdminDashboard() {
                   placeholder="Cari Order ID, Layanan, atau URL..."
                   value={orderSearch}
                   onChange={(e) => setOrderSearch(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 pl-11 pr-4 py-3 rounded-2xl outline-none transition-all text-sm shadow-inner"
+                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-11 pr-4 py-3 rounded-2xl outline-none transition-all text-sm shadow-inner"
                 />
               </div>
 
@@ -1386,32 +1483,32 @@ export default function AdminDashboard() {
             </div>
 
             {/* Orders Table */}
-            <div className="bg-slate-900/40 border border-slate-850 rounded-3xl overflow-hidden backdrop-blur-md">
+            <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl overflow-hidden backdrop-blur-md">
               {filteredOrders.length === 0 ? (
                 <div className="py-20 text-center text-slate-500 text-sm font-light">Belum ada orderan masuk.</div>
               ) : (
                 <>
-                  <div className="overflow-x-auto">
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-slate-850 text-slate-400 font-bold uppercase tracking-wider bg-slate-950/40">
+                        <tr className="border-b border-slate-850 text-slate-400 font-bold uppercase tracking-wider bg-slate-50 dark:bg-slate-950/50">
                           <th className="py-3.5 px-4">
-                            <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-indigo-400" /> User</span>
+                            <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" /> User</span>
                           </th>
                           <th className="py-3.5 px-3">
-                            <span className="flex items-center gap-1.5"><Hash className="w-3.5 h-3.5 text-indigo-400" /> Order ID</span>
+                            <span className="flex items-center gap-1.5"><Hash className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" /> Order ID</span>
                           </th>
                           <th className="py-3.5 px-3">
-                            <span className="flex items-center gap-1.5"><Tag className="w-3.5 h-3.5 text-indigo-400" /> Layanan</span>
+                            <span className="flex items-center gap-1.5"><Tag className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" /> Layanan</span>
                           </th>
                           <th className="py-3.5 px-3">
-                            <span className="flex items-center gap-1.5"><Search className="w-3.5 h-3.5 text-indigo-400" /> Target URL</span>
+                            <span className="flex items-center gap-1.5"><Search className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" /> Target URL</span>
                           </th>
                           <th className="py-3.5 px-3 text-right">Jumlah</th>
                           <th className="py-3.5 px-3 text-right">Total Harga</th>
                           <th className="py-3.5 px-3 text-right">Start Count</th>
                           <th className="py-3.5 px-3">
-                            <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-indigo-400" /> Tanggal Masuk</span>
+                            <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" /> Tanggal Masuk</span>
                           </th>
                           <th className="py-3.5 px-4 text-center">Aksi</th>
                         </tr>
@@ -1435,7 +1532,7 @@ export default function AdminDashboard() {
                                   const idToCopy = order.order_id ? String(order.order_id) : order.id;
                                   navigator.clipboard.writeText(idToCopy);
                                 }}
-                                className="font-mono text-slate-350 hover:text-indigo-400 font-bold bg-slate-950 border border-slate-850 px-2 py-0.5 rounded-lg text-[9px] w-fit flex items-center gap-1 transition-colors cursor-pointer"
+                                className="font-mono text-slate-350 hover:text-rose-500 dark:text-rose-400 font-bold bg-slate-950 border border-slate-850 px-2 py-0.5 rounded-lg text-[9px] w-fit flex items-center gap-1 transition-colors cursor-pointer"
                                 title="Salin ID"
                               >
                                 {order.order_id ? String(order.order_id) : order.id.slice(0, 8)}
@@ -1452,7 +1549,7 @@ export default function AdminDashboard() {
                                 {/* Process Status badge */}
                                 <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider border ${
                                   order.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' :
-                                  order.status === 'inprogress' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/25' :
+                                  order.status === 'inprogress' ? 'bg-rose-50/80 dark:bg-rose-950/15 text-rose-500 dark:text-rose-400 border-indigo-500/25' :
                                   order.status === 'processing' ? 'bg-purple-500/10 text-purple-400 border-purple-500/25' :
                                   order.status === 'failed' ? 'bg-red-500/10 text-red-400 border-red-500/25' :
                                   order.status === 'partial' ? 'bg-orange-500/10 text-orange-400 border-orange-500/25' :
@@ -1470,7 +1567,7 @@ export default function AdminDashboard() {
                                   order.category.toLowerCase() === 'tiktok' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
                                   order.category.toLowerCase() === 'youtube' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                                   order.category.toLowerCase() === 'twitter/x' ? 'bg-slate-900 text-slate-300 border-slate-800' :
-                                  'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                                  'bg-rose-50/80 dark:bg-rose-950/15 text-rose-500 dark:text-rose-400 border-indigo-500/20'
                                 }`}>
                                   {order.category}
                                 </span>
@@ -1478,14 +1575,14 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-4 px-3 font-mono text-slate-400 max-w-xs">
                               <div className="flex items-center gap-1">
-                                <a href={order.target_url} target="_blank" rel="noreferrer" className="hover:text-indigo-400 hover:underline truncate max-w-[110px] inline-block text-[11px]">
+                                <a href={order.target_url} target="_blank" rel="noreferrer" className="hover:text-rose-500 dark:text-rose-400 hover:underline truncate max-w-[110px] inline-block text-[11px]">
                                   {order.target_url.replace('https://', '').replace('www.', '')}
                                 </a>
                                 <ExternalLink className="w-3 h-3 text-slate-500 inline shrink-0" />
                               </div>
                             </td>
                             <td className="py-4 px-3 text-right font-semibold text-slate-200 whitespace-nowrap">{order.quantity.toLocaleString()}</td>
-                            <td className="py-4 px-3 text-right font-extrabold text-indigo-400 whitespace-nowrap">{formatPrice(order.total_price)}</td>
+                            <td className="py-4 px-3 text-right font-extrabold text-rose-500 dark:text-rose-400 whitespace-nowrap">{formatPrice(order.total_price)}</td>
                             <td className="py-4 px-3 text-right font-mono text-slate-300 whitespace-nowrap">
                               {order.start_count || 0}
                             </td>
@@ -1501,7 +1598,7 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-4 px-4 text-center">
                               {updatingOrderId === order.id ? (
-                                <div className="flex flex-col gap-2.5 p-3.5 bg-slate-950 border border-slate-800 rounded-2xl w-48 mx-auto text-left shadow-xl">
+                                <div className="flex flex-col gap-2.5 p-3.5 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 rounded-2xl w-48 mx-auto text-left shadow-xl">
                                   {orderStatusSelect === 'pending' && (
                                     <div>
                                       <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Jumlah Awal</label>
@@ -1570,7 +1667,7 @@ export default function AdminDashboard() {
                                   <div className="flex gap-1.5 mt-1.5">
                                     <button
                                       onClick={() => handleSaveOrderUpdate(order.id)}
-                                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 rounded text-[10px] flex items-center justify-center gap-1 cursor-pointer"
+                                      className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-white font-bold py-1.5 rounded text-[10px] flex items-center justify-center gap-1 cursor-pointer"
                                     >
                                       <Check className="w-3 h-3" />
                                       Simpan
@@ -1606,7 +1703,7 @@ export default function AdminDashboard() {
                                   })()}
                                   <button
                                     onClick={() => openOrderEditor(order)}
-                                    className="inline-flex items-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 px-3.5 py-1.5 rounded-xl border border-indigo-500/20 font-extrabold cursor-pointer transition-all active:scale-95 text-[10px] w-full justify-center"
+                                    className="inline-flex items-center gap-1.5 bg-rose-50/80 dark:bg-rose-950/15 hover:bg-indigo-500/20 text-rose-500 dark:text-rose-400 px-3.5 py-1.5 rounded-xl border border-indigo-500/20 font-extrabold cursor-pointer transition-all active:scale-95 text-[10px] w-full justify-center"
                                   >
                                     <Edit2 className="w-3 h-3" />
                                     Atur Progres
@@ -1620,7 +1717,198 @@ export default function AdminDashboard() {
                     </table>
                   </div>
 
+                  {/* Mobile responsive cards list */}
+                  <div className="block md:hidden divide-y divide-slate-800/40">
+                    {filteredOrders.slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage).map(order => (
+                      <div key={order.id} className="p-4 space-y-3.5 bg-slate-900/10 hover:bg-slate-900/30 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => {
+                              const idToCopy = order.order_id ? String(order.order_id) : order.id;
+                              navigator.clipboard.writeText(idToCopy);
+                            }}
+                            className="font-mono text-slate-350 font-bold bg-slate-950 border border-slate-850 px-2 py-0.5 rounded-lg text-[9px] w-fit flex items-center gap-1 transition-colors"
+                          >
+                            #{order.order_id ? String(order.order_id) : order.id.slice(0, 8)}
+                          </button>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(order.created_at).toLocaleString('id-ID', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }).replace('.', ':')}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400 font-medium">User:</span>
+                            <span className="font-semibold text-slate-200 truncate max-w-[180px]">{order.profiles?.email || 'User/Simulated'}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400 font-medium">Layanan:</span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="font-bold text-slate-100 text-right truncate max-w-[180px]" title={order.service_name}>{order.service_name}</span>
+                              <span className="px-1.5 py-0.5 rounded-md font-extrabold text-[8px] uppercase tracking-wider border bg-slate-800 text-slate-400 border-slate-800/80 w-fit">
+                                {order.category}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400 font-medium">Target URL:</span>
+                            <a href={order.target_url} target="_blank" rel="noreferrer" className="text-rose-500 dark:text-rose-400 font-semibold hover:underline truncate max-w-[180px]">
+                              {order.target_url.replace('https://', '').replace('www.', '')}
+                            </a>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400 font-medium">Jumlah / Total Harga:</span>
+                            <span className="font-bold text-slate-200">
+                              {order.quantity.toLocaleString()} | <span className="text-rose-500 dark:text-rose-400">{formatPrice(order.total_price)}</span>
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400 font-medium">Status:</span>
+                            <div className="flex gap-1.5">
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider border ${
+                                order.payment_status === 'paid' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 
+                                order.payment_status === 'refunded' ? 'bg-slate-800 text-slate-400 dark:text-slate-400 border-slate-800/80' : 
+                                'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
+                              }`}>
+                                {order.payment_status}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider border ${
+                                order.status === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+                                order.status === 'failed' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' :
+                                'bg-slate-800 text-slate-400 dark:text-slate-400 border-slate-800/80'
+                              }`}>
+                                {order.status === 'failed' ? 'error' : order.status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="pt-2">
+                          {updatingOrderId === order.id ? (
+                            <div className="space-y-3.5 p-3.5 bg-slate-955 border border-slate-800 text-slate-100 rounded-2xl text-left shadow-xl">
+                              {orderStatusSelect === 'pending' && (
+                                <div>
+                                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Jumlah Awal</label>
+                                  <input
+                                    type="number"
+                                    value={orderStartCountInput}
+                                    onChange={(e) => setOrderStartCountInput(parseInt(e.target.value) || 0)}
+                                    className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-2 py-1 rounded outline-none text-xs"
+                                  />
+                                </div>
+                              )}
+                              <div>
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status Progres</label>
+                                  <select
+                                    value={orderStatusSelect}
+                                    onChange={(e) => {
+                                      const nextStatus = e.target.value;
+                                      setOrderStatusSelect(nextStatus as any);
+                                      if (nextStatus === 'failed') {
+                                        setCustomRefundInput(String(order.total_price));
+                                      } else if (nextStatus === 'partial') {
+                                        setCustomRefundInput('0');
+                                      } else {
+                                        setCustomRefundInput('0');
+                                      }
+                                    }}
+                                    className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-2 py-1 rounded outline-none text-xs"
+                                  >
+                                    <option value="pending">pending</option>
+                                    <option value="processing">processing</option>
+                                    <option value="inprogress">inprogress</option>
+                                    <option value="success">success</option>
+                                    <option value="partial">partial</option>
+                                    <option value="failed">failed (error)</option>
+                                  </select>
+                              </div>
+                              {orderStatusSelect === 'partial' && (
+                                <div>
+                                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Jumlah Sisa (Remains)</label>
+                                  <input
+                                    type="number"
+                                    placeholder="Sisa yg gagal kirim..."
+                                    onChange={(e) => {
+                                      const remains = parseFloat(e.target.value) || 0;
+                                      const quantity = order.quantity || 1;
+                                      const calculatedRefund = Math.min((remains / quantity) * order.total_price, order.total_price);
+                                      setCustomRefundInput(String(Math.round(calculatedRefund)));
+                                    }}
+                                    className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-2 py-1 rounded outline-none text-xs"
+                                  />
+                                </div>
+                              )}
+                              {(orderStatusSelect === 'failed' || orderStatusSelect === 'partial') && (
+                                <div>
+                                  <label className="text-[9px] font-bold text-red-400 uppercase tracking-wider block mb-1">Jumlah Refund (IDR)</label>
+                                  <input
+                                    type="number"
+                                    value={customRefundInput}
+                                    onChange={(e) => setCustomRefundInput(e.target.value)}
+                                    placeholder="Jumlah refund..."
+                                    className="w-full bg-slate-900 border border-red-500/30 focus:border-red-500 text-slate-200 px-2 py-1 rounded outline-none text-xs"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleSaveOrderUpdate(order.id)}
+                                  className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-1.5 rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                  <Check className="w-3 h-3" />
+                                  Simpan
+                                </button>
+                                <button
+                                  onClick={() => setUpdatingOrderId(null)}
+                                  className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-450 rounded-xl text-xs cursor-pointer"
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            </div>
+                          ) : order.status === 'success' || order.status === 'failed' ? (
+                            <div className="text-center text-[10px] text-slate-500 font-mono italic">Order Selesai</div>
+                          ) : (
+                            <div className="flex gap-2 w-full">
+                              {order.status === 'pending' && (() => {
+                                const service = services.find(s => s.id === order.service_id);
+                                const isProvider = !!(service && service.provider_id && service.provider_id !== 'manual' && service.provider_service_id);
+                                if (isProvider) {
+                                  return (
+                                    <button
+                                      onClick={() => handleRetryProvider(order.id)}
+                                      disabled={retryingOrderId === order.id}
+                                      className="flex-1 inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl border border-slate-800/80 font-extrabold cursor-pointer transition-all active:scale-95 text-[10px] disabled:opacity-50 disabled:cursor-not-allowed justify-center"
+                                    >
+                                      <Zap className={`w-3 h-3 ${retryingOrderId === order.id ? 'animate-spin' : ''}`} />
+                                      {retryingOrderId === order.id ? 'Mengirim...' : 'Kirim Provider'}
+                                    </button>
+                                  );
+                                }
+                                return null;
+                              })()}
+                              <button
+                                onClick={() => openOrderEditor(order)}
+                                className="flex-1 inline-flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 px-3.5 py-2 rounded-xl border border-rose-500/20 font-extrabold cursor-pointer transition-all active:scale-95 text-[10px] justify-center"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                Atur Progres
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
                   {/* Pagination Controls */}
+
                   {totalOrdersPages > 1 && (
                     <div className="flex items-center justify-between border-t border-slate-850/80 bg-slate-900/10 px-6 py-4">
                       <div className="text-xs text-slate-400">
@@ -1656,9 +1944,9 @@ export default function AdminDashboard() {
             <div className="grid lg:grid-cols-3 gap-8 items-start">
             
             {/* Service Form */}
-            <div className="bg-slate-900/40 border border-slate-800/80 p-6 sm:p-8 rounded-3xl backdrop-blur-md">
+            <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 sm:p-8 rounded-3xl backdrop-blur-md">
               <h3 className="font-bold text-base text-slate-200 mb-6 flex items-center gap-2">
-                <Settings className="w-4 h-4 text-indigo-400" />
+                <Settings className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                 <span>{editingServiceId ? 'Edit Layanan' : 'Tambah Layanan Baru'}</span>
               </h3>
 
@@ -1672,7 +1960,7 @@ export default function AdminDashboard() {
                       onClick={() => {
                         setIsAdminCategoryDropdownOpen(!isAdminCategoryDropdownOpen);
                       }}
-                      className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs text-left cursor-pointer"
+                      className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs text-left cursor-pointer"
                     >
                       <span className="truncate">
                         {serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X' 
@@ -1687,7 +1975,7 @@ export default function AdminDashboard() {
 
                     {/* Custom Admin Category Dropdown List */}
                     {isAdminCategoryDropdownOpen && (
-                      <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 border border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[260px] flex flex-col">
+                      <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[260px] flex flex-col">
                         <div className="p-2.5 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
                           <input
                             type="text"
@@ -1714,7 +2002,7 @@ export default function AdminDashboard() {
                                   setIsAdminCategoryDropdownOpen(false);
                                   setIsAdminCategorySearch('');
                                 }}
-                                className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-indigo-650/15 hover:text-indigo-400 transition-colors"
+                                className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-indigo-650/15 hover:text-rose-500 dark:text-rose-400 transition-colors"
                               >
                                 {cat === 'Kustom' ? 'Kategori Baru (Kustom)...' : cat}
                               </button>
@@ -1731,7 +2019,7 @@ export default function AdminDashboard() {
                       placeholder="Masukkan nama kategori baru..."
                       value={serviceCategory}
                       onChange={(e) => setServiceCategory(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-250 px-4 py-3 rounded-2xl outline-none text-xs mt-2"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-250 px-4 py-3 rounded-2xl outline-none text-xs mt-2"
                     />
                   )}
                 </div>
@@ -1744,7 +2032,7 @@ export default function AdminDashboard() {
                     placeholder="Contoh: Followers Indo Real"
                     value={serviceName}
                     onChange={(e) => setServiceName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   />
                 </div>
 
@@ -1767,12 +2055,12 @@ export default function AdminDashboard() {
                     required
                     value={formatNumberWithDots(servicePrice)}
                     onChange={(e) => setServicePrice(parseNumberFromDots(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs font-semibold"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs font-semibold"
                   />
                 </div>
 
                 <div className="border-t border-slate-850 pt-4 mt-4 space-y-4">
-                  <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Integrasi Provider Pusat</h4>
+                  <h4 className="text-[10px] font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider">Integrasi Provider Pusat</h4>
                   
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Provider Pusat</label>
@@ -1785,7 +2073,7 @@ export default function AdminDashboard() {
                         setProviderServiceId('');
                         setProviderPrice(0);
                       }}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                     >
                       <option value="manual">Manual (Tanpa Provider)</option>
                       <option value="buzzerpanel">BuzzerPanel</option>
@@ -1801,7 +2089,7 @@ export default function AdminDashboard() {
                           type="button"
                           disabled={loadingProviderServices}
                           onClick={fetchProviderServices}
-                          className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg transition-all font-semibold"
+                          className="text-[10px] bg-rose-500 hover:bg-rose-600 text-white text-white px-2.5 py-1 rounded-lg transition-all font-semibold"
                         >
                           {loadingProviderServices ? 'Memuat...' : 'Muat Layanan Pusat'}
                         </button>
@@ -1842,7 +2130,7 @@ export default function AdminDashboard() {
                                   placeholder="Contoh: Followers..."
                                   value={providerSearch}
                                   onChange={(e) => setProviderSearch(e.target.value)}
-                                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
+                                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
                                 />
                               </div>
                               <div>
@@ -1860,7 +2148,7 @@ export default function AdminDashboard() {
                                       setProviderCategoryFilter(matched);
                                     }
                                   }}
-                                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
+                                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
                                 />
                                                            <div>
                                 <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kategori Pusat</label>
@@ -1872,7 +2160,7 @@ export default function AdminDashboard() {
                                       setIsProviderCategoryDropdownOpen(!isProviderCategoryDropdownOpen);
                                       setIsProviderServiceDropdownOpen(false);
                                     }}
-                                    className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px] text-left cursor-pointer"
+                                    className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px] text-left cursor-pointer"
                                   >
                                     <span className="truncate">{providerCategoryFilter === 'all' ? 'Semua Kategori' : providerCategoryFilter}</span>
                                     <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isProviderCategoryDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1880,7 +2168,7 @@ export default function AdminDashboard() {
 
                                   {/* Custom Category Dropdown List */}
                                   {isProviderCategoryDropdownOpen && (
-                                    <div className="absolute left-0 right-0 mt-1 bg-slate-950 border border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[220px] flex flex-col">
+                                    <div className="absolute left-0 right-0 mt-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[220px] flex flex-col">
                                       <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
                                         <button
                                           type="button"
@@ -1888,8 +2176,8 @@ export default function AdminDashboard() {
                                             setProviderCategoryFilter('all');
                                             setIsProviderCategoryDropdownOpen(false);
                                           }}
-                                          className={`w-full text-left px-3 py-2 text-[11px] hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors ${
-                                            providerCategoryFilter === 'all' ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-350'
+                                          className={`w-full text-left px-3 py-2 text-[11px] hover:bg-indigo-600/10 hover:text-rose-500 dark:text-rose-400 transition-colors ${
+                                            providerCategoryFilter === 'all' ? 'bg-indigo-600/20 text-rose-500 dark:text-rose-400 font-semibold' : 'text-slate-350'
                                           }`}
                                         >
                                           Semua Kategori
@@ -1904,8 +2192,8 @@ export default function AdminDashboard() {
                                                 setProviderCategoryFilter(cat);
                                                 setIsProviderCategoryDropdownOpen(false);
                                               }}
-                                              className={`w-full text-left px-3 py-2 text-[11px] hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors ${
-                                                providerCategoryFilter === cat ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-350'
+                                              className={`w-full text-left px-3 py-2 text-[11px] hover:bg-indigo-600/10 hover:text-rose-500 dark:text-rose-400 transition-colors ${
+                                                providerCategoryFilter === cat ? 'bg-indigo-600/20 text-rose-500 dark:text-rose-400 font-semibold' : 'text-slate-350'
                                               }`}
                                             >
                                               {cat}
@@ -1929,7 +2217,7 @@ export default function AdminDashboard() {
                                       setProviderCategoryFilter('all');
                                       setProviderCategorySearch('');
                                     }}
-                                    className="text-[9px] text-indigo-400 hover:text-indigo-300 font-semibold"
+                                    className="text-[9px] text-rose-500 dark:text-rose-400 hover:text-indigo-300 font-semibold"
                                   >
                                     Reset Filter
                                   </button>
@@ -1943,7 +2231,7 @@ export default function AdminDashboard() {
                                     setIsProviderServiceDropdownOpen(!isProviderServiceDropdownOpen);
                                     setIsProviderCategoryDropdownOpen(false);
                                   }}
-                                  className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs text-left cursor-pointer min-w-0"
+                                  className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs text-left cursor-pointer min-w-0"
                                 >
                                   <span className="truncate">
                                     {providerServiceId 
@@ -1959,7 +2247,7 @@ export default function AdminDashboard() {
 
                                 {/* Custom Service Dropdown List */}
                                 {isProviderServiceDropdownOpen && (
-                                  <div className="absolute left-0 right-0 mt-1 bg-slate-950 border border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                                  <div className="absolute left-0 right-0 mt-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
                                     <div className="p-3 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
                                       <input
                                         type="text"
@@ -2022,8 +2310,8 @@ export default function AdminDashboard() {
                                               setIsProviderServiceDropdownOpen(false);
                                               setProviderServiceSearchQuery('');
                                             }}
-                                            className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors flex flex-col gap-0.5 ${
-                                              providerServiceId === String(ps.id) ? 'bg-indigo-600/20 text-indigo-400 font-semibold' : 'text-slate-350'
+                                            className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-rose-500 dark:text-rose-400 transition-colors flex flex-col gap-0.5 ${
+                                              providerServiceId === String(ps.id) ? 'bg-indigo-600/20 text-rose-500 dark:text-rose-400 font-semibold' : 'text-slate-350'
                                             }`}
                                           >
                                             <span className="block truncate">[{ps.id}] {ps.name}</span>
@@ -2056,7 +2344,7 @@ export default function AdminDashboard() {
                           placeholder="Contoh: 140"
                           value={providerServiceId}
                           onChange={(e) => setProviderServiceId(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                         />
                       </div>
                       <div>
@@ -2067,7 +2355,7 @@ export default function AdminDashboard() {
                           placeholder="Harga beli"
                           value={providerPrice || ''}
                           onChange={(e) => setProviderPrice(parseFloat(e.target.value) || 0)}
-                          className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                         />
                       </div>
                     </div>
@@ -2082,7 +2370,7 @@ export default function AdminDashboard() {
                       required
                       value={serviceMin}
                       onChange={(e) => setServiceMin(parseInt(e.target.value) || 0)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                     />
                   </div>
                   <div>
@@ -2092,7 +2380,7 @@ export default function AdminDashboard() {
                       required
                       value={serviceMax}
                       onChange={(e) => setServiceMax(parseInt(e.target.value) || 0)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                     />
                   </div>
                 </div>
@@ -2105,7 +2393,7 @@ export default function AdminDashboard() {
                     placeholder="Contoh: 15 Menit, 1 Jam, dll."
                     value={averageDuration}
                     onChange={(e) => setAverageDuration(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   />
                 </div>
 
@@ -2130,12 +2418,12 @@ export default function AdminDashboard() {
                     />
                     <label
                       htmlFor="service-icon-upload"
-                      className="bg-slate-950 border border-slate-800 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
+                      className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
                     >
                       Pilih File Gambar
                     </label>
                     {serviceIcon && (
-                      <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+                      <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 flex items-center justify-center shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={serviceIcon} alt="Preview" className="w-full h-full object-cover" />
                         <button
@@ -2154,7 +2442,7 @@ export default function AdminDashboard() {
                   <button
                     type="submit"
                     disabled={submittingService}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-2xl transition-all text-xs flex items-center justify-center gap-1.5"
+                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-white font-bold py-3 rounded-2xl transition-all text-xs flex items-center justify-center gap-1.5"
                   >
                     <Check className="w-4 h-4" />
                     <span>{editingServiceId ? 'Perbarui Layanan' : 'Simpan Layanan'}</span>
@@ -2181,7 +2469,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Service Lists */}
-            <div className="lg:col-span-2 bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between">
+            <div className="lg:col-span-2 bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 flex flex-col justify-between">
               <div>
                 <h3 className="font-bold text-sm text-slate-200 mb-4 uppercase tracking-wider">Daftar Layanan Tersedia</h3>
                 <div className="space-y-4">
@@ -2201,7 +2489,7 @@ export default function AdminDashboard() {
                       return (
                         <div 
                           key={service.id} 
-                          className="bg-slate-950/40 border border-slate-850 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-950/10 transition-all duration-300 p-5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs group"
+                          className="bg-slate-50 dark:bg-slate-950/50 border border-slate-850 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-950/10 transition-all duration-300 p-5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs group"
                         >
                           <div className="flex items-start sm:items-center gap-3.5 flex-1">
                             {serviceIconUrl ? (
@@ -2220,7 +2508,7 @@ export default function AdminDashboard() {
                                 <span className={`px-2 py-0.5 rounded-lg font-extrabold text-[9px] uppercase tracking-wider border ${categoryBadge}`}>
                                   {service.category}
                                 </span>
-                                <span className="font-extrabold text-slate-800 dark:text-slate-200 text-sm group-hover:text-indigo-650 dark:group-hover:text-white transition-colors">
+                                <span className="font-extrabold text-slate-800 dark:text-slate-200 text-sm group-hover:text-rose-600 dark:text-rose-455 dark:group-hover:text-white transition-colors">
                                   {service.name}
                                 </span>
                               </div>
@@ -2247,7 +2535,7 @@ export default function AdminDashboard() {
                               <button
                                 type="button"
                                 onClick={() => setExpandedServices(prev => ({ ...prev, [service.id]: !prev[service.id] }))}
-                                className="text-[10px] text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-bold mt-2.5 flex items-center gap-1 cursor-pointer transition-colors"
+                                className="text-[10px] text-indigo-500 dark:text-rose-500 dark:text-rose-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-bold mt-2.5 flex items-center gap-1 cursor-pointer transition-colors"
                               >
                                 <span>{expandedServices[service.id] ? 'Sembunyikan Deskripsi' : 'Lihat Deskripsi'}</span>
                                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedServices[service.id] ? 'rotate-180' : ''}`} />
@@ -2256,7 +2544,7 @@ export default function AdminDashboard() {
 
                             {service.description && expandedServices[service.id] && (
                               <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-2.5 bg-slate-100/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200 dark:border-slate-850/60 max-w-xl font-light leading-relaxed whitespace-pre-wrap select-text animate-in fade-in slide-in-from-top-2 duration-250">
-                                <span className="block font-bold text-[9px] text-indigo-650 dark:text-indigo-400/80 uppercase tracking-wider mb-1">Deskripsi Detail:</span>
+                                <span className="block font-bold text-[9px] text-rose-600 dark:text-rose-455 dark:text-rose-500 dark:text-rose-400/80 uppercase tracking-wider mb-1">Deskripsi Detail:</span>
                                 <div className="text-slate-700 dark:text-slate-300">{service.description}</div>
                               </div>
                             )}
@@ -2264,7 +2552,7 @@ export default function AdminDashboard() {
                         </div>
 
                           <div className="flex sm:flex-col items-end gap-3 sm:gap-2 justify-between sm:justify-center border-t sm:border-t-0 border-slate-900 pt-3 sm:pt-0 shrink-0">
-                            <div className="bg-indigo-500/10 text-indigo-400 font-extrabold px-3 py-1.5 rounded-xl border border-indigo-500/20 text-sm tracking-tight whitespace-nowrap shadow-inner">
+                            <div className="bg-rose-50/80 dark:bg-rose-950/15 text-rose-500 dark:text-rose-400 font-extrabold px-3 py-1.5 rounded-xl border border-indigo-500/20 text-sm tracking-tight whitespace-nowrap shadow-inner">
                               {formatPrice(service.price_per_k)}
                             </div>
                              <div className="flex gap-2">
@@ -2281,7 +2569,7 @@ export default function AdminDashboard() {
                               </button>
                               <button
                                 onClick={() => startEditService(service)}
-                                className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-xl transition-colors cursor-pointer"
+                                className="p-2 bg-rose-50/80 dark:bg-rose-950/20 text-rose-600 dark:text-rose-455 border border-rose-200/40 dark:border-rose-900/25 rounded-xl transition-colors cursor-pointer"
                                 title="Edit Layanan"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -2330,9 +2618,9 @@ export default function AdminDashboard() {
           </div>
             
             {/* Provider Price Matcher */}
-            <div className="bg-slate-900/40 border border-slate-800/80 p-6 sm:p-8 rounded-3xl backdrop-blur-md">
+            <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 sm:p-8 rounded-3xl backdrop-blur-md">
               <h3 className="font-bold text-base text-slate-200 mb-2 flex items-center gap-2">
-                <Search className="w-5 h-5 text-indigo-400" />
+                <Search className="w-5 h-5 text-rose-500 dark:text-rose-400" />
                 <span>Pembanding Harga Layanan Pusat (Real-Time Price Matcher)</span>
               </h3>
               <p className="text-slate-400 text-xs mb-6 font-light">
@@ -2346,12 +2634,12 @@ export default function AdminDashboard() {
                   placeholder="Ketik nama layanan, misal: Followers Indo..."
                   value={comparisonKeyword}
                   onChange={(e) => setComparisonKeyword(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-250 px-4 py-3 rounded-2xl outline-none text-xs"
+                  className="flex-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-250 px-4 py-3 rounded-2xl outline-none text-xs"
                 />
                 <button
                   type="submit"
                   disabled={loadingComparison}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-55 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-55 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   {loadingComparison ? 'Membandingkan...' : 'Bandingkan Harga'}
                 </button>
@@ -2360,7 +2648,7 @@ export default function AdminDashboard() {
               {comparisonResults && (
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* BuzzerPanel results */}
-                  <div className="bg-slate-950/40 border border-slate-850 p-5 rounded-2xl space-y-4">
+                  <div className="bg-slate-50 dark:bg-slate-950/50 border border-slate-850 p-5 rounded-2xl space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-900 pb-3">
                       <span className="font-bold text-xs text-slate-250 uppercase tracking-wider">Hasil BuzzerPanel</span>
                       <span className="text-[10px] bg-amber-500/10 text-amber-400 font-extrabold px-2 py-0.5 rounded-md border border-amber-500/25">
@@ -2398,7 +2686,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* MedanPedia results */}
-                  <div className="bg-slate-950/40 border border-slate-850 p-5 rounded-2xl space-y-4">
+                  <div className="bg-slate-50 dark:bg-slate-950/50 border border-slate-850 p-5 rounded-2xl space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-900 pb-3">
                       <span className="font-bold text-xs text-slate-250 uppercase tracking-wider">Hasil MedanPedia</span>
                       <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-extrabold px-2 py-0.5 rounded-md border border-emerald-500/25">
@@ -2458,9 +2746,9 @@ export default function AdminDashboard() {
           <div className="grid lg:grid-cols-3 gap-8 items-start">
             
             {/* Announcement Form */}
-            <div className="bg-slate-900/40 border border-slate-800/80 p-6 sm:p-8 rounded-3xl backdrop-blur-md">
+            <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 sm:p-8 rounded-3xl backdrop-blur-md">
               <h3 className="font-bold text-base text-slate-200 mb-6 flex items-center gap-2">
-                <Megaphone className="w-4 h-4 text-indigo-400" />
+                <Megaphone className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                 <span>{editingAnnId ? 'Edit Info Rekomendasi' : 'Buat Info Rekomendasi'}</span>
               </h3>
 
@@ -2470,7 +2758,7 @@ export default function AdminDashboard() {
                   <select
                     value={annBadge}
                     onChange={(e) => setAnnBadge(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   >
                     <option value="INFO">INFO</option>
                     <option value="HOT">HOT</option>
@@ -2487,7 +2775,7 @@ export default function AdminDashboard() {
                     placeholder="Contoh: Promo Weekend Followers"
                     value={annTitle}
                     onChange={(e) => setAnnTitle(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   />
                 </div>
 
@@ -2499,7 +2787,7 @@ export default function AdminDashboard() {
                     placeholder="Masukkan pesan info detail rekomendasi di sini..."
                     value={annContent}
                     onChange={(e) => setAnnContent(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                   />
                 </div>
 
@@ -2524,7 +2812,7 @@ export default function AdminDashboard() {
                     />
                     <label
                       htmlFor="announcement-banner-upload"
-                      className="bg-slate-950 border border-slate-800 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
+                      className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
                     >
                       Pilih File Banner
                     </label>
@@ -2539,7 +2827,7 @@ export default function AdminDashboard() {
                     )}
                   </div>
                   {annImageUrl && (
-                    <div className="mt-3 relative w-full h-32 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">
+                    <div className="mt-3 relative w-full h-32 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 flex items-center justify-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={annImageUrl} alt="Preview Banner" className="w-full h-full object-cover" />
                     </div>
@@ -2575,7 +2863,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Announcement lists */}
-            <div className="lg:col-span-2 bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6">
+            <div className="lg:col-span-2 bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6">
               <h3 className="font-bold text-sm text-slate-200 mb-4 uppercase tracking-wider">Daftar Info Terkirim</h3>
               <div className="divide-y divide-slate-850">
                 {announcements.length === 0 ? (
@@ -2586,7 +2874,7 @@ export default function AdminDashboard() {
                       <div className="text-xs text-left">
                         <div className="flex items-center gap-2">
                           {ann.badge && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
+                            <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-rose-50/80 dark:bg-rose-950/15 text-rose-500 dark:text-rose-400 border border-indigo-500/20 uppercase tracking-wider">
                               {ann.badge}
                             </span>
                           )}
@@ -2604,7 +2892,7 @@ export default function AdminDashboard() {
                             setAnnContent(ann.content);
                             setAnnImageUrl(ann.image_url || '');
                           }}
-                          className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-xl cursor-pointer"
+                          className="p-2 bg-rose-50/80 dark:bg-rose-950/20 text-rose-600 dark:text-rose-455 border border-rose-200/40 dark:border-rose-900/25 rounded-xl cursor-pointer"
                           title="Edit Info"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -2630,9 +2918,9 @@ export default function AdminDashboard() {
           <div className="grid lg:grid-cols-3 gap-8 items-start">
             
             {/* User Balances List */}
-            <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md flex flex-col max-h-[640px]">
+            <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md flex flex-col max-h-[640px]">
               <h3 className="font-bold text-base text-slate-200 mb-2 flex items-center gap-2">
-                <Users className="w-4 h-4 text-indigo-400" />
+                <Users className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                 <span>Saldo Akun User</span>
               </h3>
               <p className="text-xs text-slate-400 mb-4 font-light">
@@ -2669,13 +2957,13 @@ export default function AdminDashboard() {
                         .slice((usersPage - 1) * 10, usersPage * 10)
                         .map(prof => (
                           <div key={prof.id} className="py-3.5 flex justify-between items-center gap-2 text-xs">
-                            <div className="truncate">
-                              <span className="font-bold text-slate-250 block truncate">{prof.email}</span>
+                            <div className="truncate min-w-0 flex-1">
+                              <span className="font-bold text-slate-250 block truncate pr-2">{prof.email}</span>
                               <span className="text-[10px] text-slate-550 font-mono block mt-0.5">{prof.id.slice(0, 8)}</span>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               <div className="text-right">
-                                <span className="font-extrabold text-indigo-400 block">{formatPrice(prof.balance || 0)}</span>
+                                <span className="font-extrabold text-rose-500 dark:text-rose-400 block">{formatPrice(prof.balance || 0)}</span>
                                 <span className="text-[9px] text-slate-500 uppercase tracking-wider block mt-0.5">{prof.role}</span>
                               </div>
                               <button
@@ -2687,7 +2975,7 @@ export default function AdminDashboard() {
                                   setBalanceError(null);
                                   setShowBalanceModal(true);
                                 }}
-                                className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 transition-all cursor-pointer"
+                                className="p-1.5 rounded-lg bg-rose-50/80 dark:bg-rose-950/20 text-rose-600 dark:text-rose-455 border border-rose-200/40 dark:border-rose-900/25 transition-all cursor-pointer"
                                 title="Kelola Saldo"
                               >
                                 <Wallet className="w-3.5 h-3.5" />
@@ -2724,10 +3012,10 @@ export default function AdminDashboard() {
             </div>
 
             {/* Transaction Logs Table */}
-            <div className="lg:col-span-2 bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-md">
+            <div className="lg:col-span-2 bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 backdrop-blur-md">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 className="font-bold text-base text-slate-200 flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-indigo-400" />
+                  <CreditCard className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                   <span>Log Transaksi Sistem</span>
                 </h3>
                 
@@ -2738,7 +3026,7 @@ export default function AdminDashboard() {
                     placeholder="Cari user email or ID..."
                     value={searchTermTransactions}
                     onChange={(e) => setSearchTermTransactions(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 pl-10 pr-4 py-2 rounded-xl outline-none transition-colors text-xs"
+                    className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-10 pr-4 py-2 rounded-xl outline-none transition-colors text-xs"
                   />
                 </div>
               </div>
@@ -2748,7 +3036,7 @@ export default function AdminDashboard() {
                 <div className="py-16 text-center text-slate-550 text-xs">Tidak ada riwayat transaksi ditemukan.</div>
               ) : (
                 <>
-                  <div className="overflow-x-auto">
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="border-b border-slate-850 text-slate-450 font-semibold uppercase tracking-wider">
@@ -2813,6 +3101,67 @@ export default function AdminDashboard() {
                     </table>
                   </div>
 
+                  {/* Mobile responsive cards list for transactions */}
+                  <div className="block md:hidden divide-y divide-slate-800/40">
+                    {filteredTransactions
+                      .slice((transactionsPage - 1) * itemsPerPage, transactionsPage * itemsPerPage)
+                      .map(tx => (
+                        <div key={tx.id} className="py-4 space-y-2 text-xs">
+                          <div className="flex justify-between items-center">
+                            <span className="font-mono text-slate-400 text-[10px]">
+                              {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 8)}
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              {new Date(tx.created_at).toLocaleString('id-ID', {
+                                day: '2-digit',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-medium">User:</span>
+                              <span className="font-semibold text-slate-200 truncate max-w-[180px]">{tx.profiles?.email || 'User/Simulated'}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-medium">Tipe / Metode:</span>
+                              <span className="font-medium text-slate-200">
+                                {tx.type === 'topup' ? (
+                                  <span className="text-emerald-400 font-bold">Topup</span>
+                                ) : tx.type === 'refund' ? (
+                                  <span className="text-blue-400 font-bold">Refund</span>
+                                ) : (
+                                  <span className="text-slate-350 font-bold">Order</span>
+                                )}{' '}
+                                <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1 py-0.5 rounded uppercase">
+                                  {tx.payment_method || '-'}
+                                </span>
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-medium">Jumlah:</span>
+                              <span className={`font-bold ${tx.amount > 0 ? 'text-emerald-400' : 'text-red-450'}`}>
+                                {tx.amount > 0 ? '+' : ''}{formatPrice(tx.amount)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-medium">Status:</span>
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider inline-block ${
+                                tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                                tx.status === 'failed' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
+                                'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                              }`}>
+                                {tx.status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
                   {/* Pagination Controls */}
                   {totalTxPages > 1 && (
                     <div className="flex items-center justify-between border-t border-slate-850/80 bg-slate-900/10 px-6 py-4">
@@ -2845,9 +3194,9 @@ export default function AdminDashboard() {
 
         {/* Tab 5: Landing Page settings */}
         {activeTab === 'landing' && (
-          <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-md max-w-4xl mx-auto">
+          <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 backdrop-blur-md w-full">
             <h3 className="font-bold text-base text-slate-250 mb-6 flex items-center gap-2">
-              <Award className="w-5 h-5 text-indigo-400" />
+              <Award className="w-5 h-5 text-rose-500 dark:text-rose-400" />
               <span>Pengaturan Landing Page</span>
             </h3>
 
@@ -2858,7 +3207,7 @@ export default function AdminDashboard() {
                 
                 {/* Hero Section settings */}
                 <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-900 space-y-4">
-                  <h4 className="font-bold text-sm text-indigo-400 border-b border-slate-900 pb-2">Hero Section</h4>
+                  <h4 className="font-bold text-sm text-rose-500 dark:text-rose-400 border-b border-slate-900 pb-2">Hero Section</h4>
                   
                   <div>
                     <label className="block text-xs font-semibold text-slate-450 uppercase tracking-wider mb-2">Hero Badge Text</label>
@@ -2866,7 +3215,7 @@ export default function AdminDashboard() {
                       type="text"
                       value={landingSettings.hero_badge || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_badge: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       placeholder="e.g. Platform Buzzer Terpercaya & Tercepat di Indonesia"
                     />
                   </div>
@@ -2877,7 +3226,7 @@ export default function AdminDashboard() {
                       type="text"
                       value={landingSettings.hero_title || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_title: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       placeholder="e.g. Tingkatkan **Popularitas Medsos** Anda dengan Proses Cepat!"
                     />
                   </div>
@@ -2888,7 +3237,7 @@ export default function AdminDashboard() {
                       value={landingSettings.hero_subtitle || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_subtitle: e.target.value }))}
                       rows={3}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs resize-none"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs resize-none"
                       placeholder="e.g. Deskripsi singkat platform Anda..."
                     />
                   </div>
@@ -2900,7 +3249,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.hero_cta_text || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_cta_text: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       />
                     </div>
                     <div>
@@ -2909,7 +3258,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.hero_cta_sub_text || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, hero_cta_sub_text: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       />
                     </div>
                   </div>
@@ -2917,7 +3266,7 @@ export default function AdminDashboard() {
 
                 {/* Statistics settings */}
                 <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-900 space-y-4">
-                  <h4 className="font-bold text-sm text-indigo-400 border-b border-slate-900 pb-2">Angka Statistik (Stats Counters)</h4>
+                  <h4 className="font-bold text-sm text-rose-500 dark:text-rose-400 border-b border-slate-900 pb-2">Angka Statistik (Stats Counters)</h4>
                   
                   <div className="grid sm:grid-cols-4 gap-4">
                     <div>
@@ -2926,7 +3275,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.stats_orders || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, stats_orders: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
                       />
                     </div>
                     <div>
@@ -2935,7 +3284,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.stats_clients || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, stats_clients: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
                       />
                     </div>
                     <div>
@@ -2944,7 +3293,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.stats_success || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, stats_success: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
                       />
                     </div>
                     <div>
@@ -2953,7 +3302,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings.stats_speed || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, stats_speed: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
                       />
                     </div>
                   </div>
@@ -2961,7 +3310,7 @@ export default function AdminDashboard() {
 
                 {/* Informasi Tambahan per Kategori */}
                 <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-900 space-y-4">
-                  <h4 className="font-bold text-sm text-indigo-400 border-b border-slate-900 pb-2">Informasi Tambahan per Kategori (Form Pemesanan)</h4>
+                  <h4 className="font-bold text-sm text-rose-500 dark:text-rose-400 border-b border-slate-900 pb-2">Informasi Tambahan per Kategori (Form Pemesanan)</h4>
                   
                   <div>
                     <label className="block text-xs font-semibold text-slate-450 uppercase tracking-wider mb-2">Pilih Kategori</label>
@@ -2984,7 +3333,7 @@ export default function AdminDashboard() {
                       type="text"
                       value={landingSettings[`warning_title_${selectedWarningCategory}`] || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, [`warning_title_${selectedWarningCategory}`]: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                       placeholder={`Contoh: Penting ${selectedWarningCategory.toUpperCase()}:`}
                     />
                   </div>
@@ -2995,7 +3344,7 @@ export default function AdminDashboard() {
                       value={landingSettings[`warning_desc_${selectedWarningCategory}`] || ''}
                       onChange={(e) => setLandingSettings(prev => ({ ...prev, [`warning_desc_${selectedWarningCategory}`]: e.target.value }))}
                       rows={6}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs resize-y"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs resize-y"
                       placeholder="Masukkan deskripsi peringatan dan langkah-langkah di sini..."
                     />
                   </div>
@@ -3022,12 +3371,12 @@ export default function AdminDashboard() {
                         />
                         <label
                           htmlFor="warning-image-upload"
-                          className="bg-slate-950 border border-slate-800 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
+                          className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
                         >
                           Pilih File Gambar
                         </label>
                         {landingSettings[`warning_image_url_${selectedWarningCategory}`] && (
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 flex items-center justify-center shrink-0">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={landingSettings[`warning_image_url_${selectedWarningCategory}`]}
@@ -3052,7 +3401,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={landingSettings[`warning_video_url_${selectedWarningCategory}`] || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, [`warning_video_url_${selectedWarningCategory}`]: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                         placeholder="Contoh: https://youtube.com/watch?v=..."
                       />
                     </div>
@@ -3061,7 +3410,7 @@ export default function AdminDashboard() {
 
                 {/* Pengaturan Deposit & Bonus */}
                 <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-900 space-y-4">
-                  <h4 className="font-bold text-sm text-indigo-400 border-b border-slate-900 pb-2">Pengaturan Deposit & Bonus</h4>
+                  <h4 className="font-bold text-sm text-rose-500 dark:text-rose-400 border-b border-slate-900 pb-2">Pengaturan Deposit & Bonus</h4>
                   
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
@@ -3071,7 +3420,7 @@ export default function AdminDashboard() {
                         inputMode="numeric"
                         value={formatNumberWithDots(landingSettings.deposit_bonus_min)}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, deposit_bonus_min: String(parseNumberFromDots(e.target.value)) }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs font-semibold"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs font-semibold"
                         placeholder="Contoh: 10.000"
                       />
                     </div>
@@ -3082,7 +3431,7 @@ export default function AdminDashboard() {
                         type="number"
                         value={landingSettings.deposit_bonus_percent || ''}
                         onChange={(e) => setLandingSettings(prev => ({ ...prev, deposit_bonus_percent: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                         placeholder="Contoh: 11"
                       />
                     </div>
@@ -3093,7 +3442,7 @@ export default function AdminDashboard() {
                   <button
                     type="submit"
                     disabled={savingLandingSettings}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all shadow-lg shadow-indigo-600/20 active:scale-95 cursor-pointer flex items-center gap-1.5"
+                    className="bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all shadow-lg shadow-indigo-600/20 active:scale-95 cursor-pointer flex items-center gap-1.5"
                   >
                     {savingLandingSettings ? 'Menyimpan...' : 'Simpan Perubahan'}
                   </button>
@@ -3107,7 +3456,7 @@ export default function AdminDashboard() {
         {activeTab === 'tickets' && (
           <div className="space-y-6 animate-in fade-in duration-300">
             {/* Filter controls */}
-            <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md">
+            <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md">
               <h3 className="font-bold text-sm text-slate-200 mb-4 uppercase tracking-wider">Kelola Tiket Bantuan</h3>
               
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -3116,7 +3465,7 @@ export default function AdminDashboard() {
                   <select
                     value={ticketSearchType}
                     onChange={(e) => setTicketSearchType(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
+                    className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
                   >
                     <option value="id">ID</option>
                     <option value="subject">Subjek</option>
@@ -3128,7 +3477,7 @@ export default function AdminDashboard() {
                       placeholder="Cari..."
                       value={ticketSearchQuery}
                       onChange={(e) => setTicketSearchQuery(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none text-xs"
+                      className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none text-xs"
                     />
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   </div>
@@ -3154,7 +3503,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Tickets table list */}
-            <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6">
+            <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6">
               <div className="overflow-x-auto rounded-2xl border border-slate-850">
                 <table className="w-full border-collapse text-left">
                   <thead>
@@ -3202,7 +3551,7 @@ export default function AdminDashboard() {
                             <div className="font-bold text-slate-200">{t.full_name || 'User'}</div>
                             <div className="text-[10px] text-slate-500">@{t.username || 'username'}</div>
                           </td>
-                          <td className="py-4 px-6 font-semibold text-indigo-400">
+                          <td className="py-4 px-6 font-semibold text-rose-500 dark:text-rose-400">
                             {t.subject}
                             {t.status === 'Pending' && (
                               <span className="ml-2 px-1.5 py-0.5 rounded text-[8px] font-black bg-rose-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-widest">NEW</span>
@@ -3431,7 +3780,7 @@ export default function AdminDashboard() {
               <X className="w-4 h-4" />
             </button>
 
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50/80 dark:bg-rose-950/15 border border-indigo-500/20 flex items-center justify-center text-rose-500 dark:text-rose-400 mb-4">
               <Wallet className="w-6 h-6" />
             </div>
 
@@ -3442,7 +3791,7 @@ export default function AdminDashboard() {
 
             <div className="bg-slate-950/50 border border-slate-850 p-3 rounded-2xl mb-4 flex justify-between items-center text-xs">
               <span className="text-slate-400 font-light">Saldo Saat Ini:</span>
-              <span className="font-mono font-bold text-indigo-400">{formatPrice(selectedUserForBalance.balance || 0)}</span>
+              <span className="font-mono font-bold text-rose-500 dark:text-rose-400">{formatPrice(selectedUserForBalance.balance || 0)}</span>
             </div>
 
             <form onSubmit={handleUpdateBalance} className="space-y-4">
@@ -3461,7 +3810,7 @@ export default function AdminDashboard() {
                       className={`py-2 px-3 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer ${
                         adjustmentType === type.value
                           ? `${type.color} ring-1 ring-offset-0 ring-indigo-500`
-                          : 'border-slate-800 text-slate-400 bg-slate-950/40 hover:bg-slate-900/60'
+                          : 'border-slate-800 text-slate-400 bg-slate-50 dark:bg-slate-950/50 hover:bg-slate-900/60'
                       }`}
                     >
                       {type.label}
@@ -3479,7 +3828,7 @@ export default function AdminDashboard() {
                   value={formatNumberWithDots(adjustmentAmount)}
                   onChange={(e) => setAdjustmentAmount(parseNumberFromDots(e.target.value))}
                   placeholder="Contoh: 50.000"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-mono font-semibold"
+                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-mono font-semibold"
                 />
               </div>
 
@@ -3491,7 +3840,7 @@ export default function AdminDashboard() {
                   value={adjustmentReason}
                   onChange={(e) => setAdjustmentReason(e.target.value)}
                   placeholder="Tulis alasan penyesuaian (misal: Manual topup via transfer WA, refund order #123, dll)"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs resize-none"
+                  className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-100 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs resize-none"
                 />
               </div>
 
@@ -3516,7 +3865,7 @@ export default function AdminDashboard() {
                 <button
                   type="submit"
                   disabled={submittingBalance}
-                  className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-650 hover:to-purple-700 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-500/10 active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/10 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-500/10 active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                 >
                   {submittingBalance ? 'Memproses...' : 'Simpan Perubahan'}
                 </button>
@@ -3547,7 +3896,7 @@ export default function AdminDashboard() {
                   confirmModal.onConfirm();
                   setConfirmModal(prev => ({ ...prev, show: false }));
                 }}
-                className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-650 hover:to-purple-700 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-500/10 active:scale-98 cursor-pointer"
+                className="flex-1 bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/10 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-500/10 active:scale-98 cursor-pointer"
               >
                 Ya, Lanjutkan
               </button>
@@ -3555,7 +3904,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-      </main>
+          </main>
+        </div>
+      </div>
     </div>
   );
 }
