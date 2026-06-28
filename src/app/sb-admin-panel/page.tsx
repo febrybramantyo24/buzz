@@ -1226,7 +1226,7 @@ export default function AdminDashboard() {
       <div className="flex min-h-screen">
 
         {/* Left Sidebar */}
-        <aside className={`fixed md:sticky top-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        <aside className={`fixed top-0 left-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-y-auto md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}>
           <div className="space-y-6">
             {/* Logo/Brand */}
@@ -1379,7 +1379,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 font-sans">
+        <div className="flex-1 flex flex-col min-w-0 font-sans md:pl-68">
 
           {/* Top Navbar */}
           <header className="h-16 bg-slate-900 border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
@@ -3445,12 +3445,13 @@ export default function AdminDashboard() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-slate-455 uppercase tracking-wider mb-2">Kecepatan</label>
+                          <label className="block text-xs font-semibold text-slate-455 uppercase tracking-wider mb-2">Total Layanan (Fallback jika DB Kosong)</label>
                           <input
                             type="text"
                             value={landingSettings.stats_speed || ''}
                             onChange={(e) => setLandingSettings(prev => ({ ...prev, stats_speed: e.target.value }))}
                             className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none text-xs"
+                            placeholder="Contoh: 100+"
                           />
                         </div>
                       </div>
@@ -3583,6 +3584,21 @@ export default function AdminDashboard() {
                             placeholder="Contoh: 11"
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Syarat & Ketentuan settings */}
+                    <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-900 space-y-4">
+                      <h4 className="font-bold text-sm text-indigo-500 dark:text-indigo-400 border-b border-slate-900 pb-2">Konten Syarat & Ketentuan</h4>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-450 uppercase tracking-wider mb-2">Isi Syarat & Ketentuan (Mendukung format HTML/Teks biasa)</label>
+                        <textarea
+                          rows={15}
+                          value={landingSettings.terms_content || ''}
+                          onChange={(e) => setLandingSettings(prev => ({ ...prev, terms_content: e.target.value }))}
+                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs font-semibold font-mono"
+                          placeholder="Masukkan isi syarat & ketentuan di sini. Kosongkan untuk menggunakan konten bawaan default."
+                        />
                       </div>
                     </div>
 

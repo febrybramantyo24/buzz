@@ -22,7 +22,9 @@ import {
   Heart,
   Eye,
   MessageSquare,
-  Wallet
+  Wallet,
+  Headphones,
+  Smartphone
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -293,7 +295,7 @@ export default function LandingPage() {
               { key: 'stats_orders', value: settings.stats_orders, label: 'Pesanan Sukses', colorClass: 'text-slate-100' },
               { key: 'stats_clients', value: settings.stats_clients, label: 'Pelanggan Aktif', colorClass: 'text-slate-100' },
               { key: 'stats_success', value: settings.stats_success, label: 'Keberhasilan', colorClass: 'text-indigo-400' },
-              { key: 'stats_speed', value: settings.stats_speed, label: 'Proses Cepat', colorClass: 'text-purple-400' }
+              { key: 'stats_speed', value: services.length > 0 ? `${services.length}+` : (settings.stats_speed || '100+'), label: 'Total Layanan', colorClass: 'text-purple-400' }
             ].filter(stat => !!stat.value);
 
             if (statsList.length === 0) return null;
@@ -457,6 +459,45 @@ export default function LandingPage() {
               <div className="mt-8 pt-6 border-t border-slate-900/60 flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
                 <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">All-in-One Dashboard Monitor</span>
+              </div>
+            </div>
+
+            {/* Bento Card 5: Small (Support) */}
+            <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-blue-500/30 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center text-blue-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                  <Headphones className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-blue-400 transition-colors">Pelayanan Bantuan</h3>
+                <p className="text-slate-400 text-xs font-light leading-relaxed">
+                  Kami selalu siap membantu jika Anda membutuhkan bantuan atau mengalami kendala dalam penggunaan layanan kami.
+                </p>
+              </div>
+            </div>
+
+            {/* Bento Card 6: Small (Ease of Use) */}
+            <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-amber-500/30 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-amber-400 transition-colors">Kemudahan Penggunaan</h3>
+                <p className="text-slate-400 text-xs font-light leading-relaxed">
+                  Kami menyediakan antarmuka pengguna dan fitur-fitur pemesanan yang sangat mudah dimengerti bahkan oleh pengguna pemula sekalipun.
+                </p>
+              </div>
+            </div>
+
+            {/* Bento Card 7: Small (Responsive) */}
+            <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-teal-500/30 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/25 flex items-center justify-center text-teal-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-teal-400 transition-colors">Desain Web Responsive</h3>
+                <p className="text-slate-400 text-xs font-light leading-relaxed">
+                  Website kami dirancang responsif sehingga sangat nyaman diakses dari berbagai perangkat, baik ponsel pintar Android, iOS, maupun komputer desktop.
+                </p>
               </div>
             </div>
 
