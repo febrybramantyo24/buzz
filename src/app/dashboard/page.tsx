@@ -2775,12 +2775,12 @@ export default function UserDashboard() {
                                   <span className="block text-[10px] text-slate-500 mt-0.5">{order.category}</span>
                                 </td>
                                 <td className="py-4 px-4 font-mono text-slate-400 max-w-xs truncate">
-                                  <a href={order.target_url} target="_blank" rel="noreferrer" className="hover:text-rose-500 dark:text-rose-400 hover:underline">
+                                  <a href={order.target_url} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-rose-400 hover:underline">
                                     {order.target_url}
                                   </a>
                                 </td>
                                 <td className="py-4 px-4 text-right font-medium text-slate-300">{order.quantity.toLocaleString()}</td>
-                                <td className="py-4 px-4 text-right font-semibold text-rose-500 dark:text-rose-400">{formatPrice(order.total_price)}</td>
+                                <td className="py-4 px-4 text-right font-semibold text-slate-200">{formatPrice(order.total_price)}</td>
                                 <td className="py-4 px-4 text-center">
                                   <div className="flex flex-col items-center gap-1.5 justify-center">
                                     <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wide inline-block ${
@@ -3239,7 +3239,7 @@ export default function UserDashboard() {
                                 </td>
                                 {/* SALDO DIDAPAT */}
                                 <td className={`py-4 px-4 font-bold text-sm ${
-                                  isAddition ? 'text-emerald-500' : 'text-rose-500'
+                                  isAddition ? 'text-emerald-500' : 'text-red-450'
                                 }`}>
                                   {isAddition ? '+' : '-'}{formatPrice(Math.abs(tx.type === 'topup' ? creditedAmount : baseAmount))}
                                 </td>
@@ -3247,7 +3247,7 @@ export default function UserDashboard() {
                                 <td className={`py-4 px-4 font-extrabold text-sm ${
                                   tx.type === 'topup' ? 'text-slate-100 dark:text-white' :
                                   tx.type === 'refund' ? 'text-slate-400 dark:text-slate-350' :
-                                  'text-rose-500 dark:text-rose-400'
+                                  'text-slate-350 dark:text-slate-400'
                                 }`}>
                                   {tx.type === 'topup' ? formatPrice(Math.abs(baseAmount)) :
                                    tx.type === 'refund' ? 'Rp 0' :
@@ -3357,7 +3357,7 @@ export default function UserDashboard() {
                                 <span className={`font-extrabold text-xs ${
                                   tx.type === 'topup' ? 'text-slate-100 dark:text-white' :
                                   tx.type === 'refund' ? 'text-slate-400 dark:text-slate-350' :
-                                  'text-rose-500 dark:text-rose-400'
+                                  'text-slate-350 dark:text-slate-400'
                                 }`}>
                                   {tx.type === 'topup' ? formatPrice(Math.abs(baseAmount)) :
                                    tx.type === 'refund' ? 'Rp 0' :
@@ -3683,7 +3683,7 @@ export default function UserDashboard() {
                           <td className="py-4 px-6">
                             <button
                               onClick={() => fetchTicketDetails(ticket.id)}
-                              className="font-bold text-indigo-600 dark:text-rose-500 dark:text-rose-400 hover:underline text-left cursor-pointer flex items-center gap-1.5"
+                              className="font-bold text-slate-200 hover:text-rose-400 hover:underline text-left cursor-pointer flex items-center gap-1.5"
                             >
                               <span>{ticket.subject}</span>
                               {ticket.status === 'Pending' && (
@@ -3761,7 +3761,7 @@ export default function UserDashboard() {
                           <span className="text-slate-400 dark:text-slate-500 block text-[8px] uppercase tracking-widest font-black">Subjek</span>
                           <button
                             onClick={() => fetchTicketDetails(ticket.id)}
-                            className="font-extrabold text-rose-600 dark:text-rose-455 dark:text-rose-500 dark:text-rose-400 hover:underline text-left text-sm cursor-pointer"
+                            className="font-extrabold text-slate-200 hover:text-rose-400 hover:underline text-left text-sm cursor-pointer"
                           >
                             {ticket.subject}
                           </button>
@@ -3938,7 +3938,7 @@ export default function UserDashboard() {
                         disabled
                         readOnly
                         value={calculatedReceivedBalance.toLocaleString('id-ID')}
-                        className="w-full bg-slate-955/40 dark:bg-slate-955/60 border border-slate-850 text-rose-600 dark:text-rose-455 dark:text-rose-500 dark:text-rose-400 pl-12 pr-5 py-4 rounded-2xl outline-none text-sm font-extrabold"
+                        className="w-full bg-slate-955/40 dark:bg-slate-955/60 border border-slate-850 text-slate-100 pl-12 pr-5 py-4 rounded-2xl outline-none text-sm font-extrabold"
                       />
                     </div>
                   </div>
@@ -4339,7 +4339,7 @@ export default function UserDashboard() {
                         } ${isActive ? 'ring-4 ring-indigo-500/20' : ''}`}>
                           {s.step}
                         </div>
-                        <span className={`text-[10px] font-bold mt-2 tracking-wide uppercase ${isPassed ? 'text-rose-500 dark:text-rose-400' : 'text-slate-500'}`}>{s.label}</span>
+                        <span className={`text-[10px] font-bold mt-2 tracking-wide uppercase ${isPassed ? 'text-slate-350 dark:text-slate-400' : 'text-slate-500'}`}>{s.label}</span>
                       </div>
                     );
                   })}
@@ -4359,7 +4359,7 @@ export default function UserDashboard() {
 
                 <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 gap-4">
                   <span className="text-slate-550 dark:text-slate-500 font-light shrink-0">Target URL</span>
-                  <span className="font-mono text-rose-500 dark:text-rose-400 break-all text-right select-all">{selectedOrderDetail.target_url}</span>
+                  <span className="font-mono text-slate-300 break-all text-right select-all">{selectedOrderDetail.target_url}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
@@ -4369,7 +4369,7 @@ export default function UserDashboard() {
 
                 <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
                   <span className="text-slate-550 dark:text-slate-500 font-light">Harga Total</span>
-                  <span className="font-extrabold text-rose-500 dark:text-rose-400 text-sm">{formatPrice(selectedOrderDetail.total_price)}</span>
+                  <span className="font-extrabold text-slate-100 text-sm">{formatPrice(selectedOrderDetail.total_price)}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
