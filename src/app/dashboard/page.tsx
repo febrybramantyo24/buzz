@@ -1561,9 +1561,10 @@ export default function UserDashboard() {
       <div className="flex min-h-screen">
         
         {/* Left Sidebar */}
-        <aside className={`fixed md:sticky top-0 z-50 w-68 h-screen self-start bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-hidden ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        <aside className={`fixed top-0 left-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-hidden md:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}>
+
 
           <div className="space-y-6 flex-1 overflow-y-auto scrollbar-thin pr-1">
             {/* Logo/Brand */}
@@ -1679,9 +1680,8 @@ export default function UserDashboard() {
             </button>
           </div>
         </aside>
-
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 font-sans">
+        <div className="flex-1 flex flex-col min-w-0 font-sans md:pl-68">
           
           {/* Top Navbar */}
           <header className="h-16 bg-slate-900 border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
@@ -3390,11 +3390,8 @@ export default function UserDashboard() {
                                   {isAddition ? '+' : '-'}{formatPrice(Math.abs(tx.type === 'topup' ? creditedAmount : baseAmount))}
                                 </td>
                                 {/* TOTAL BAYAR */}
-                                <td className={`py-4 px-4 font-extrabold text-sm ${
-                                  tx.type === 'topup' ? 'text-slate-100 dark:text-white' :
-                                  tx.type === 'refund' ? 'text-slate-400 dark:text-slate-350' :
-                                  'text-slate-350 dark:text-slate-400'
-                                }`}>
+                                <td className="py-4 px-4 font-extrabold text-sm text-slate-100">
+
                                   {tx.type === 'topup' ? formatPrice(Math.abs(baseAmount)) :
                                    tx.type === 'refund' ? 'Rp 0' :
                                    `-${formatPrice(Math.abs(baseAmount))}`}
@@ -3497,14 +3494,9 @@ export default function UserDashboard() {
                                 <span className={`font-extrabold text-xs ${isAddition ? 'text-emerald-600' : 'text-indigo-500'}`}>
                                   {isAddition ? '+' : '-'}{formatPrice(Math.abs(tx.type === 'topup' ? creditedAmount : baseAmount))}
                                 </span>
-                              </div>
-                              <div>
+                              </div>                              <div>
                                 <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Total Bayar</span>
-                                <span className={`font-extrabold text-xs ${
-                                  tx.type === 'topup' ? 'text-slate-100 dark:text-white' :
-                                  tx.type === 'refund' ? 'text-slate-400 dark:text-slate-350' :
-                                  'text-slate-350 dark:text-slate-400'
-                                }`}>
+                                <span className="font-extrabold text-xs text-slate-100">
                                   {tx.type === 'topup' ? formatPrice(Math.abs(baseAmount)) :
                                    tx.type === 'refund' ? 'Rp 0' :
                                    `-${formatPrice(Math.abs(baseAmount))}`}
