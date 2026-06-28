@@ -172,51 +172,55 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white overflow-x-hidden">
-      {/* Background Gradients */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] pointer-events-none opacity-20 blur-[150px] bg-gradient-to-b from-indigo-600 via-purple-600 to-transparent"></div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white overflow-x-hidden relative">
+      {/* Background Glows (Mesh Gradients) */}
+      <div className="absolute top-[-10%] left-[10%] w-[350px] h-[350px] rounded-full pointer-events-none opacity-[0.12] dark:opacity-[0.15] blur-[120px] bg-indigo-500 animate-pulse-glow"></div>
+      <div className="absolute top-[20%] right-[5%] w-[400px] h-[400px] rounded-full pointer-events-none opacity-[0.08] dark:opacity-[0.12] blur-[140px] bg-purple-500"></div>
+      <div className="absolute top-[45%] left-[-10%] w-[300px] h-[300px] rounded-full pointer-events-none opacity-[0.05] dark:opacity-[0.08] blur-[110px] bg-pink-500"></div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-950/70 border-b border-slate-800/80 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-              <Zap className="w-6 h-6 text-white animate-pulse" />
+      {/* Floating Header Navbar */}
+      <div className="sticky top-4 z-50 px-4 sm:px-6 lg:px-8 w-full max-w-7xl mx-auto">
+        <header className="backdrop-blur-md bg-slate-950/60 dark:bg-slate-950/65 border border-slate-900/60 rounded-2xl shadow-xl transition-all duration-300">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
+                <Zap className="w-5 h-5 text-white animate-pulse" />
+              </div>
+              <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-250 to-indigo-400">
+                Buzz<span className="text-indigo-400">ify</span>
+              </span>
             </div>
-            <span className="font-extrabold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-400">
-              Buzz<span className="text-indigo-400">ify</span>
-            </span>
+
+            <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-300">
+              <a href="#features" className="hover:text-slate-100 transition-colors">Keunggulan</a>
+              <a href="#services" className="hover:text-slate-100 transition-colors">Daftar Layanan</a>
+              <a href="#how-it-works" className="hover:text-slate-100 transition-colors">Cara Kerja</a>
+            </nav>
+
+            <div className="flex items-center gap-3">
+              <PremiumThemeToggle />
+              <Link 
+                href="/login" 
+                className="text-xs sm:text-sm font-extrabold bg-white dark:bg-slate-900 hover:bg-zinc-55 dark:hover:bg-slate-800 border border-zinc-300 dark:border-slate-800 text-zinc-800 dark:text-slate-200 px-4 py-2 rounded-xl transition-all shadow-sm hover:-translate-y-0.5 active:scale-95 select-none"
+              >
+                Masuk
+              </Link>
+              <Link 
+                href="/login?tab=register" 
+                className="hidden sm:inline-flex text-xs sm:text-sm font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-650 hover:to-purple-700 text-white px-4 py-2 rounded-xl transition-all shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0"
+              >
+                Daftar Sekarang
+              </Link>
+            </div>
           </div>
+        </header>
+      </div>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#features" className="hover:text-slate-100 transition-colors">Keunggulan</a>
-            <a href="#services" className="hover:text-slate-100 transition-colors">Daftar Layanan</a>
-            <a href="#how-it-works" className="hover:text-slate-100 transition-colors">Cara Kerja</a>
-          </nav>
-
-          <div className="flex items-center gap-4">
-            <PremiumThemeToggle />
-            <Link 
-              href="/login" 
-              className="text-xs sm:text-sm font-extrabold bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 border border-zinc-300 dark:border-slate-800 text-zinc-800 dark:text-slate-200 px-4 py-2 rounded-xl transition-all shadow-sm hover:-translate-y-0.5 active:scale-95 select-none"
-            >
-              Masuk
-            </Link>
-            <Link 
-              href="/login?tab=register" 
-              className="hidden sm:inline-flex text-sm font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
-            >
-              Daftar Sekarang
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:pt-32 md:pb-36 flex flex-col items-center text-center">
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:pt-28 md:pb-32 flex flex-col items-center text-center">
         {settings.hero_badge && (
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-indigo-200/50 dark:border-indigo-500/20 bg-indigo-50/80 dark:bg-indigo-500/20 text-xs font-semibold mb-6 animate-float">
-            <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--color-slate-100)' }} />
-            <span style={{ color: 'var(--color-slate-100)' }}>{settings.hero_badge}</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-md text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-indigo-400 mb-8 animate-float shadow-lg shadow-indigo-500/5">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+            <span>{settings.hero_badge}</span>
           </div>
         )}
         
@@ -293,43 +297,49 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 border-t border-slate-900 bg-slate-950/50">
+      <section id="features" className="py-24 border-t border-slate-900 bg-slate-950/40 relative overflow-hidden">
+        {/* Glow decoration */}
+        <div className="absolute top-[10%] right-[-10%] w-[350px] h-[350px] rounded-full pointer-events-none opacity-[0.04] dark:opacity-[0.06] blur-[120px] bg-indigo-500"></div>
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold">Mengapa Memilih Buzzify?</h2>
-            <p className="text-slate-400 mt-4 font-light">Kami mengutamakan kualitas, kecepatan, keamanan, dan kepuasan Anda dalam setiap transaksi.</p>
+          <div className="text-center max-w-3xl mx-auto mb-20">
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-4 py-1.5 rounded-full border border-indigo-500/20">
+              Kenapa Harus Kami?
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-extrabold mt-4 tracking-tight">Mengapa Memilih <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">Buzzify</span>?</h2>
+            <p className="text-slate-400 mt-4 text-base sm:text-lg font-light leading-relaxed">Kami mengutamakan kualitas, kecepatan, keamanan, dan kepuasan Anda dalam setiap transaksi.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Feature 1 */}
-            <div className="premium-card-glow bg-slate-900/40 backdrop-blur-xl border border-slate-850 p-8 rounded-3xl">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6">
+            <div className="premium-card-glow bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-indigo-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 mb-6 shadow-inner">
                 <Clock className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Proses Cepat</h3>
-              <p className="text-slate-400 font-light leading-relaxed">
+              <h3 className="text-xl font-bold mb-3 text-slate-100">Proses Cepat</h3>
+              <p className="text-slate-400 text-sm font-light leading-relaxed">
                 Pesanan Anda akan diproses secara cepat atau dalam hitungan menit secara otomatis setelah pembayaran sukses diterima.
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div className="premium-card-glow bg-slate-900/40 backdrop-blur-xl border border-slate-850 p-8 rounded-3xl">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
+            <div className="premium-card-glow bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-purple-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-purple-400 mb-6 shadow-inner">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">100% Aman</h3>
-              <p className="text-slate-400 font-light leading-relaxed">
+              <h3 className="text-xl font-bold mb-3 text-slate-100">100% Aman</h3>
+              <p className="text-slate-400 text-sm font-light leading-relaxed">
                 Kami tidak membutuhkan password akun media sosial Anda. Cukup masukkan URL target atau username profil Anda saja.
               </p>
             </div>
 
             {/* Feature 3 */}
-            <div className="premium-card-glow bg-slate-900/40 backdrop-blur-xl border border-slate-850 p-8 rounded-3xl">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
+            <div className="premium-card-glow bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-emerald-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 mb-6 shadow-inner">
                 <Users className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Layanan Berkualitas</h3>
-              <p className="text-slate-400 font-light leading-relaxed">
+              <h3 className="text-xl font-bold mb-3 text-slate-100">Layanan Berkualitas</h3>
+              <p className="text-slate-400 text-sm font-light leading-relaxed">
                 Kami menyediakan buzzer real dan permanent dengan tingkat drop rate sangat rendah demi kepuasan promosi Anda.
               </p>
             </div>
@@ -519,46 +529,46 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-8 lg:gap-12 relative">
             {/* Connecting Line (Desktop) */}
-            <div className="hidden md:block absolute top-[60px] left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-pink-500/30 -z-10"></div>
+            <div className="hidden md:block absolute top-[60px] left-[15%] right-[15%] h-[1px] bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 -z-10"></div>
 
             {/* Step 1 */}
-            <div className="premium-card-glow group relative z-10 bg-slate-900 border border-slate-800/80 p-8 rounded-3xl">
-              <div className="absolute top-6 right-6 text-6xl font-black text-slate-850 select-none font-mono group-hover:text-indigo-500/10 transition-colors">
+            <div className="premium-card-glow group relative z-10 bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-indigo-500/20">
+              <div className="absolute top-6 right-6 text-7xl font-black text-slate-900/40 select-none font-mono group-hover:text-indigo-500/10 transition-colors">
                 01
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-8 shadow-inner group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 mb-8 shadow-inner group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
                 <Users className="w-7 h-7" />
               </div>
               <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-indigo-300 transition-colors">Daftar Akun</h3>
-              <p className="text-slate-350 font-light leading-relaxed text-sm">
+              <p className="text-slate-400 font-light leading-relaxed text-sm">
                 Lengkapi formulir pendaftaran dengan Nama, Username, Email, dan nomor WhatsApp aktif Anda untuk langsung mengakses dasbor utama.
               </p>
             </div>
 
             {/* Step 2 */}
-            <div className="premium-card-glow group relative z-10 bg-slate-900 border border-slate-800/80 p-8 rounded-3xl">
-              <div className="absolute top-6 right-6 text-6xl font-black text-slate-850 select-none font-mono group-hover:text-purple-500/10 transition-colors">
+            <div className="premium-card-glow group relative z-10 bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-purple-500/20">
+              <div className="absolute top-6 right-6 text-7xl font-black text-slate-900/40 select-none font-mono group-hover:text-purple-500/10 transition-colors">
                 02
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-8 shadow-inner group-hover:bg-purple-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-purple-400 mb-8 shadow-inner group-hover:bg-purple-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
                 <Wallet className="w-7 h-7" />
               </div>
               <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-purple-300 transition-colors">Top Up Saldo</h3>
-              <p className="text-slate-350 font-light leading-relaxed text-sm">
+              <p className="text-slate-400 font-light leading-relaxed text-sm">
                 Isi saldo akun Anda melalui deposit cepat otomatis menggunakan QRIS, e-wallet, atau transfer bank. Saldo akan langsung bertambah dalam hitungan detik.
               </p>
             </div>
 
             {/* Step 3 */}
-            <div className="premium-card-glow group relative z-10 bg-slate-900 border border-slate-800/80 p-8 rounded-3xl">
-              <div className="absolute top-6 right-6 text-6xl font-black text-slate-850 select-none font-mono group-hover:text-pink-500/10 transition-colors">
+            <div className="premium-card-glow group relative z-10 bg-slate-900/20 backdrop-blur-xl border border-slate-900 p-8 rounded-3xl transition-all duration-300 hover:border-pink-500/20">
+              <div className="absolute top-6 right-6 text-7xl font-black text-slate-900/40 select-none font-mono group-hover:text-pink-500/10 transition-colors">
                 03
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 mb-8 shadow-inner group-hover:bg-pink-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-pink-500/10 border border-pink-500/25 flex items-center justify-center text-pink-400 mb-8 shadow-inner group-hover:bg-pink-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
                 <Zap className="w-7 h-7" />
               </div>
               <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-pink-300 transition-colors">Pilih Layanan & Order</h3>
-              <p className="text-slate-350 font-light leading-relaxed text-sm">
+              <p className="text-slate-400 font-light leading-relaxed text-sm">
                 Gunakan saldo Anda untuk memesan layanan media sosial yang diinginkan. Sistem cerdas kami akan langsung memproses pesanan Anda secara otomatis dan cepat!
               </p>
             </div>
@@ -567,22 +577,25 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Footer */}
-      <section className="py-20 border-t border-slate-900 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 pointer-events-none opacity-10 blur-[120px] bg-indigo-500 rounded-full"></div>
+      <section className="py-24 border-t border-slate-900 relative overflow-hidden bg-slate-950/40">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-[0.06] dark:opacity-[0.1] blur-[150px] bg-indigo-500 rounded-full animate-pulse-glow"></div>
         
-        <div className="max-w-5xl mx-auto px-4 text-center relative z-10">
-          <h2 className="text-3xl sm:text-5xl font-extrabold">Siap Tingkatkan Media Sosial Anda?</h2>
-          <p className="text-slate-400 mt-4 text-lg max-w-xl mx-auto font-light">
-            Daftar akun gratis sekarang dan nikmati layanan order otomatis 24/7 proses cepat.
-          </p>
-          <div className="mt-8 flex justify-center">
-            <Link 
-              href="/login?tab=register" 
-              className="shimmer-btn inline-flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-1"
-            >
-              <span>Daftar Sekarang</span>
-              <ChevronRight className="w-5 h-5" />
-            </Link>
+        <div className="max-w-5xl mx-auto px-4 relative z-10">
+          <div className="bg-slate-900/35 backdrop-blur-xl border border-slate-900 p-12 sm:p-16 rounded-[40px] text-center relative overflow-hidden shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 via-purple-500/5 to-transparent pointer-events-none"></div>
+            <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">Siap Tingkatkan Media Sosial Anda?</h2>
+            <p className="text-slate-400 mt-4 text-base sm:text-lg max-w-xl mx-auto font-light leading-relaxed">
+              Daftar akun gratis sekarang dan nikmati layanan order otomatis 24/7 proses cepat.
+            </p>
+            <div className="mt-10 flex justify-center">
+              <Link 
+                href="/login?tab=register" 
+                className="shimmer-btn inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-600/20 hover:shadow-indigo-600/35 hover:-translate-y-1"
+              >
+                <span>Daftar Sekarang</span>
+                <ChevronRight className="w-5 h-5" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>

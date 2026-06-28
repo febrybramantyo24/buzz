@@ -58,6 +58,12 @@
   --color-slate-950: var(--color-slate-950);
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

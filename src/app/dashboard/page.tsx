@@ -110,6 +110,7 @@ export default function UserDashboard() {
   const [selectedTxDetail, setSelectedTxDetail] = useState<Transaction | null>(null);
   const [isExamplesExpanded, setIsExamplesExpanded] = useState(false);
   const [isRecomExpanded, setIsRecomExpanded] = useState(true);
+  const [warningExpanded, setWarningExpanded] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null);
   const [selectedInvoiceDetail, setSelectedInvoiceDetail] = useState<any | null>(null);
@@ -2117,15 +2118,28 @@ export default function UserDashboard() {
                       <div className="p-4 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/5 border border-indigo-500/10 dark:border-indigo-500/10 text-xs text-slate-300 dark:text-slate-300 w-full max-w-full overflow-hidden break-words">
                         <div className="flex flex-col gap-3">
                           {siteSettings[`warning_title_${selectedCategory.toLowerCase()}`] && (
-                            <div className="flex gap-2 items-center">
-                              <AlertCircle className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0" />
-                              <span className="font-extrabold text-sm text-indigo-600 dark:text-indigo-400">
-                                {siteSettings[`warning_title_${selectedCategory.toLowerCase()}`]}
-                              </span>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setWarningExpanded(!warningExpanded)}
+                              className="w-full flex items-center justify-between gap-4 text-left cursor-pointer"
+                            >
+                              <div className="flex gap-2 items-center">
+                                <AlertCircle className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0" />
+                                <span className="font-extrabold text-sm text-indigo-600 dark:text-indigo-400">
+                                  {siteSettings[`warning_title_${selectedCategory.toLowerCase()}`]}
+                                </span>
+                              </div>
+                              <div className="shrink-0 lg:hidden">
+                                {warningExpanded ? (
+                                  <ChevronUp className="w-4 h-4 text-indigo-500" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4 text-indigo-500" />
+                                )}
+                              </div>
+                            </button>
                           )}
                           
-                          <div className="flex flex-col md:flex-row gap-4 items-start">
+                          <div className={`flex-col md:flex-row gap-4 items-start ${warningExpanded ? 'flex' : 'hidden lg:flex'}`}>
                             <div className="flex-1 space-y-1 w-full max-w-full overflow-hidden break-words">
                               {siteSettings[`warning_desc_${selectedCategory.toLowerCase()}`] && renderWarningContent(siteSettings[`warning_desc_${selectedCategory.toLowerCase()}`])}
                               
