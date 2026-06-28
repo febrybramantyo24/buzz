@@ -1685,7 +1685,7 @@ export default function UserDashboard() {
 
                 return (
                   <div className="w-full max-w-full overflow-x-auto scrollbar-none">
-                    <div className="relative h-[180px] min-w-[555px] w-full">
+                    <div className="relative h-[180px] min-w-[300px] sm:min-w-[555px] w-full">
                       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                         {/* Gradients */}
                         <defs>
@@ -1743,7 +1743,7 @@ export default function UserDashboard() {
             <div className="grid lg:grid-cols-2 gap-8 items-start">
               {/* Left Column: Info & Pengumuman Penting */}
               {announcements.length > 0 ? (
-                <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 rounded-3xl backdrop-blur-md space-y-4">
+                <div className="bg-slate-900/40 border border-slate-800/80 p-4 sm:p-6 rounded-3xl backdrop-blur-md space-y-4 min-w-0 w-full">
                   <div className="flex items-center gap-2 pb-3 border-b border-slate-850">
                     <Megaphone className="w-4 h-4 text-indigo-400" />
                     <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Info & Pengumuman Penting</span>
@@ -1759,9 +1759,9 @@ export default function UserDashboard() {
                             <div className="flex items-center gap-2 flex-wrap">
                               {ann.badge && (
                                 <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider ${
-                                  ann.badge === 'HOT' ? 'bg-rose-500/10 text-rose-450 border border-rose-500/20' :
-                                  ann.badge === 'RECOMMENDED' ? 'bg-amber-500/10 text-amber-450 border border-amber-500/20' :
-                                  'bg-indigo-500/10 text-indigo-450 border border-indigo-500/20'
+                                  ann.badge === 'HOT' ? 'bg-rose-500/10 text-rose-455 border border-rose-500/20' :
+                                  ann.badge === 'RECOMMENDED' ? 'bg-amber-500/10 text-amber-455 border border-amber-500/20' :
+                                  'bg-indigo-500/10 text-indigo-455 border border-indigo-500/20'
                                 }`}>
                                   {ann.badge}
                                 </span>
@@ -1795,14 +1795,14 @@ export default function UserDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md flex flex-col items-center justify-center py-12 text-center text-slate-500 text-xs">
+                <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md flex flex-col items-center justify-center py-12 text-center text-slate-500 text-xs min-w-0 w-full">
                   <Megaphone className="w-8 h-8 text-slate-650 mb-2" />
                   <span>Belum ada pengumuman terbaru.</span>
                 </div>
               )}
 
               {/* Right Column: Layanan Rekomendasi */}
-              <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl overflow-hidden backdrop-blur-md">
+              <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl overflow-hidden backdrop-blur-md min-w-0 w-full">
                 <button
                   type="button"
                   onClick={() => setIsRecomExpanded(!isRecomExpanded)}
@@ -2963,7 +2963,7 @@ export default function UserDashboard() {
           const totalFailedAmount = failedDeposits.reduce((sum, tx) => sum + Number(tx.amount), 0);
 
           return (
-            <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-md">
+            <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-3.5 sm:p-8 backdrop-blur-md">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-indigo-400" />
                 <span>Riwayat Transaksi</span>
@@ -3234,7 +3234,7 @@ export default function UserDashboard() {
                         }
 
                         return (
-                          <div key={tx.id} className="bg-white dark:bg-slate-900/40 border border-zinc-200 dark:border-slate-800 p-5 rounded-[24px] space-y-4 shadow-md shadow-zinc-200/60 dark:shadow-none transition-all">
+                          <div key={tx.id} className="bg-white dark:bg-slate-900/40 border border-zinc-200 dark:border-slate-800 p-4 sm:p-5 rounded-[24px] space-y-4 shadow-md shadow-zinc-200/60 dark:shadow-none transition-all">
                             <div className="flex justify-between items-center text-[10px] gap-2">
                               <span className="font-mono font-extrabold text-indigo-600 dark:text-indigo-400">
                                 {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 6)}
@@ -3710,36 +3710,38 @@ export default function UserDashboard() {
         )}
       </main>
 
-      {/* Bottom Navigation Bar - Mobile only */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/90 dark:bg-slate-950/95 border-t border-slate-200/80 dark:border-slate-850 backdrop-blur-xl px-4 py-2 flex justify-around items-center shadow-lg">
-        {[
-          { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
-          { id: 'order', label: 'Pesan', icon: ShoppingBag },
-          { id: 'history', label: 'Pesanan', icon: History, action: () => fetchOrders(user?.id) },
-          { id: 'transactions', label: 'Deposit', icon: CreditCard, action: () => fetchProfileAndTransactions(user?.id) },
-          { id: 'tickets', label: 'Tiket', icon: MessageSquare, action: () => fetchTickets() },
-        ].map(item => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id as any);
-                if (item.action && user?.id) item.action();
-              }}
-              className={`flex flex-col items-center gap-1 py-1 px-1.5 sm:px-3 rounded-xl transition-all cursor-pointer ${
-                isActive
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold'
-                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-              }`}
-            >
-              <Icon className="w-5 h-5 shrink-0" />
-              <span className="text-[9px] tracking-tight">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* Floating Bottom Navigation Bar - Mobile only */}
+      <div className="lg:hidden fixed bottom-4 left-4 right-4 z-40 px-1 print:hidden">
+        <nav className="bg-slate-900/80 dark:bg-slate-950/80 border border-slate-205 dark:border-slate-850 backdrop-blur-xl px-2.5 py-2.5 rounded-2xl flex justify-around items-center shadow-xl shadow-indigo-500/5">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
+            { id: 'order', label: 'Pesan', icon: ShoppingBag },
+            { id: 'history', label: 'Pesanan', icon: History, action: () => fetchOrders(user?.id) },
+            { id: 'transactions', label: 'Deposit', icon: CreditCard, action: () => fetchProfileAndTransactions(user?.id) },
+            { id: 'tickets', label: 'Tiket', icon: MessageSquare, action: () => fetchTickets() },
+          ].map(item => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id as any);
+                  if (item.action && user?.id) item.action();
+                }}
+                className={`flex flex-col items-center gap-0.5 py-0.5 px-0.5 sm:px-3 rounded-xl transition-all cursor-pointer ${
+                  isActive
+                    ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                }`}
+              >
+                <Icon className="w-4.5 h-4.5 shrink-0" />
+                <span className="text-[8px] sm:text-[9px] tracking-tight">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
       {/* Top Up Modal */}
       {showTopupModal && (() => {
