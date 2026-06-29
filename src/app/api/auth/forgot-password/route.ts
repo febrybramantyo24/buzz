@@ -14,11 +14,7 @@ export async function POST(request: Request) {
     // 1. Check if user exists
     const userQuery = await query('SELECT id FROM users WHERE email = $1', [email]);
     if (userQuery.rows.length === 0) {
-      // Return success even if email not found to prevent user enumeration (best practice)
-      return NextResponse.json({
-        success: true,
-        message: 'Link reset password telah dikirim ke email Anda jika terdaftar.'
-      });
+      return NextResponse.json({ error: 'Email tidak terdaftar di sistem kami. Silakan periksa kembali atau daftar akun baru.' }, { status: 404 });
     }
 
     const userId = userQuery.rows[0].id;

@@ -3,8 +3,61 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { query } from '@/lib/db';
 
+// --- Rate Limiter (In-Memory) ---
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 2 * 60 * 1000; // 2 minutes
+const CLEANUP_INTERVAL_MS = 10 * 60 * 1000; // Clean up every 10 minutes
+
+interface AttemptRecord {
+  count: number;
+  firstAttempt: number;
+  lockedUntil: number | null;
+}
+
+const loginAttempts = new Map<string, AttemptRecord>();
+
+// Periodic cleanup of expired records
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of loginAttempts.entries()) {
+    if (record.lockedUntil && now > record.lockedUntil) {
+      loginAttempts.delete(key);
+    } else if (now - record.firstAttempt > LOCKOUT_DURATION_MS * 2) {
+      loginAttempts.delete(key);
+    }
+  }
+}, CLEANUP_INTERVAL_MS);
+
+function getClientIP(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) return realIp;
+  return '127.0.0.1';
+}
+
 export async function POST(request: Request) {
   try {
+    const clientIP = getClientIP(request);
+    const now = Date.now();
+
+    // Check rate limit
+    const record = loginAttempts.get(clientIP);
+    if (record?.lockedUntil) {
+      if (now < record.lockedUntil) {
+        const remainingSeconds = Math.ceil((record.lockedUntil - now) / 1000);
+        return NextResponse.json({
+          error: `Terlalu banyak percobaan login gagal. Silakan tunggu ${remainingSeconds} detik sebelum mencoba lagi.`,
+          retryAfter: remainingSeconds
+        }, { status: 429 });
+      } else {
+        // Lockout expired, reset
+        loginAttempts.delete(clientIP);
+      }
+    }
+
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -18,7 +71,12 @@ export async function POST(request: Request) {
     if (!email.includes('@')) {
       const profileCheck = await query('SELECT id, email FROM profiles WHERE username = $1', [email]);
       if (profileCheck.rows.length === 0) {
-        return NextResponse.json({ error: 'Username tidak terdaftar' }, { status: 404 });
+        recordFailedAttempt(clientIP);
+        const attemptsLeft = getRemainingAttempts(clientIP);
+        return NextResponse.json({
+          error: `Username tidak terdaftar. Sisa percobaan: ${attemptsLeft}x`,
+          attemptsLeft
+        }, { status: 404 });
       }
       userEmail = profileCheck.rows[0].email;
       userId = profileCheck.rows[0].id;
@@ -30,7 +88,12 @@ export async function POST(request: Request) {
       : await query('SELECT * FROM users WHERE email = $1', [userEmail]);
 
     if (userQuery.rows.length === 0) {
-      return NextResponse.json({ error: 'Akun tidak ditemukan' }, { status: 404 });
+      recordFailedAttempt(clientIP);
+      const attemptsLeft = getRemainingAttempts(clientIP);
+      return NextResponse.json({
+        error: `Akun tidak ditemukan. Sisa percobaan: ${attemptsLeft}x`,
+        attemptsLeft
+      }, { status: 404 });
     }
 
     const user = userQuery.rows[0];
@@ -38,7 +101,20 @@ export async function POST(request: Request) {
     // 3. Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
-      return NextResponse.json({ error: 'Password salah' }, { status: 400 });
+      recordFailedAttempt(clientIP);
+      const attemptsLeft = getRemainingAttempts(clientIP);
+
+      if (attemptsLeft <= 0) {
+        return NextResponse.json({
+          error: `Terlalu banyak percobaan login gagal. Akun dikunci selama 2 menit.`,
+          retryAfter: Math.ceil(LOCKOUT_DURATION_MS / 1000)
+        }, { status: 429 });
+      }
+
+      return NextResponse.json({
+        error: `Password salah. Sisa percobaan: ${attemptsLeft}x sebelum akun dikunci sementara.`,
+        attemptsLeft
+      }, { status: 400 });
     }
 
     // 4. Verify account status
@@ -47,6 +123,9 @@ export async function POST(request: Request) {
         error: 'Akun Anda belum diverifikasi. Silakan cek email Anda untuk memverifikasi akun sebelum login.'
       }, { status: 400 });
     }
+
+    // Login success — clear failed attempts
+    loginAttempts.delete(clientIP);
 
     // 5. Get user profile details
     const profileQuery = await query('SELECT role, username FROM profiles WHERE id = $1', [user.id]);
@@ -94,4 +173,26 @@ export async function POST(request: Request) {
     console.error('Error in login route:', err);
     return NextResponse.json({ error: err.message || 'Terjadi kesalahan sistem' }, { status: 500 });
   }
+}
+
+// --- Helper Functions ---
+function recordFailedAttempt(ip: string) {
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+
+  if (!record) {
+    loginAttempts.set(ip, { count: 1, firstAttempt: now, lockedUntil: null });
+  } else {
+    record.count += 1;
+    if (record.count >= MAX_ATTEMPTS) {
+      record.lockedUntil = now + LOCKOUT_DURATION_MS;
+    }
+    loginAttempts.set(ip, record);
+  }
+}
+
+function getRemainingAttempts(ip: string): number {
+  const record = loginAttempts.get(ip);
+  if (!record) return MAX_ATTEMPTS;
+  return Math.max(0, MAX_ATTEMPTS - record.count);
 }

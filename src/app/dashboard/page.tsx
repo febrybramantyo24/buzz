@@ -43,10 +43,12 @@ import {
   Layers,
   MessageSquare,
   Send,
+  Activity,
   Upload,
   Eye,
   EyeOff,
-  Pin
+  Pin,
+  Settings
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -205,7 +207,7 @@ export default function UserDashboard() {
   // UI states
   const [loading, setLoading] = useState(true);
   const [submittingOrder, setSubmittingOrder] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'tickets'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets'>('dashboard');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -223,6 +225,9 @@ export default function UserDashboard() {
   const [transactionsPage, setTransactionsPage] = useState(1);
   const [txStatusFilter, setTxStatusFilter] = useState('all');
   const [txYearFilter, setTxYearFilter] = useState('2026');
+  const [txMonthFilter, setTxMonthFilter] = useState('all');
+  const [txTypeFilter, setTxTypeFilter] = useState('all');
+  const [depMonthFilter, setDepMonthFilter] = useState('all');
   const [txMethodFilter, setTxMethodFilter] = useState('all');
   const [txSearchType, setTxSearchType] = useState('id');
   const [txSearchQuery, setTxSearchQuery] = useState('');
@@ -277,11 +282,29 @@ export default function UserDashboard() {
   const [expandedTicketId, setExpandedTicketId] = useState<number | null>(null);
   const [changePasswordLoading, setChangePasswordLoading] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+  const [showNewsModal, setShowNewsModal] = useState(false);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [chartDataType, setChartDataType] = useState<'spending' | 'orders'>('spending');
+  const [chartYearFilter, setChartYearFilter] = useState<string>('2026');
+  const [chartMonthFilter, setChartMonthFilter] = useState<string>('all');
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+
+  // Trigger news modal automatically if there is any unread announcement
+  useEffect(() => {
+    if (isMounted && announcements.length > 0 && user) {
+      const sortedAnnouncements = [...announcements].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const latestAnnId = sortedAnnouncements[0]?.id;
+      const readAnnId = localStorage.getItem(`last_read_announcement_id_${user.id}`);
+      if (readAnnId !== latestAnnId) {
+        setShowNewsModal(true);
+      }
+    }
+  }, [isMounted, announcements, user]);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -291,6 +314,11 @@ export default function UserDashboard() {
   useEffect(() => {
     setOrdersPage(1);
   }, [searchTerm, statusFilter, orderYearFilter]);
+
+  // Clear selected checkboxes when user changes page, tab, or filter
+  useEffect(() => {
+    setSelectedOrderIds([]);
+  }, [ordersPage, activeTab, searchTerm, statusFilter, orderYearFilter]);
 
   const clearOrderForm = () => {
     setSelectedCategory('');
@@ -309,7 +337,18 @@ export default function UserDashboard() {
     }
     clearOrderForm();
     setTopupAmount(0);
+    setTxMonthFilter('all');
+    setTxTypeFilter('all');
+    setDepMonthFilter('all');
+    setTxYearFilter('2026');
   }, [activeTab, user]);
+
+  // Clear topup input box when the modal is closed
+  useEffect(() => {
+    if (!showTopupModal) {
+      setTopupAmount(0);
+    }
+  }, [showTopupModal]);
 
   // Prevent body scroll when any modal is open
   useEffect(() => {
@@ -321,6 +360,7 @@ export default function UserDashboard() {
       selectedTicket ||
       showCreateTicket ||
       selectedAnnouncement ||
+      showNewsModal ||
       selectedTxDetail
     );
     if (isModalOpen) {
@@ -339,6 +379,7 @@ export default function UserDashboard() {
     selectedTicket,
     showCreateTicket,
     selectedAnnouncement,
+    showNewsModal,
     selectedTxDetail
   ]);
 
@@ -1419,37 +1460,100 @@ export default function UserDashboard() {
   };
 
   const getChartData = () => {
-    const monthlyData: Record<string, { spending: number; count: number }> = {};
-    const monthsOrder = [];
+    if (chartYearFilter === 'all') {
+      // Aggregate by year (2024, 2025, 2026)
+      const yearlyData: Record<number, { spending: number; count: number }> = {
+        2024: { spending: 0, count: 0 },
+        2025: { spending: 0, count: 0 },
+        2026: { spending: 0, count: 0 }
+      };
+      const yearsOrder = [2024, 2025, 2026];
 
-    // Get last 6 months
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(1); // avoid month overflow issues
-      d.setMonth(d.getMonth() - i);
-      const label = d.toLocaleString('id-ID', { month: 'short' });
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      monthlyData[key] = { spending: 0, count: 0 };
-      monthsOrder.push({ key, label });
+      orders.forEach(o => {
+        if (o.payment_status === 'paid' && o.status !== 'failed') {
+          const od = new Date(o.created_at);
+          const y = od.getFullYear();
+          if (y in yearlyData) {
+            yearlyData[y].spending += Number(o.total_price);
+            yearlyData[y].count += 1;
+          }
+        }
+      });
+
+      return yearsOrder.map(y => ({
+        label: `Thn ${y}`,
+        spending: yearlyData[y].spending,
+        count: yearlyData[y].count,
+        showLabel: true
+      }));
     }
 
-    // Aggregate orders
-    orders.forEach(o => {
-      if (o.payment_status === 'paid' && o.status !== 'failed') {
-        const od = new Date(o.created_at);
-        const key = `${od.getFullYear()}-${od.getMonth()}`;
-        if (monthlyData[key]) {
-          monthlyData[key].spending += Number(o.total_price);
-          monthlyData[key].count += 1;
-        }
-      }
-    });
+    const year = Number(chartYearFilter);
 
-    return monthsOrder.map(m => ({
-      label: m.label,
-      spending: monthlyData[m.key].spending,
-      count: monthlyData[m.key].count
-    }));
+    if (chartMonthFilter === 'all') {
+      // Aggregate by month (12 months)
+      const monthlyData: Record<number, { spending: number; count: number }> = {};
+      const monthsOrder = [];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+      for (let m = 0; m < 12; m++) {
+        monthlyData[m] = { spending: 0, count: 0 };
+        monthsOrder.push({ month: m, label: monthNames[m] });
+      }
+
+      orders.forEach(o => {
+        if (o.payment_status === 'paid' && o.status !== 'failed') {
+          const od = new Date(o.created_at);
+          if (od.getFullYear() === year) {
+            const m = od.getMonth();
+            if (monthlyData[m]) {
+              monthlyData[m].spending += Number(o.total_price);
+              monthlyData[m].count += 1;
+            }
+          }
+        }
+      });
+
+      return monthsOrder.map(mo => ({
+        label: mo.label,
+        spending: monthlyData[mo.month].spending,
+        count: monthlyData[mo.month].count,
+        showLabel: true
+      }));
+    } else {
+      // Aggregate by day of the selected month
+      const month = Number(chartMonthFilter);
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const dailyData: Record<number, { spending: number; count: number }> = {};
+      const daysOrder = [];
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        dailyData[d] = { spending: 0, count: 0 };
+        // Determine whether to display X-axis label
+        const showLabel = d === 1 || d === 5 || d === 10 || d === 15 || d === 20 || d === 25 || d === daysInMonth;
+        daysOrder.push({ day: d, label: `Tgl ${d}`, showLabel });
+      }
+
+      orders.forEach(o => {
+        if (o.payment_status === 'paid' && o.status !== 'failed') {
+          const od = new Date(o.created_at);
+          if (od.getFullYear() === year && od.getMonth() === month) {
+            const d = od.getDate();
+            if (dailyData[d]) {
+              dailyData[d].spending += Number(o.total_price);
+              dailyData[d].count += 1;
+            }
+          }
+        }
+      });
+
+      return daysOrder.map(doItem => ({
+        label: doItem.label,
+        spending: dailyData[doItem.day].spending,
+        count: dailyData[doItem.day].count,
+        showLabel: doItem.showLabel
+      }));
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -1461,7 +1565,7 @@ export default function UserDashboard() {
   };
 
   const formatPaymentMethod = (method?: string | null) => {
-    if (!method) return 'Payment Gateway (Midtrans)';
+    if (!method) return 'Payment Gateway';
     const lower = method.toLowerCase();
     if (lower === 'qris') return 'QRIS';
     if (lower === 'bank_transfer') return 'Bank Transfer';
@@ -1470,7 +1574,7 @@ export default function UserDashboard() {
     if (lower === 'cstore') return 'Convenience Store (Indomaret/Alfamart)';
     if (lower === 'credit_card') return 'Credit Card';
     if (lower === 'wallet') return 'Saldo Akun';
-    if (lower === 'midtrans') return 'Payment Gateway (Midtrans)';
+    if (lower === 'midtrans') return 'Payment Gateway';
     return method.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
@@ -1617,7 +1721,7 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-955 text-slate-100 selection:bg-indigo-500 selection:text-white font-sans transition-colors duration-300">
+    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white font-sans transition-colors duration-300">
 
       {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
@@ -1704,19 +1808,21 @@ export default function UserDashboard() {
                     <span>Riwayat Pesanan</span>
                   </button>
 
+
+
                   <button
                     onClick={() => {
-                      setActiveTab('transactions');
+                      setActiveTab('deposits');
                       fetchProfileAndTransactions(user.id);
                       setIsSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'transactions'
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'deposits'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
-                      : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-955/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
-                    <CreditCard className="w-4 h-4" />
-                    <span>Riwayat Saldo</span>
+                    <Wallet className="w-4 h-4 text-slate-400" />
+                    <span>Riwayat Deposit</span>
                   </button>
 
                   <button
@@ -1727,7 +1833,7 @@ export default function UserDashboard() {
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'tickets'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
-                      : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-955/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
                     <MessageSquare className="w-4 h-4" />
@@ -1767,40 +1873,109 @@ export default function UserDashboard() {
                 {activeTab === 'dashboard' && 'Statistik & Ringkasan Akun'}
                 {activeTab === 'order' && 'Buat Pesanan Baru'}
                 {activeTab === 'history' && 'Riwayat Pesanan Anda'}
-                {activeTab === 'transactions' && 'Log Mutasi Saldo & Topup'}
+                {activeTab === 'transactions' && 'Log Mutasi Saldo'}
+                {activeTab === 'deposits' && 'Riwayat Deposit & Top Up'}
                 {activeTab === 'tickets' && 'Tiket Bantuan Pelanggan'}
               </h1>
             </div>
 
             {/* Profile Info, Balance & Theme Toggle */}
             <div className="flex items-center gap-3">
-              <div className="h-10 px-4 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 font-extrabold border border-slate-200 dark:border-slate-800/80 text-xs tracking-tight flex items-center gap-2 shadow-sm" title="Saldo Wallet Anda">
-                <Wallet className="w-4.5 h-4.5 text-slate-400 shrink-0" />
-                <span>Saldo: {formatPrice(balance)}</span>
-              </div>
-
               <button
-                onClick={() => {
-                  setCurrentPassword('');
-                  setNewPassword('');
-                  setConfirmPassword('');
-                  setChangePasswordError('');
-                  setChangePasswordSuccess('');
-                  setShowProfileModal(true);
-                }}
-                className="h-10 w-10 lg:w-auto lg:px-4 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800/80 text-xs font-extrabold text-slate-900 dark:text-slate-200 shadow-sm transition-all cursor-pointer shrink-0"
-                title="Ganti Password"
+                onClick={() => setShowTopupModal(true)}
+                className="h-10 px-4 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-850 text-slate-900 dark:text-slate-200 font-extrabold border border-slate-200 dark:border-slate-800/80 text-xs tracking-tight flex items-center gap-2 shadow-sm transition-all cursor-pointer hover:scale-102 active:scale-98"
+                title="Klik untuk Top Up Saldo"
               >
-                <User className="w-4.5 h-4.5 text-indigo-500 shrink-0" />
-                <span className="hidden lg:inline">{user?.email}</span>
+                <Wallet className="w-4.5 h-4.5 text-indigo-500 shrink-0" />
+                <span>Saldo: {formatPrice(balance)}</span>
               </button>
+
+              {/* Profile Dropdown Container */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="h-10 px-4 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800/80 text-xs font-extrabold text-slate-900 dark:text-slate-200 shadow-sm transition-all cursor-pointer shrink-0"
+                  title="Menu Akun"
+                >
+                  <User className="w-4.5 h-4.5 text-indigo-500 shrink-0" />
+                  <span className="truncate max-w-[120px] hidden sm:inline">{userProfile?.full_name || user?.email}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isProfileDropdownOpen && (
+                  <>
+                    {/* Overlay to close dropdown when clicking outside */}
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsProfileDropdownOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 py-3 font-inter">
+                      {/* User Info Header */}
+                      <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-850">
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400 dark:text-slate-500 block">Akun Anda</span>
+                        <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 mt-1 truncate">{userProfile?.full_name || 'Pelanggan'}</span>
+                        <span className="block text-[10px] text-slate-450 dark:text-slate-500 truncate">{user?.email}</span>
+                      </div>
+
+                      {/* Menu List */}
+                      <div className="px-1.5 py-1">
+
+                        {/* Riwayat Saldo Link */}
+                        <button
+                          onClick={() => {
+                            setActiveTab('transactions');
+                            setIsProfileDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-655 dark:text-slate-350 hover:bg-slate-855/50 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors cursor-pointer text-left"
+                        >
+                          <CreditCard className="w-4 h-4 text-slate-400" />
+                          <span>Riwayat Saldo</span>
+                        </button>
+
+
+
+                        {/* Pengaturan / Password Link */}
+                        <button
+                          onClick={() => {
+                            setCurrentPassword('');
+                            setNewPassword('');
+                            setConfirmPassword('');
+                            setChangePasswordError('');
+                            setChangePasswordSuccess('');
+                            setShowProfileModal(true);
+                            setIsProfileDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-655 dark:text-slate-350 hover:bg-slate-855/50 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors cursor-pointer text-left"
+                        >
+                          <Settings className="w-4 h-4 text-slate-400" />
+                          <span>Pengaturan</span>
+                        </button>
+
+                        <div className="h-px bg-slate-100 dark:bg-slate-855 my-1" />
+
+                        {/* Logout Link */}
+                        <button
+                          onClick={() => {
+                            setIsProfileDropdownOpen(false);
+                            handleLogout();
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/10 transition-colors cursor-pointer text-left"
+                        >
+                          <LogOut className="w-4 h-4 text-red-500" />
+                          <span>Keluar Akun</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
               <PremiumThemeToggle />
             </div>
           </header>
 
           {/* Main Dashboard Container */}
-          <main className="p-6 md:p-8 pb-28 md:pb-8 space-y-6 flex-1 overflow-y-auto bg-slate-955">
+          <main className="p-6 md:p-8 pb-28 md:pb-8 space-y-6 flex-1 overflow-y-auto bg-slate-950">
 
             {/* Dashboard Overview Tab */}
             {activeTab === 'dashboard' && (
@@ -1808,21 +1983,24 @@ export default function UserDashboard() {
                 {/* Wallet and Stats Cards */}
                 <div className="grid md:grid-cols-3 gap-6">
                   {/* Balance Card */}
-                  <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md">
-                    <div className="absolute top-0 right-0 w-28 h-28 bg-slate-500/5 blur-3xl rounded-full"></div>
+                  <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-5 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:border-slate-700/50">
+                    <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-500/5 blur-3xl rounded-full"></div>
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Anda</span>
-                        <div className="text-3xl font-extrabold text-slate-100 mt-1">{formatPrice(balance)}</div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Saldo Anda</span>
+                        <div className="text-3xl font-black text-slate-100 mt-1.5">{formatPrice(balance)}</div>
                       </div>
-                      <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0">
-                        <Wallet className="w-5 h-5" />
+                      <div 
+                        style={{ backgroundColor: 'rgba(99, 102, 241, 0.12)' }}
+                        className="text-indigo-650 dark:text-indigo-400 p-3.5 rounded-2xl border border-indigo-500/10 shrink-0 shadow-sm"
+                      >
+                        <Wallet className="w-5.5 h-5.5" />
                       </div>
                     </div>
-                    <div className="mt-5">
+                    <div className="mt-6">
                       <button
                         onClick={() => setShowTopupModal(true)}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/10 flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/10 flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer hover:scale-102"
                       >
                         <ArrowUpRight className="w-4 h-4" />
                         <span>Top Up Saldo</span>
@@ -1831,60 +2009,173 @@ export default function UserDashboard() {
                   </div>
 
                   {/* Total Orders Card */}
-                  <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Pesanan</span>
-                      <div className="text-3xl font-extrabold text-slate-100 mt-1">{orders.length}</div>
+                  <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-5 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:border-slate-700/50">
+                    <div className="absolute top-0 right-0 w-28 h-28 bg-purple-500/5 blur-3xl rounded-full"></div>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Pesanan</span>
+                        <div className="text-3xl font-black text-slate-100 mt-1.5">{orders.length}</div>
+                      </div>
+                      <div 
+                        style={{ backgroundColor: 'rgba(168, 85, 247, 0.12)' }}
+                        className="text-purple-655 dark:text-purple-450 p-3.5 rounded-2xl border border-purple-500/10 shrink-0 shadow-sm"
+                      >
+                        <ShoppingBag className="w-5.5 h-5.5" />
+                      </div>
                     </div>
-                    <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0">
-                      <ShoppingBag className="w-5 h-5" />
+                    <div className="mt-5 text-[11px] text-slate-450 dark:text-slate-500 font-medium">
+                      Semua transaksi pesanan yang pernah Anda buat
                     </div>
                   </div>
 
                   {/* Active Orders Card */}
-                  <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl flex items-center justify-between backdrop-blur-md">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Layanan Aktif</span>
-                      <div className="text-3xl font-extrabold text-slate-100 mt-1">
-                        {orders.filter(o => o.status === 'processing' || o.status === 'inprogress').length}
+                  {(() => {
+                    const activeCount = orders.filter(o => o.status === 'processing' || o.status === 'inprogress').length;
+                    return (
+                      <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-5 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:border-slate-700/50">
+                        <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 blur-3xl rounded-full"></div>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                              Layanan Aktif
+                              {activeCount > 0 && (
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                              )}
+                            </span>
+                            <div className="text-3xl font-black text-slate-100 mt-1.5 flex items-baseline gap-2">
+                              {activeCount}
+                              <span className="text-xs font-semibold text-slate-450 dark:text-slate-500">berjalan</span>
+                            </div>
+                          </div>
+                          <div 
+                            style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)' }}
+                            className="text-emerald-650 dark:text-emerald-400 p-3.5 rounded-2xl border border-emerald-500/10 shrink-0 shadow-sm"
+                          >
+                            <Activity className="w-5.5 h-5.5" />
+                          </div>
+                        </div>
+                        <div className="mt-5 text-[11px] text-slate-455 dark:text-slate-500 font-medium">
+                          Pesanan Anda yang sedang dalam proses pengiriman
+                        </div>
                       </div>
-                    </div>
-                    <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0">
-                      <Sparkles className="w-5 h-5" />
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
-                {/* SVG Line Chart Card */}
-                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 lg:p-8 rounded-3xl backdrop-blur-md">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                {/* SVG Line Chart Card (Dribbble-Style) */}
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-5 sm:p-6 lg:p-8 rounded-3xl backdrop-blur-md">
+                  {/* Header & Filters */}
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 mb-8">
                     <div>
                       <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
                         <span>Statistik Akun Anda</span>
                       </h3>
-                      <p className="text-slate-400 text-xs mt-1">Analisis pengeluaran belanja dan riwayat order 6 bulan terakhir</p>
+                      <p className="text-slate-400 text-xs mt-1">Analisis visual pengeluaran dan jumlah order berhasil Anda</p>
                     </div>
-                    <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850 self-start">
-                      <button
-                        onClick={() => setChartDataType('spending')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${chartDataType === 'spending'
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                          : 'text-slate-400 hover:text-slate-200'
-                          }`}
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Year Filter */}
+                      <select
+                        value={chartYearFilter}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setChartYearFilter(val);
+                          if (val === 'all') {
+                            setChartMonthFilter('all');
+                          }
+                        }}
+                        className="force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-100 font-semibold px-3 py-2 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
                       >
-                        Pengeluaran
-                      </button>
-                      <button
-                        onClick={() => setChartDataType('orders')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${chartDataType === 'orders'
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                          : 'text-slate-400 hover:text-slate-200'
-                          }`}
+                        <option value="all">Semua Tahun</option>
+                        <option value="2026">Tahun 2026</option>
+                        <option value="2025">Tahun 2025</option>
+                        <option value="2024">Tahun 2024</option>
+                      </select>
+
+                      {/* Month Filter */}
+                      <select
+                        value={chartMonthFilter}
+                        onChange={(e) => setChartMonthFilter(e.target.value)}
+                        disabled={chartYearFilter === 'all'}
+                        className="force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-100 font-semibold px-3 py-2 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Jumlah Order Berhasil
-                      </button>
+                        <option value="all">Semua Bulan</option>
+                        <option value="0">Januari</option>
+                        <option value="1">Februari</option>
+                        <option value="2">Maret</option>
+                        <option value="3">April</option>
+                        <option value="4">Mei</option>
+                        <option value="5">Juni</option>
+                        <option value="6">Juli</option>
+                        <option value="7">Agustus</option>
+                        <option value="8">September</option>
+                        <option value="9">Oktober</option>
+                        <option value="10">November</option>
+                        <option value="11">Desember</option>
+                      </select>
+
+                      {/* Data Type Toggle Buttons */}
+                      <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
+                        <button
+                          onClick={() => setChartDataType('spending')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartDataType === 'spending'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                            : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                        >
+                          Pengeluaran
+                        </button>
+                        <button
+                          onClick={() => setChartDataType('orders')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartDataType === 'orders'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                            : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                        >
+                          Order Berhasil
+                        </button>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Summary Cards Dashboard (Dribbble Style) */}
+                  {(() => {
+                    const isAllYears = chartYearFilter === 'all';
+                    const yearVal = isAllYears ? null : Number(chartYearFilter);
+                    const monthVal = chartMonthFilter === 'all' ? null : Number(chartMonthFilter);
+
+                    const filteredPaidOrders = orders.filter(o => {
+                      if (o.payment_status !== 'paid' || o.status === 'failed') return false;
+                      const d = new Date(o.created_at);
+                      if (yearVal !== null && d.getFullYear() !== yearVal) return false;
+                      if (monthVal !== null && d.getMonth() !== monthVal) return false;
+                      return true;
+                    });
+
+                    const totalSpending = filteredPaidOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
+                    const totalCount = filteredPaidOrders.length;
+                    const averageTicket = totalCount > 0 ? totalSpending / totalCount : 0;
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                        <div className="bg-slate-950/40 border border-slate-850 p-4.5 rounded-2xl">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Pengeluaran</span>
+                          <div className="text-lg font-black text-slate-100 mt-1">{formatPrice(totalSpending)}</div>
+                        </div>
+                        <div className="bg-slate-950/40 border border-slate-850 p-4.5 rounded-2xl">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Rata-rata Order</span>
+                          <div className="text-lg font-black text-indigo-400 mt-1">{formatPrice(averageTicket)}</div>
+                        </div>
+                        <div className="bg-slate-950/40 border border-slate-850 p-4.5 rounded-2xl">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pesanan Sukses</span>
+                          <div className="text-lg font-black text-emerald-450 mt-1">{totalCount.toLocaleString('id-ID')} <span className="text-xs font-normal text-slate-400">Order</span></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Responsive SVG Chart */}
                   {(() => {
@@ -1899,7 +2190,7 @@ export default function UserDashboard() {
                       const val = chartDataType === 'spending' ? d.spending : d.count;
                       const x = padding + (index * (width - 2 * padding)) / (chartData.length - 1);
                       const y = height - padding - (val / maxValue) * (height - 2 * padding);
-                      return { x, y, label: d.label, rawVal: val };
+                      return { x, y, label: d.label, rawVal: val, showLabel: d.showLabel };
                     });
 
                     const pathD = points.reduce((acc, p, i) => {
@@ -1947,18 +2238,21 @@ export default function UserDashboard() {
                               <g key={idx} className="group/dot cursor-pointer">
                                 <circle cx={p.x} cy={p.y} r="4" className="fill-indigo-500 stroke-slate-950 stroke-2" />
                                 <circle cx={p.x} cy={p.y} r="8" className="fill-indigo-500/20 opacity-0 group-hover/dot:opacity-100 transition-opacity" />
-                                <text x={p.x} y={p.y - 12} textAnchor="middle" className="fill-slate-100 dark:fill-slate-100 text-[10px] font-bold opacity-0 group-hover/dot:opacity-100 transition-opacity bg-slate-955 dark:bg-slate-950 px-1.5 py-0.5 rounded shadow-lg border border-slate-850">
+                                <text x={p.x} y={p.y - 12} textAnchor="middle" className="fill-slate-100 dark:fill-slate-100 text-[10px] font-bold opacity-0 group-hover/dot:opacity-100 transition-opacity bg-slate-950 px-1.5 py-0.5 rounded shadow-lg border border-slate-850">
                                   {chartDataType === 'spending' ? formatPrice(p.rawVal) : `${p.rawVal} order`}
                                 </text>
                               </g>
                             ))}
 
                             {/* X Axis Labels */}
-                            {points.map((p, idx) => (
-                              <text key={idx} x={p.x} y={height - 12} textAnchor="middle" className="fill-slate-400 text-[10px] font-bold">
-                                {p.label}
-                              </text>
-                            ))}
+                            {points.map((p, idx) => {
+                              if (!p.showLabel) return null;
+                              return (
+                                <text key={idx} x={p.x} y={height - 12} textAnchor="middle" className="fill-slate-400 text-[10px] font-bold">
+                                  {p.label}
+                                </text>
+                              );
+                            })}
                           </svg>
                         </div>
                       </div>
@@ -2204,7 +2498,7 @@ export default function UserDashboard() {
                             setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
                             setIsServiceDropdownOpen(false);
                           }}
-                          className="w-full flex items-center justify-between bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm text-left cursor-pointer min-w-0 max-w-full"
+                          className="w-full flex items-center justify-between force-white-bg border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-200 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm text-left cursor-pointer min-w-0 max-w-full"
                         >
                           <span className="truncate block w-full">{selectedCategory || 'Pilih Kategori...'}</span>
                           <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
@@ -2212,14 +2506,14 @@ export default function UserDashboard() {
 
                         {/* Custom Category Dropdown List */}
                         {isCategoryDropdownOpen && (
-                          <div className="absolute left-0 right-0 mt-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
-                            <div className="p-3 border-b border-slate-100 dark:border-slate-900 bg-white dark:bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                          <div className="absolute left-0 right-0 mt-1.5 force-white-bg border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                            <div className="p-3 border-b border-slate-100 dark:border-slate-900 force-white-bg sticky top-0 backdrop-blur-md">
                               <input
                                 type="text"
                                 placeholder="Cari Kategori..."
                                 value={categorySearchQuery}
                                 onChange={(e) => setCategorySearchQuery(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-900 dark:text-slate-100 px-3 py-2 rounded-xl outline-none text-xs"
+                                className="w-full force-white-bg border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-250 dark:text-slate-100 px-3 py-2 rounded-xl outline-none text-xs"
                                 autoFocus
                               />
                             </div>
@@ -2260,7 +2554,7 @@ export default function UserDashboard() {
                               setIsServiceDropdownOpen(!isServiceDropdownOpen);
                               setIsCategoryDropdownOpen(false);
                             }}
-                            className="flex-1 flex items-center justify-between bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm text-left cursor-pointer min-w-0 max-w-[calc(100vw-140px)] sm:max-w-none"
+                            className="flex-1 flex items-center justify-between force-white-bg border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-200 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm text-left cursor-pointer min-w-0 max-w-[calc(100vw-140px)] sm:max-w-none"
                           >
                             <span className="truncate block w-full">{selectedService?.name || 'Pilih Layanan...'}</span>
                             <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isServiceDropdownOpen ? 'rotate-180' : ''}`} />
@@ -2272,7 +2566,7 @@ export default function UserDashboard() {
                               onClick={() => toggleFavorite(selectedService.id)}
                               className={`p-3.5 rounded-2xl border transition-all active:scale-95 flex items-center justify-center shrink-0 cursor-pointer ${favorites.includes(selectedService.id)
                                 ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
-                                : 'bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                : 'force-white-bg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700 hover:border-slate-300'
                                 }`}
                               title={favorites.includes(selectedService.id) ? 'Hapus dari Layanan Favorit' : 'Simpan ke Layanan Favorit'}
                             >
@@ -2283,14 +2577,14 @@ export default function UserDashboard() {
 
                         {/* Custom Service Dropdown List */}
                         {isServiceDropdownOpen && (
-                          <div className="absolute left-0 right-0 mt-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
-                            <div className="p-3 border-b border-slate-100 dark:border-slate-900 bg-white dark:bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                          <div className="absolute left-0 right-0 mt-1.5 force-white-bg border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                            <div className="p-3 border-b border-slate-100 dark:border-slate-900 force-white-bg sticky top-0 backdrop-blur-md">
                               <input
                                 type="text"
                                 placeholder="Cari Layanan..."
                                 value={serviceSearchQuery}
                                 onChange={(e) => setServiceSearchQuery(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-900 dark:text-slate-100 px-3 py-2 rounded-xl outline-none text-xs"
+                                className="w-full force-white-bg border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-250 dark:text-slate-100 px-3 py-2 rounded-xl outline-none text-xs"
                                 autoFocus
                               />
                             </div>
@@ -2337,7 +2631,7 @@ export default function UserDashboard() {
                               placeholder={targetGuide.placeholder}
                               value={targetUrl}
                               onChange={(e) => setTargetUrl(e.target.value)}
-                              className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm font-medium"
+                              className="w-full force-white-bg border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-200 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm font-medium"
                             />
                             <p className="mt-2 text-[11px] text-indigo-500 dark:text-indigo-400 font-semibold leading-relaxed bg-indigo-500/5 dark:bg-indigo-950/10 border border-indigo-500/10 rounded-xl p-3.5 flex gap-1.5 items-start">
                               <span className="font-extrabold uppercase shrink-0 text-indigo-650 dark:text-indigo-400">[Petunjuk]:</span>
@@ -2359,7 +2653,7 @@ export default function UserDashboard() {
                           value={formatNumberWithDots(quantity)}
                           onChange={(e) => setQuantity(parseNumberFromDots(e.target.value))}
                           placeholder="Contoh: 1.000"
-                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm font-semibold"
+                          className="w-full force-white-bg border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-200 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm font-semibold"
                         />
                       </div>
 
@@ -2800,7 +3094,7 @@ export default function UserDashboard() {
                       placeholder="Cari berdasarkan ID, Layanan, atau URL Target..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full bg-slate-950 dark:bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 dark:border-slate-800 focus:border-indigo-500 text-slate-900 dark:text-slate-100 pl-11 pr-4 py-2.5 rounded-xl outline-none transition-colors text-sm shadow-sm"
+                      className="w-full force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-100 focus:border-indigo-500 pl-11 pr-4 py-2.5 rounded-xl outline-none transition-colors text-sm shadow-sm"
                     />
                   </div>
 
@@ -2812,7 +3106,7 @@ export default function UserDashboard() {
                       className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
                     >
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Copy ID Pesanan</span>
+                      <span>Copy ID Pesanan{selectedOrderIds.length > 0 ? ` (${selectedOrderIds.length})` : ''}</span>
                     </button>
 
                     {selectedOrderIds.length > 0 && orders.filter(o => selectedOrderIds.includes(o.id) && o.payment_status === 'unpaid').length > 0 && (
@@ -2828,7 +3122,7 @@ export default function UserDashboard() {
                     <select
                       value={orderYearFilter}
                       onChange={(e) => setOrderYearFilter(e.target.value)}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 text-slate-900 dark:text-slate-100 font-semibold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
+                      className="force-white-bg border border-slate-200 dark:border-slate-850 text-slate-200 dark:text-slate-100 font-semibold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
                     >
                       <option value="all">Semua Tahun</option>
                       <option value="2026">2026</option>
@@ -2839,7 +3133,7 @@ export default function UserDashboard() {
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 text-slate-900 dark:text-slate-100 font-semibold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
+                      className="force-white-bg border border-slate-200 dark:border-slate-855 text-slate-250 dark:text-slate-100 font-semibold px-4 py-2.5 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
                     >
                       <option value="all">Semua Status</option>
                       <option value="pending">PENDING</option>
@@ -2860,13 +3154,13 @@ export default function UserDashboard() {
                         className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/10 active:scale-95 cursor-pointer whitespace-nowrap"
                       >
                         <Copy className="w-3.5 h-3.5" />
-                        <span>Copy ID Pesanan</span>
+                        <span>Copy ID Pesanan{selectedOrderIds.length > 0 ? ` (${selectedOrderIds.length})` : ''}</span>
                       </button>
 
                       <select
                         value={orderYearFilter}
                         onChange={(e) => setOrderYearFilter(e.target.value)}
-                        className="w-full bg-slate-950 dark:bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
+                        className="w-full force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-100 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
                       >
                         <option value="all">Semua Tahun</option>
                         <option value="2026">2026</option>
@@ -2885,7 +3179,7 @@ export default function UserDashboard() {
                             onClick={() => handleToggleSelectAll(currentPageOrders)}
                             className={`w-full flex items-center justify-center gap-2 border font-bold py-3 rounded-xl text-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap ${isPageAllSelected
                               ? 'bg-rose-50/80 dark:bg-rose-950/15 border-indigo-500/30 text-indigo-550 dark:text-indigo-500 dark:text-indigo-400'
-                              : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-350'
+                              : 'force-white-bg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700 hover:border-slate-300'
                               }`}
                           >
                             <input
@@ -2902,7 +3196,7 @@ export default function UserDashboard() {
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="w-full bg-slate-950 dark:bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
+                        className="w-full force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-100 font-bold px-4 py-3 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm transition-all"
                       >
                         <option value="all">Semua Status</option>
                         <option value="pending">PENDING</option>
@@ -2961,12 +3255,16 @@ export default function UserDashboard() {
                                 <th className="py-4 px-4">Tanggal & Waktu</th>
                                 <th className="py-4 px-4 text-left">Aksi</th>
                               </tr>
-                            </thead>
+</thead>
                             <tbody className="divide-y divide-slate-850/40 text-xs">
                               {currentPageOrders.map(order => {
                                 const isSelected = selectedOrderIds.includes(order.id);
                                 return (
-                                  <tr key={order.id} className={`transition-colors ${isSelected ? 'bg-indigo-500/5 dark:bg-rose-50/80 dark:bg-rose-950/15' : 'hover:bg-slate-900/30'}`}>
+                                  <tr 
+                                    key={order.id} 
+                                    style={{ backgroundColor: isSelected ? 'var(--color-selected-row)' : undefined }}
+                                    className={`transition-colors ${isSelected ? '' : 'hover:bg-slate-900/30'}`}
+                                  >
                                     <td className="py-4 px-4 text-center">
                                       <input
                                         type="checkbox"
@@ -3259,68 +3557,89 @@ export default function UserDashboard() {
                 )}
               </div>
             )}
-            {/* Transaction History Tab */}
+            {/* Log Mutasi Saldo Tab */}
             {activeTab === 'transactions' && (() => {
-              const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
+              // Map order UUID to numeric order_id
+              const orderIdMap = new Map<string, string>();
+              orders.forEach(o => {
+                if (o.id && o.order_id) {
+                  orderIdMap.set(o.id, String(o.order_id));
+                }
+              });
 
-              // Calculate topup stats
-              const successfulDeposits = transactions.filter(tx => tx.type === 'topup' && tx.status === 'success');
-              const failedDeposits = transactions.filter(tx => tx.type === 'topup' && tx.status === 'failed');
+              // Mutasi Saldo: type !== 'topup' OR (type === 'topup' && status === 'success')
+              const baseMutationTxs = transactions.filter(tx => tx.type !== 'topup' || tx.status === 'success');
 
-              const totalSuccessCount = successfulDeposits.length;
-              const totalSuccessAmount = successfulDeposits.reduce((sum, tx) => sum + Number(tx.amount), 0);
+              // Sort newest first
+              const sortedMutationTxs = [...baseMutationTxs].sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
 
-              const totalFailedCount = failedDeposits.length;
-              const totalFailedAmount = failedDeposits.reduce((sum, tx) => sum + Number(tx.amount), 0);
+              // Calculate running balance for each transaction using database delta directly
+              const txBalancesMap = new Map<string, number>();
+              let tempBalance = balance; // current profile balance
+              
+              for (const tx of sortedMutationTxs) {
+                txBalancesMap.set(tx.id, tempBalance);
+                
+                // Subtract delta amount (since delta is positive for additions and negative for deductions)
+                // This gives the balance BEFORE this transaction.
+                tempBalance -= Number(tx.amount);
+              }
+
+              // Apply Search, Year, Month, and Type filters
+              const mutationTxs = sortedMutationTxs.filter(tx => {
+                // Year filter
+                if (txYearFilter !== 'all') {
+                  const year = new Date(tx.created_at).getFullYear().toString();
+                  if (year !== txYearFilter) return false;
+                }
+
+                // Month filter
+                if (txMonthFilter !== 'all') {
+                  const month = (new Date(tx.created_at).getMonth() + 1).toString().padStart(2, '0');
+                  if (month !== txMonthFilter) return false;
+                }
+
+                // Type filter (pesanan, deposit, refund)
+                if (txTypeFilter !== 'all') {
+                  if (txTypeFilter === 'order_payment' && tx.type !== 'order_payment') return false;
+                  if (txTypeFilter === 'topup' && tx.type !== 'topup') return false;
+                  if (txTypeFilter === 'refund' && tx.type !== 'refund') return false;
+                }
+
+                // Search query filter
+                if (txSearchQuery.trim() !== '') {
+                  const queryLower = txSearchQuery.toLowerCase().trim();
+                  if (txSearchType === 'id') {
+                    const queryClean = queryLower.replace('trx-', '');
+                    const matchesId = tx.id.toLowerCase().includes(queryLower) ||
+                      (tx.tx_id ? String(tx.tx_id).includes(queryClean) : false);
+                    if (!matchesId) return false;
+                  } else if (txSearchType === 'amount') {
+                    if (!tx.amount.toString().includes(queryLower)) return false;
+                  }
+                }
+                return true;
+              });
 
               return (
-                <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-3.5 sm:p-8 backdrop-blur-md">
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-3.5 sm:p-8 backdrop-blur-md animate-in fade-in duration-300">
                   <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-                    <span>Riwayat Transaksi</span>
+                    <span>Log Mutasi Saldo</span>
                   </h2>
 
-                  {/* Stats Cards */}
-                  <div className="grid sm:grid-cols-2 gap-4 mb-6">
-                    {/* Successful Deposit Card */}
-                    <div className="bg-slate-950/30 border border-slate-850 p-5 rounded-2xl flex items-center gap-4 transition-all hover:border-emerald-500/20">
-                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                        <CheckCircle className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Berhasil</span>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-lg font-extrabold text-emerald-450">{formatPrice(totalSuccessAmount)}</span>
-                          <span className="text-[11px] font-medium text-slate-500">({totalSuccessCount} Transaksi)</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Failed Deposit Card */}
-                    <div className="bg-slate-950/30 border border-slate-850 p-5 rounded-2xl flex items-center gap-4 transition-all hover:border-rose-500/20">
-                      <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-                        <XCircle className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Gagal</span>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-lg font-extrabold text-rose-400">{formatPrice(totalFailedAmount)}</span>
-                          <span className="text-[11px] font-medium text-slate-500">({totalFailedCount} Transaksi)</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Redesigned Premium Filters Bar (Matching User Screenshot with Labels) */}
-                  <div className="grid md:grid-cols-4 gap-4 mb-6">
+                  {/* Redesigned Premium Filters Bar (Search, Type, Month, Year) */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     {/* Pencarian */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Cari Transaksi</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Cari Mutasi</label>
                       <div className="flex gap-2">
                         <select
                           value={txSearchType}
                           onChange={(e) => setTxSearchType(e.target.value)}
-                          className="bg-slate-950 border border-slate-805 focus:border-indigo-500 text-slate-200 px-3 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold shrink-0"
+                          className="bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 px-3 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold shrink-0"
                         >
                           <option value="id">ID Transaksi</option>
                           <option value="amount">Jumlah</option>
@@ -3331,7 +3650,7 @@ export default function UserDashboard() {
                             placeholder="cari..."
                             value={txSearchQuery}
                             onChange={(e) => setTxSearchQuery(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                            className="w-full bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
                           />
                           <button
                             type="button"
@@ -3344,13 +3663,487 @@ export default function UserDashboard() {
                       </div>
                     </div>
 
+                    {/* Filter Tipe Mutasi */}
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Tipe Mutasi</label>
+                      <select
+                        value={txTypeFilter}
+                        onChange={(e) => setTxTypeFilter(e.target.value)}
+                        className="w-full bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                      >
+                        <option value="all">Semua Tipe</option>
+                        <option value="order_payment">Pesanan</option>
+                        <option value="topup">Deposit</option>
+                        <option value="refund">Refund</option>
+                      </select>
+                    </div>
+
+                    {/* Filter Bulan */}
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Bulan</label>
+                      <select
+                        value={txMonthFilter}
+                        onChange={(e) => setTxMonthFilter(e.target.value)}
+                        className="w-full bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                      >
+                        <option value="all">Semua Bulan</option>
+                        <option value="01">Januari</option>
+                        <option value="02">Februari</option>
+                        <option value="03">Maret</option>
+                        <option value="04">April</option>
+                        <option value="05">Mei</option>
+                        <option value="06">Juni</option>
+                        <option value="07">Juli</option>
+                        <option value="08">Agustus</option>
+                        <option value="09">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                      </select>
+                    </div>
+
                     {/* Filter Tahun */}
                     <div>
                       <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Tahun</label>
                       <select
                         value={txYearFilter}
                         onChange={(e) => setTxYearFilter(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                        className="w-full bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                      >
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                        <option value="all">Semua Tahun</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {mutationTxs.length === 0 ? (
+                    <div className="py-16 text-center text-slate-400 font-light flex flex-col items-center justify-center gap-2">
+                      <CreditCard className="w-10 h-10 text-slate-600 mb-2" />
+                      <p>Tidak ada riwayat mutasi saldo dengan kriteria ini.</p>
+</div>
+                  ) : (
+                    <>
+                      {/* Desktop View */}
+                      <div className="hidden md:block space-y-3 font-inter max-w-4xl mx-auto">
+                        {mutationTxs
+                          .slice((transactionsPage - 1) * itemsPerPage, transactionsPage * itemsPerPage)
+                          .map(tx => {
+                            const dateStr = new Date(tx.created_at).toLocaleString('id-ID', {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit'
+                            });
+
+                            const isAddition = tx.type === 'topup' || tx.type === 'refund';
+
+                            let creditedAmount = Number(tx.amount);
+                            let baseAmount = Number(tx.amount);
+
+                            if (tx.type === 'topup') {
+                              const bonusMin = parseInt(siteSettings.deposit_bonus_min) || 10000;
+                              const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
+                              const hasBonus = baseAmount >= bonusMin && bonusPercent > 0;
+                              const bonusAmount = hasBonus ? Math.round(baseAmount * bonusPercent / 100) : 0;
+                              creditedAmount = baseAmount + bonusAmount;
+                            }
+
+                            const displayAmount = tx.type === 'topup' ? creditedAmount : baseAmount;
+
+                            const balanceAfter = txBalancesMap.get(tx.id) || 0;
+                            const balanceAfterStr = formatPrice(balanceAfter);
+
+                            const getOrderDisplayId = (refId?: string) => {
+                              if (refId && orderIdMap.has(refId)) {
+                                return orderIdMap.get(refId)!;
+                              }
+                              return refId ? refId.slice(0, 8) : '';
+                            };
+
+                            const cleanDesc = (desc: string) => {
+                              let res = desc;
+                              const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+                              const matches = res.match(uuidRegex);
+                              if (matches) {
+                                for (const uuid of matches) {
+                                  res = res.replace(uuid, getOrderDisplayId(uuid));
+                                }
+                              }
+                              return res;
+                            };
+
+                            let formattedDescription = tx.description;
+                            if (!formattedDescription) {
+                              if (tx.type === 'order_payment') {
+                                formattedDescription = `Membuat Pesanan. ID Pesanan: ${getOrderDisplayId(tx.reference_id)}.`;
+                              } else if (tx.type === 'refund') {
+                                formattedDescription = `Pengembalian dana (Refund). ID Pesanan: ${getOrderDisplayId(tx.reference_id)}.`;
+                              } else if (tx.type === 'topup') {
+                                formattedDescription = `Deposit saldo otomatis via ${formatPaymentMethod(tx.payment_method)}.`;
+                              } else {
+                                formattedDescription = `Mutasi saldo.`;
+                              }
+                            } else {
+                              formattedDescription = cleanDesc(formattedDescription);
+                            }
+
+                            return (
+                              <div key={tx.id} className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 hover:border-indigo-500/30 hover:bg-slate-50 dark:hover:bg-slate-900/40 p-4 rounded-2xl flex items-center justify-between gap-4 transition-all duration-200 shadow-sm">
+                                <div className="flex items-center gap-4 min-w-0">
+                                  {/* Activity Icon */}
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                                    isAddition 
+                                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10' 
+                                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/10'
+                                  }`}>
+                                    {isAddition ? (
+                                      <ArrowUpRight className="w-4.5 h-4.5" />
+                                    ) : (
+                                      <ArrowDownRight className="w-4.5 h-4.5" />
+                                    )}
+                                  </div>
+
+                                  {/* Keterangan & Tanggal */}
+                                  <div className="min-w-0">
+                                    <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 leading-snug">
+                                      {formattedDescription}
+                                    </span>
+                                    <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-1">
+                                      {dateStr}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="shrink-0 text-right pr-2">
+                                  <span className={`block text-sm font-extrabold tracking-tight ${
+                                    isAddition 
+                                      ? 'text-emerald-500' 
+                                      : 'text-rose-500'
+                                  }`}>
+                                    {isAddition ? '+' : '-'}{formatPrice(Math.abs(displayAmount))}
+                                  </span>
+                                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 font-semibold mt-1">
+                                    Saldo Akhir: {balanceAfterStr}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      {/* Mobile View */}
+                      <div className="block md:hidden space-y-3 font-inter">
+                        {mutationTxs
+                          .slice((transactionsPage - 1) * itemsPerPage, transactionsPage * itemsPerPage)
+                          .map(tx => {
+                            const dateStr = new Date(tx.created_at).toLocaleString('id-ID', {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            });
+
+                            const isAddition = tx.type === 'topup' || tx.type === 'refund';
+
+                            let creditedAmount = Number(tx.amount);
+                            let baseAmount = Number(tx.amount);
+
+                            if (tx.type === 'topup') {
+                              const bonusMin = parseInt(siteSettings.deposit_bonus_min) || 10000;
+                              const bonusPercent = parseInt(siteSettings.deposit_bonus_percent) || 0;
+                              const hasBonus = baseAmount >= bonusMin && bonusPercent > 0;
+                              const bonusAmount = hasBonus ? Math.round(baseAmount * bonusPercent / 100) : 0;
+                              creditedAmount = baseAmount + bonusAmount;
+                            }
+
+                            const displayAmount = tx.type === 'topup' ? creditedAmount : baseAmount;
+
+                            const balanceAfter = txBalancesMap.get(tx.id) || 0;
+                            const balanceAfterStr = formatPrice(balanceAfter);
+                            
+                            const getOrderDisplayId = (refId?: string) => {
+                              if (refId && orderIdMap.has(refId)) {
+                                return orderIdMap.get(refId)!;
+                              }
+                              return refId ? refId.slice(0, 8) : '';
+                            };
+
+                            const cleanDesc = (desc: string) => {
+                              let res = desc;
+                              const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+                              const matches = res.match(uuidRegex);
+                              if (matches) {
+                                for (const uuid of matches) {
+                                  res = res.replace(uuid, getOrderDisplayId(uuid));
+                                }
+                              }
+                              return res;
+                            };
+
+                            let formattedDescription = tx.description;
+                            if (!formattedDescription) {
+                              if (tx.type === 'order_payment') {
+                                formattedDescription = `Membuat Pesanan. ID Pesanan: ${getOrderDisplayId(tx.reference_id)}.`;
+                              } else if (tx.type === 'refund') {
+                                formattedDescription = `Pengembalian dana. ID Pesanan: ${getOrderDisplayId(tx.reference_id)}.`;
+                              } else if (tx.type === 'topup') {
+                                formattedDescription = `Deposit via ${formatPaymentMethod(tx.payment_method)}.`;
+                              } else {
+                                formattedDescription = `Mutasi saldo.`;
+                              }
+                            } else {
+                              formattedDescription = cleanDesc(formattedDescription);
+                            }
+
+                            return (
+                              <div key={tx.id} className="bg-slate-900/40 border border-slate-855 p-4 rounded-2xl flex items-center justify-between gap-3 hover:border-slate-800 transition-all">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  {/* Activity Icon */}
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                                    isAddition 
+                                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10' 
+                                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/10'
+                                  }`}>
+                                    {isAddition ? (
+                                      <ArrowUpRight className="w-3.5 h-3.5" />
+                                    ) : (
+                                      <ArrowDownRight className="w-3.5 h-3.5" />
+                                    )}
+                                  </div>
+
+                                  {/* Keterangan & Tanggal */}
+                                  <div className="min-w-0">
+                                    <span className="block text-[11px] font-bold text-slate-200 truncate leading-tight">
+                                      {formattedDescription}
+                                    </span>
+                                    <span className="block text-[9px] text-slate-500 font-medium mt-1">
+                                      {dateStr}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="shrink-0 text-right">
+                                  <span className={`block text-xs font-black ${
+                                    isAddition 
+                                      ? 'text-emerald-500' 
+                                      : 'text-rose-500'
+                                  }`}>
+                                    {isAddition ? '+' : '-'}{formatPrice(Math.abs(displayAmount))}
+                                  </span>
+                                  <span className="block text-[9px] text-slate-500 font-medium mt-0.5">
+                                    {balanceAfterStr}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      {mutationTxs.length > itemsPerPage && (
+                        <div className="flex justify-between items-center gap-2 pt-5 border-t border-slate-200 dark:border-slate-850 mt-5">
+                          <button
+                            type="button"
+                            disabled={transactionsPage === 1}
+                            onClick={() => setTransactionsPage(prev => Math.max(1, prev - 1))}
+                            className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:hover:border-slate-200 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                          >
+                            Sebelumnya
+                          </button>
+                          <span className="text-xs text-slate-500 font-medium">
+                            Menampilkan {((transactionsPage - 1) * itemsPerPage) + 1} - {Math.min(transactionsPage * itemsPerPage, mutationTxs.length)} dari {mutationTxs.length} transaksi
+                          </span>
+                          <button
+                            type="button"
+                            disabled={transactionsPage >= Math.ceil(mutationTxs.length / itemsPerPage)}
+                            onClick={() => setTransactionsPage(prev => prev + 1)}
+                            className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:hover:border-slate-200 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                          >
+                            Selanjutnya
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Riwayat Deposit Tab */}
+            {activeTab === 'deposits' && (() => {
+              // Deposit: type === 'topup'
+              const baseDepositTxs = transactions.filter(tx => tx.type === 'topup');
+
+              // Apply Search, Year, Method & Status filters
+              const depositTxs = baseDepositTxs.filter(tx => {
+                // Status filter
+                if (txStatusFilter !== 'all') {
+                  if (txStatusFilter === 'pending' && tx.status !== 'pending') return false;
+                  if (txStatusFilter === 'failed' && tx.status !== 'failed') return false;
+                  if (txStatusFilter === 'success' && tx.status !== 'success') return false;
+                }
+
+                // Year filter
+                if (txYearFilter !== 'all') {
+                  const year = new Date(tx.created_at).getFullYear().toString();
+                  if (year !== txYearFilter) return false;
+                }
+
+                // Month filter
+                if (depMonthFilter !== 'all') {
+                  const month = (new Date(tx.created_at).getMonth() + 1).toString().padStart(2, '0');
+                  if (month !== depMonthFilter) return false;
+                }
+
+                // Method filter
+                if (txMethodFilter !== 'all') {
+                  const methodLower = (tx.payment_method || '').toLowerCase();
+                  if (txMethodFilter === 'qris') {
+                    const isQris = methodLower.includes('qris') || methodLower === 'midtrans';
+                    if (!isQris) return false;
+                  } else if (txMethodFilter === 'bank_transfer') {
+                    const isBank = methodLower.includes('bank_transfer') || methodLower.includes('va') || methodLower.includes('echannel');
+                    if (!isBank) return false;
+                  } else if (txMethodFilter === 'gopay') {
+                    if (!methodLower.includes('gopay')) return false;
+                  } else if (txMethodFilter === 'shopeepay') {
+                    if (!methodLower.includes('shopeepay')) return false;
+                  } else if (txMethodFilter === 'other') {
+                    const isStandard = methodLower.includes('qris') || methodLower === 'midtrans' || methodLower.includes('bank_transfer') || methodLower.includes('va') || methodLower.includes('echannel') || methodLower.includes('gopay') || methodLower.includes('shopeepay');
+                    if (isStandard) return false;
+                  }
+                }
+
+                // Search query filter
+                if (txSearchQuery.trim() !== '') {
+                  const queryLower = txSearchQuery.toLowerCase().trim();
+                  if (txSearchType === 'id') {
+                    const queryClean = queryLower.replace('trx-', '');
+                    const matchesId = tx.id.toLowerCase().includes(queryLower) ||
+                      (tx.tx_id ? String(tx.tx_id).includes(queryClean) : false);
+                    if (!matchesId) return false;
+                  } else if (txSearchType === 'amount') {
+                    if (!tx.amount.toString().includes(queryLower)) return false;
+                  }
+                }
+
+                return true;
+              });
+
+              // Calculate topup stats
+              const successfulDeposits = transactions.filter(tx => tx.type === 'topup' && tx.status === 'success');
+              const failedDeposits = transactions.filter(tx => tx.type === 'topup' && tx.status === 'failed');
+
+              const totalSuccessCount = successfulDeposits.length;
+              const totalSuccessAmount = successfulDeposits.reduce((sum, tx) => sum + Number(tx.amount), 0);
+
+              const totalFailedCount = failedDeposits.length;
+              const totalFailedAmount = failedDeposits.reduce((sum, tx) => sum + Number(tx.amount), 0);
+
+              return (
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-3.5 sm:p-8 backdrop-blur-md animate-in fade-in duration-300">
+                  <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                    <span>Riwayat Deposit & Top Up</span>
+                  </h2>
+
+                  {/* Stats Cards */}
+                  <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-slate-950/30 border border-slate-850 p-5 rounded-2xl flex items-center gap-4 transition-all hover:border-emerald-500/20">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-450">
+                        <CheckCircle className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Berhasil</span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-lg font-extrabold text-emerald-455">{formatPrice(totalSuccessAmount)}</span>
+                          <span className="text-[11px] font-medium text-slate-500">({totalSuccessCount} Transaksi)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950/30 border border-slate-850 p-5 rounded-2xl flex items-center gap-4 transition-all hover:border-rose-500/20">
+                      <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-455">
+                        <XCircle className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Gagal</span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-lg font-extrabold text-rose-455">{formatPrice(totalFailedAmount)}</span>
+                          <span className="text-[11px] font-medium text-slate-500">({totalFailedCount} Transaksi)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Premium Filters Bar (Search, Month, Year, Method, Status) */}
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                    {/* Pencarian */}
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Cari Deposit</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={txSearchType}
+                          onChange={(e) => setTxSearchType(e.target.value)}
+                          className="bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 px-3 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold shrink-0"
+                        >
+                          <option value="id">ID Transaksi</option>
+                          <option value="amount">Jumlah</option>
+                        </select>
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            placeholder="cari..."
+                            value={txSearchQuery}
+                            onChange={(e) => setTxSearchQuery(e.target.value)}
+                            className="w-full bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg transition-colors cursor-pointer"
+                            title="Cari"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Filter Bulan */}
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Bulan</label>
+                      <select
+                        value={depMonthFilter}
+                        onChange={(e) => setDepMonthFilter(e.target.value)}
+                        className="w-full bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                      >
+                        <option value="all">Semua Bulan</option>
+                        <option value="01">Januari</option>
+                        <option value="02">Februari</option>
+                        <option value="03">Maret</option>
+                        <option value="04">April</option>
+                        <option value="05">Mei</option>
+                        <option value="06">Juni</option>
+                        <option value="07">Juli</option>
+                        <option value="08">Agustus</option>
+                        <option value="09">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                      </select>
+                    </div>
+
+                    {/* Filter Tahun */}
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Tahun</label>
+                      <select
+                        value={txYearFilter}
+                        onChange={(e) => setTxYearFilter(e.target.value)}
+                        className="w-full bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
                       >
                         <option value="2026">2026</option>
                         <option value="2025">2025</option>
@@ -3359,13 +4152,13 @@ export default function UserDashboard() {
                       </select>
                     </div>
 
-                    {/* Filter Metode Pembayaran */}
+                    {/* Filter Metode */}
                     <div>
                       <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Metode Pembayaran</label>
                       <select
                         value={txMethodFilter}
                         onChange={(e) => setTxMethodFilter(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                        className="w-full bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
                       >
                         <option value="all">Semua Metode</option>
                         <option value="qris">QRIS / E-Wallet</option>
@@ -3382,7 +4175,7 @@ export default function UserDashboard() {
                       <select
                         value={txStatusFilter}
                         onChange={(e) => setTxStatusFilter(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-855 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
+                        className="w-full bg-white border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-800 dark:text-slate-200 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-semibold"
                       >
                         <option value="all">Semua Status</option>
                         <option value="pending">Belum Dibayar</option>
@@ -3392,15 +4185,15 @@ export default function UserDashboard() {
                     </div>
                   </div>
 
-                  {filteredTxs.length === 0 ? (
+                  {depositTxs.length === 0 ? (
                     <div className="py-16 text-center text-slate-400 font-light flex flex-col items-center justify-center gap-2">
                       <CreditCard className="w-10 h-10 text-slate-600 mb-2" />
-                      <p>Tidak ada riwayat transaksi dengan kriteria ini.</p>
+                      <p>Tidak ada riwayat deposit dengan kriteria ini.</p>
                     </div>
                   ) : (
                     <>
                       {/* Desktop View */}
-                      <div className="hidden md:block overflow-x-auto scrollbar-thin">
+                      <div className="hidden md:block overflow-x-auto scrollbar-thin font-inter">
                         <table className="w-full min-w-[750px] text-left border-collapse text-xs">
                           <thead>
                             <tr className="border-b border-slate-850 text-slate-450 text-xs font-semibold uppercase tracking-wider">
@@ -3414,7 +4207,7 @@ export default function UserDashboard() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-850/40">
-                            {filteredTxs
+                            {depositTxs
                               .slice((transactionsPage - 1) * itemsPerPage, transactionsPage * itemsPerPage)
                               .map(tx => {
                                 const dateStr = new Date(tx.created_at).toLocaleString('id-ID', {
@@ -3428,7 +4221,6 @@ export default function UserDashboard() {
 
                                 const isAddition = tx.type === 'topup' || tx.type === 'refund';
 
-                                // Calculate credited amount with potential bonus for topup
                                 let creditedAmount = Number(tx.amount);
                                 let baseAmount = Number(tx.amount);
 
@@ -3446,7 +4238,7 @@ export default function UserDashboard() {
                                       {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 6)}
                                     </td>
                                     <td className="py-4 px-4 text-slate-500">{dateStr}</td>
-                                    <td className="py-4 px-4 font-medium text-slate-600 dark:text-slate-400">
+                                    <td className="py-4 px-4 font-medium text-slate-650 dark:text-slate-350">
                                       <div className="flex items-center gap-1.5">
                                         <span className="font-semibold">{formatPaymentMethod(tx.payment_method)}</span>
                                         <span className="text-[10px] text-slate-500 px-1.5 py-0.5 rounded bg-slate-950/45 border border-slate-850 uppercase font-mono">
@@ -3457,48 +4249,42 @@ export default function UserDashboard() {
                                         <div className="text-[10px] text-slate-500 mt-1 max-w-[320px] leading-relaxed font-light">{tx.description}</div>
                                       )}
                                     </td>
-                                    {/* SALDO DIDAPAT */}
-                                    <td className={`py-4 px-4 font-bold text-sm ${isAddition ? 'text-emerald-500' : 'text-red-450'
-                                      }`}>
-                                      {isAddition ? '+' : '-'}{formatPrice(Math.abs(tx.type === 'topup' ? creditedAmount : baseAmount))}
+                                    <td className={`py-4 px-4 font-bold text-sm ${isAddition ? 'text-emerald-500' : 'text-red-455'}`}>
+                                      {isAddition ? '+' : '-'}{formatPrice(Math.abs(creditedAmount))}
                                     </td>
-                                    {/* TOTAL BAYAR */}
-                                    <td className="py-4 px-4 font-extrabold text-sm text-slate-100">
-
-                                      {tx.type === 'topup' ? formatPrice(Math.abs(baseAmount)) :
-                                        tx.type === 'refund' ? 'Rp 0' :
-                                          `-${formatPrice(Math.abs(baseAmount))}`}
+                                    <td className="py-4 px-4 font-extrabold text-sm text-slate-200">
+                                      {formatPrice(Math.abs(baseAmount))}
                                     </td>
                                     <td className="py-4 px-4 text-center">
-                                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider inline-block ${tx.status === 'success' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-extrabold shadow-sm shadow-emerald-500/30' :
-                                        tx.status === 'failed' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30' :
-                                          'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30'
+                                      <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-widest inline-block ${tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/10' :
+                                        tx.status === 'failed' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/10' :
+                                          'bg-amber-500/10 text-amber-600 dark:text-amber-450 border border-amber-500/10'
                                         }`}>
                                         {tx.status === 'success' ? 'Sukses' :
-                                          tx.status === 'failed' ? 'Dibatalkan' :
-                                            'Belum Dibayar'}
+                                          tx.status === 'failed' ? 'Batal' :
+                                            'Pending'}
                                       </span>
                                     </td>
-                                    <td className="py-4 px-4">
-                                      <div className="flex items-center justify-start gap-2">
+                                    <td className="py-4 px-4 text-left">
+                                      <div className="flex gap-2">
                                         <button
                                           onClick={() => setSelectedTxDetail(tx)}
-                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold transition-all hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/15"
                                         >
                                           <span>Detail</span>
                                         </button>
                                         {tx.status === 'success' && (
                                           <button
                                             onClick={() => setSelectedInvoiceDetail({
-                                              type: tx.type === 'topup' ? 'topup' : 'order',
+                                              type: 'topup',
                                               id: tx.tx_id ? `TRX-${tx.tx_id}` : tx.id,
                                               amount: tx.amount,
                                               date: tx.created_at,
                                               method: formatPaymentMethod(tx.payment_method),
-                                              description: tx.type === 'topup' ? 'Top Up Saldo Akun' : tx.type === 'refund' ? 'Refund Saldo Pesanan' : 'Pembayaran Layanan SMM',
+                                              description: 'Top Up Saldo Akun',
                                               status: tx.status
                                             })}
-                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-855 text-slate-700 dark:text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap border border-slate-200 dark:border-slate-750 shadow-sm"
                                           >
                                             <Printer className="w-3 h-3" />
                                             <span>Invoice</span>
@@ -3513,9 +4299,9 @@ export default function UserDashboard() {
                         </table>
                       </div>
 
-                      {/* Mobile View (Responsive Card List) */}
-                      <div className="block md:hidden space-y-3.5">
-                        {filteredTxs
+                      {/* Mobile View */}
+                      <div className="block md:hidden space-y-4 font-inter">
+                        {depositTxs
                           .slice((transactionsPage - 1) * itemsPerPage, transactionsPage * itemsPerPage)
                           .map(tx => {
                             const dateStr = new Date(tx.created_at).toLocaleString('id-ID', {
@@ -3542,7 +4328,7 @@ export default function UserDashboard() {
                             return (
                               <div key={tx.id} className="bg-white dark:bg-slate-900/40 border border-zinc-200 dark:border-slate-800 p-4 sm:p-5 rounded-[24px] space-y-4 shadow-md shadow-zinc-200/60 dark:shadow-none transition-all">
                                 <div className="flex justify-between items-center text-[10px] gap-2">
-                                  <span className="font-mono font-extrabold text-indigo-600 dark:text-indigo-500 dark:text-indigo-400">
+                                  <span className="font-mono font-extrabold text-indigo-655 dark:text-indigo-400">
                                     {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 6)}
                                   </span>
                                   <span className="text-slate-400 dark:text-slate-500 font-medium">{dateStr}</span>
@@ -3551,7 +4337,7 @@ export default function UserDashboard() {
                                 <div className="border-t border-b border-slate-200/60 dark:border-slate-900/40 py-3 space-y-2">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-xs font-extrabold text-slate-100 dark:text-slate-200">{formatPaymentMethod(tx.payment_method)}</span>
-                                    <span className="text-[8px] font-extrabold bg-rose-50/80 dark:bg-rose-950/15 text-rose-600 dark:text-rose-455 dark:text-indigo-500 dark:text-indigo-400 border border-indigo-500/10 px-2 py-0.5 rounded-lg uppercase tracking-widest font-mono">
+                                    <span className="text-[9px] font-bold bg-slate-855 border border-slate-200 dark:border-slate-800 text-slate-450 dark:text-slate-400 px-1.5 py-0.5 rounded-md uppercase tracking-widest font-mono">
                                       {tx.type}
                                     </span>
                                   </div>
@@ -3563,23 +4349,22 @@ export default function UserDashboard() {
                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                   <div>
                                     <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Saldo Didapat</span>
-                                    <span className={`font-extrabold text-xs ${isAddition ? 'text-emerald-600' : 'text-indigo-500'}`}>
-                                      {isAddition ? '+' : '-'}{formatPrice(Math.abs(tx.type === 'topup' ? creditedAmount : baseAmount))}
+                                    <span className="font-extrabold text-xs text-emerald-650 dark:text-emerald-400">
+                                      +{formatPrice(Math.abs(creditedAmount))}
                                     </span>
-                                  </div>                              <div>
+                                  </div>
+                                  <div>
                                     <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Total Bayar</span>
-                                    <span className="font-extrabold text-xs text-slate-100">
-                                      {tx.type === 'topup' ? formatPrice(Math.abs(baseAmount)) :
-                                        tx.type === 'refund' ? 'Rp 0' :
-                                          `-${formatPrice(Math.abs(baseAmount))}`}
+                                    <span className="font-extrabold text-xs text-slate-105">
+                                      {formatPrice(Math.abs(baseAmount))}
                                     </span>
                                   </div>
                                 </div>
 
                                 <div className="flex justify-between items-center pt-3 border-t border-slate-200/60 dark:border-slate-900/40 gap-2">
-                                  <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-widest inline-block ${tx.status === 'success' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-extrabold shadow-sm shadow-emerald-500/30' :
-                                    tx.status === 'failed' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30' :
-                                      'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30'
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-widest inline-block ${tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-455 border border-emerald-500/10' :
+                                    tx.status === 'failed' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/10' :
+                                      'bg-amber-500/10 text-amber-600 dark:text-amber-450 border border-amber-500/10'
                                     }`}>
                                     {tx.status === 'success' ? 'Sukses' :
                                       tx.status === 'failed' ? 'Dibatalkan' :
@@ -3589,22 +4374,22 @@ export default function UserDashboard() {
                                   <div className="flex gap-2">
                                     <button
                                       onClick={() => setSelectedTxDetail(tx)}
-                                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/10"
+                                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/15"
                                     >
                                       <span>Detail</span>
                                     </button>
                                     {tx.status === 'success' && (
                                       <button
                                         onClick={() => setSelectedInvoiceDetail({
-                                          type: tx.type === 'topup' ? 'topup' : 'order',
+                                          type: 'topup',
                                           id: tx.tx_id ? `TRX-${tx.tx_id}` : tx.id,
                                           amount: tx.amount,
                                           date: tx.created_at,
                                           method: formatPaymentMethod(tx.payment_method),
-                                          description: tx.type === 'topup' ? 'Top Up Saldo Akun' : tx.type === 'refund' ? 'Refund Saldo Pesanan' : 'Pembayaran Layanan SMM',
+                                          description: 'Top Up Saldo Akun',
                                           status: tx.status
                                         })}
-                                        className="inline-flex items-center gap-1 px-3 py-2 rounded-2xl bg-white dark:bg-slate-800 hover:bg-zinc-50 dark:hover:bg-slate-700 text-black dark:text-slate-200 text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-sm border border-zinc-300 dark:border-slate-700"
+                                        className="inline-flex items-center gap-1 px-3 py-2 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-850 text-slate-700 dark:text-slate-350 text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-sm border border-zinc-300 dark:border-slate-700"
                                       >
                                         <Printer className="w-3.5 h-3.5" />
                                         <span>Invoice</span>
@@ -3617,24 +4402,24 @@ export default function UserDashboard() {
                           })}
                       </div>
 
-                      {filteredTxs.length > itemsPerPage && (
-                        <div className="flex justify-between items-center gap-2 pt-5 border-t border-slate-850 mt-5">
+                      {depositTxs.length > itemsPerPage && (
+                        <div className="flex justify-between items-center gap-2 pt-5 border-t border-slate-200 dark:border-slate-850 mt-5">
                           <button
                             type="button"
                             disabled={transactionsPage === 1}
                             onClick={() => setTransactionsPage(prev => Math.max(1, prev - 1))}
-                            className="bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 disabled:opacity-40 disabled:hover:border-slate-850 text-slate-350 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:hover:border-slate-200 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
                           >
                             Sebelumnya
                           </button>
                           <span className="text-xs text-slate-500 font-medium">
-                            Menampilkan {((transactionsPage - 1) * itemsPerPage) + 1} - {Math.min(transactionsPage * itemsPerPage, filteredTxs.length)} dari {filteredTxs.length} transaksi
+                            Menampilkan {((transactionsPage - 1) * itemsPerPage) + 1} - {Math.min(transactionsPage * itemsPerPage, depositTxs.length)} dari {depositTxs.length} transaksi
                           </span>
                           <button
                             type="button"
-                            disabled={transactionsPage >= Math.ceil(filteredTxs.length / itemsPerPage)}
+                            disabled={transactionsPage >= Math.ceil(depositTxs.length / itemsPerPage)}
                             onClick={() => setTransactionsPage(prev => prev + 1)}
-                            className="bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 disabled:opacity-40 disabled:hover:border-slate-850 text-slate-350 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:hover:border-slate-200 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
                           >
                             Selanjutnya
                           </button>
@@ -3676,8 +4461,8 @@ export default function UserDashboard() {
                             setTicketRequestType('');
                             setTicketDepositId('');
                           }}
-                          required
-                          className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                           required
+                          className="w-full force-white-bg border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                         >
                           <option value="">Pilih...</option>
                           <option value="Pesanan">Pesanan</option>
@@ -3696,7 +4481,7 @@ export default function UserDashboard() {
                               value={ticketOrderId}
                               onChange={(e) => setTicketOrderId(e.target.value)}
                               placeholder="Pisahkan dengan koma jika lebih dari satu."
-                              className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                              className="w-full force-white-bg border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                             />
                           </div>
                           <div>
@@ -3705,7 +4490,7 @@ export default function UserDashboard() {
                               required
                               value={ticketRequestType}
                               onChange={(e) => setTicketRequestType(e.target.value)}
-                              className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                              className="w-full force-white-bg border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                             >
                               <option value="">Pilih...</option>
                               <option value="Refill">Refill</option>
@@ -3726,7 +4511,7 @@ export default function UserDashboard() {
                             value={ticketDepositId}
                             onChange={(e) => setTicketDepositId(e.target.value)}
                             placeholder="Masukkan ID Deposit"
-                            className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                            className="w-full force-white-bg border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                           />
                         </div>
                       )}
@@ -3739,7 +4524,7 @@ export default function UserDashboard() {
                           required
                           rows={6}
                           placeholder="Tuliskan keluhan atau detail kendala Anda secara lengkap di sini..."
-                          className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                          className="w-full force-white-bg border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                         />
                       </div>
 
@@ -3828,7 +4613,7 @@ export default function UserDashboard() {
                         <select
                           value={ticketSearchType}
                           onChange={(e) => setTicketSearchType(e.target.value)}
-                          className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-200 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                         >
                           <option value="id">ID</option>
                           <option value="subject">Subjek</option>
@@ -3840,7 +4625,7 @@ export default function UserDashboard() {
                           placeholder="Cari..."
                           value={ticketSearchQuery}
                           onChange={(e) => setTicketSearchQuery(e.target.value)}
-                          className="w-full bg-zinc-50 dark:bg-slate-950 border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 pl-4 pr-10 py-3 rounded-2xl outline-none text-xs"
+                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-200 dark:text-slate-200 pl-4 pr-10 py-3 rounded-2xl outline-none text-xs"
                         />
                         <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-350">
                           <Search className="w-4 h-4" />
@@ -3852,7 +4637,7 @@ export default function UserDashboard() {
                   <div className="hidden md:block overflow-x-auto rounded-2xl border border-zinc-150 dark:border-slate-850">
                     <table className="w-full border-collapse text-left">
                       <thead>
-                        <tr className="bg-zinc-50 dark:bg-slate-955 border-b border-zinc-150 dark:border-slate-850 text-zinc-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                        <tr className="bg-zinc-50 dark:bg-slate-900 border-b border-zinc-150 dark:border-slate-850 text-zinc-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider">
                           <th className="py-4 px-6">ID</th>
                           <th className="py-4 px-6">Subjek</th>
                           <th className="py-4 px-6">Status</th>
@@ -4055,7 +4840,7 @@ export default function UserDashboard() {
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
             { id: 'order', label: 'Pesan', icon: ShoppingBag },
             { id: 'history', label: 'Pesanan', icon: History, action: () => fetchOrders(user?.id) },
-            { id: 'transactions', label: 'Deposit', icon: CreditCard, action: () => fetchProfileAndTransactions(user?.id) },
+            { id: 'deposits', label: 'Deposit', icon: Wallet, action: () => fetchProfileAndTransactions(user?.id) },
             { id: 'tickets', label: 'Tiket', icon: MessageSquare, action: () => fetchTickets() },
           ].map(item => {
             const Icon = item.icon;
@@ -4174,7 +4959,7 @@ export default function UserDashboard() {
                         placeholder="Contoh: 50.000"
                         value={formatNumberWithDots(topupAmount)}
                         onChange={(e) => setTopupAmount(parseNumberFromDots(e.target.value))}
-                        className="w-full bg-slate-950/40 border border-slate-800 text-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 px-5 pl-12 py-4 rounded-2xl outline-none transition-all text-sm font-semibold"
+                        className="w-full force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 px-5 pl-12 py-4 rounded-2xl outline-none transition-all text-sm font-semibold"
                       />
                     </div>
                   </div>
@@ -4189,7 +4974,7 @@ export default function UserDashboard() {
                         readOnly
                         value={calculatedReceivedBalance === 0 ? '' : calculatedReceivedBalance.toLocaleString('id-ID')}
                         placeholder="0"
-                        className="w-full bg-slate-950/40 border border-slate-800 text-slate-200 pl-12 pr-5 py-4 rounded-2xl outline-none text-sm font-extrabold"
+                        className="w-full force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-200 pl-12 pr-5 py-4 rounded-2xl outline-none text-sm font-extrabold"
                       />
                     </div>
                   </div>
@@ -4203,7 +4988,7 @@ export default function UserDashboard() {
                         key={amount}
                         type="button"
                         onClick={() => setTopupAmount(amount)}
-                        className="bg-slate-950/40 dark:bg-slate-955 border border-slate-850 hover:border-indigo-500/40 hover:bg-indigo-500/5 py-3.5 rounded-2xl text-xs font-extrabold transition-all text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 cursor-pointer text-center flex items-center justify-center hover:scale-102 active:scale-98"
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 py-3.5 rounded-2xl text-xs font-extrabold transition-all text-slate-800 dark:text-slate-200 hover:text-indigo-500 dark:hover:text-indigo-400 cursor-pointer text-center flex items-center justify-center hover:scale-102 active:scale-98"
                       >
                         +{formatPrice(amount).replace('Rp', '').trim()}
                       </button>
@@ -4211,8 +4996,8 @@ export default function UserDashboard() {
                   </div>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/10 text-xs text-indigo-800 dark:text-slate-350 flex items-start gap-3 leading-relaxed">
-                  <Info className="w-5 h-5 text-indigo-500 dark:text-indigo-500 dark:text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
+                <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/10 text-xs text-slate-400 dark:text-slate-200 flex items-start gap-3 leading-relaxed">
+                  <Info className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
                   <span>Pembayaran Anda akan diproses secara instan & aman. QRIS, e-wallet, dan Bank Transfer didukung oleh payment gateway kami.</span>
                 </div>
 
@@ -4882,7 +5667,7 @@ export default function UserDashboard() {
                         placeholder="Masukkan password sekarang"
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full bg-slate-950 dark:bg-slate-955 border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
+                         className="w-full force-white-bg border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
                       />
                       <button
                         type="button"
@@ -4903,7 +5688,7 @@ export default function UserDashboard() {
                         placeholder="Password baru (min. 6 karakter)"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full bg-slate-955 dark:bg-slate-955 border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
+                        className="w-full force-white-bg border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
                       />
                       <button
                         type="button"
@@ -4924,7 +5709,7 @@ export default function UserDashboard() {
                         placeholder="Ulangi password baru"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full bg-slate-955 dark:bg-slate-955 border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
+                        className="w-full force-white-bg border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
                       />
                       <button
                         type="button"

@@ -193,13 +193,13 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white overflow-x-hidden relative">
       {/* Background Glows (Mesh Gradients) */}
-      <div className="absolute top-[-10%] left-[10%] w-[350px] h-[350px] rounded-full pointer-events-none opacity-[0.12] dark:opacity-[0.15] blur-[120px] bg-indigo-500 animate-pulse-glow"></div>
-      <div className="absolute top-[20%] right-[5%] w-[400px] h-[400px] rounded-full pointer-events-none opacity-[0.08] dark:opacity-[0.12] blur-[140px] bg-purple-500"></div>
-      <div className="absolute top-[45%] left-[-10%] w-[300px] h-[300px] rounded-full pointer-events-none opacity-[0.05] dark:opacity-[0.08] blur-[110px] bg-pink-500"></div>
+      <div className="absolute top-[-10%] left-[10%] w-[350px] h-[350px] rounded-full pointer-events-none opacity-[0.06] dark:opacity-[0.15] blur-[120px] bg-indigo-500 animate-pulse-glow"></div>
+      <div className="absolute top-[20%] right-[5%] w-[400px] h-[400px] rounded-full pointer-events-none opacity-[0.04] dark:opacity-[0.12] blur-[140px] bg-purple-500"></div>
+      <div className="absolute top-[45%] left-[-10%] w-[300px] h-[300px] rounded-full pointer-events-none opacity-[0.03] dark:opacity-[0.08] blur-[110px] bg-pink-500"></div>
 
       {/* Floating Header Navbar */}
       <div className="sticky top-4 z-50 px-4 sm:px-6 lg:px-8 w-full max-w-7xl mx-auto">
-        <header className="backdrop-blur-md bg-slate-950/60 dark:bg-slate-950/65 border border-slate-900/60 rounded-2xl shadow-xl transition-all duration-300">
+        <header className="backdrop-blur-xl bg-white/70 dark:bg-slate-950/65 border border-slate-200 dark:border-slate-900/60 rounded-2xl shadow-lg dark:shadow-xl transition-all duration-300">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20 w-9 h-9 flex items-center justify-center overflow-hidden">
@@ -210,19 +210,19 @@ export default function LandingPage() {
                   <Zap className="w-5 h-5 text-white animate-pulse" />
                 )}
               </div>
-              <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-250 to-indigo-400">
+              <span className="font-extrabold text-xl tracking-tight text-slate-800 dark:text-white">
                 {brandName === 'Buzzify' ? (
-                  <>Buzz<span className="text-indigo-400">ify</span></>
+                  <>Buzz<span className="text-indigo-600 dark:text-indigo-400">ify</span></>
                 ) : (
                   brandName
                 )}
               </span>
             </div>
 
-            <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-300">
-              <a href="#features" className="hover:text-slate-100 transition-colors">Keunggulan</a>
-              <a href="#services" className="hover:text-slate-100 transition-colors">Daftar Layanan</a>
-              <a href="#how-it-works" className="hover:text-slate-100 transition-colors">Cara Kerja</a>
+            <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-500 dark:text-slate-300">
+              <a href="#features" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Keunggulan</a>
+              <a href="#services" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Daftar Layanan</a>
+              <a href="#how-it-works" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Cara Kerja</a>
             </nav>
 
             <div className="flex items-center gap-3">
@@ -244,7 +244,7 @@ export default function LandingPage() {
         </header>
       </div>
 
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 md:pt-24 md:pb-32 grid lg:grid-cols-12 gap-12 items-center">
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 md:pt-24 md:pb-32 grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
         {/* Left side: Premium Call-to-Action Content */}
         <div className="lg:col-span-7 flex flex-col items-start text-left">
@@ -262,13 +262,13 @@ export default function LandingPage() {
           )}
 
           {settings.hero_subtitle && (
-            <p className="mt-6 text-lg sm:text-xl text-slate-400 max-w-2xl font-light leading-relaxed animate-fade-in-up animation-delay-100">
+            <p className="mt-4 sm:mt-6 text-base sm:text-xl text-slate-500 dark:text-slate-400 max-w-2xl font-light leading-relaxed animate-fade-in-up animation-delay-100">
               {settings.hero_subtitle}
             </p>
           )}
 
           {(settings.hero_cta_text || settings.hero_cta_sub_text) && (
-            <div className="mt-10 flex flex-col sm:flex-row gap-4 w-full sm:w-auto animate-fade-in-up animation-delay-200">
+            <div className="mt-6 sm:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto animate-fade-in-up animation-delay-200">
               {settings.hero_cta_text && (
                 <Link
                   href="/login"
@@ -281,8 +281,7 @@ export default function LandingPage() {
               {settings.hero_cta_sub_text && (
                 <a
                   href="#services"
-                  style={{ color: 'var(--color-slate-50)' }}
-                  className="flex items-center justify-center bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800/80 border-2 border-zinc-300 dark:border-slate-800 hover:text-black dark:hover:text-white font-black px-8 py-4 rounded-2xl transition-all shadow-sm active:scale-[0.98] select-none"
+                  className="flex items-center justify-center bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800/80 border-2 border-zinc-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white font-black px-8 py-4 rounded-2xl transition-all shadow-sm active:scale-[0.98] select-none"
                 >
                   {settings.hero_cta_sub_text}
                 </a>
@@ -292,23 +291,35 @@ export default function LandingPage() {
 
           {(() => {
             const statsList = [
-              { key: 'stats_orders', value: settings.stats_orders, label: 'Pesanan Sukses', colorClass: 'text-slate-100' },
-              { key: 'stats_clients', value: settings.stats_clients, label: 'Pelanggan Aktif', colorClass: 'text-slate-100' },
-              { key: 'stats_success', value: settings.stats_success, label: 'Keberhasilan', colorClass: 'text-indigo-400' },
-              { key: 'stats_speed', value: services.length > 0 ? `${services.length}+` : (settings.stats_speed || '100+'), label: 'Total Layanan', colorClass: 'text-purple-400' }
+              { key: 'stats_orders', value: settings.stats_orders, label: 'Pesanan Sukses', icon: <ShieldCheck className="w-5 h-5" />, lightIconBg: 'bg-emerald-50', darkIconBg: 'dark:bg-emerald-500/15', lightBorder: 'border-emerald-200', darkBorder: 'dark:border-emerald-500/20', iconColor: 'text-emerald-600 dark:text-emerald-400', numColor: 'text-emerald-600 dark:text-emerald-400' },
+              { key: 'stats_clients', value: settings.stats_clients, label: 'Pelanggan Aktif', icon: <Users className="w-5 h-5" />, lightIconBg: 'bg-blue-50', darkIconBg: 'dark:bg-blue-500/15', lightBorder: 'border-blue-200', darkBorder: 'dark:border-blue-500/20', iconColor: 'text-blue-600 dark:text-blue-400', numColor: 'text-blue-600 dark:text-blue-400' },
+              { key: 'stats_success', value: settings.stats_success, label: 'Keberhasilan', icon: <TrendingUp className="w-5 h-5" />, lightIconBg: 'bg-indigo-50', darkIconBg: 'dark:bg-indigo-500/15', lightBorder: 'border-indigo-200', darkBorder: 'dark:border-indigo-500/20', iconColor: 'text-indigo-600 dark:text-indigo-400', numColor: 'text-indigo-600 dark:text-indigo-400' },
+              { key: 'stats_speed', value: services.length > 0 ? `${services.length}+` : (settings.stats_speed || '100+'), label: 'Total Layanan', icon: <Layers className="w-5 h-5" />, lightIconBg: 'bg-purple-50', darkIconBg: 'dark:bg-purple-500/15', lightBorder: 'border-purple-200', darkBorder: 'dark:border-purple-500/20', iconColor: 'text-purple-600 dark:text-purple-400', numColor: 'text-purple-600 dark:text-purple-400' }
             ].filter(stat => !!stat.value);
 
             if (statsList.length === 0) return null;
 
             return (
-              <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-6 w-full bg-slate-900/30 backdrop-blur-sm border border-slate-900/60 p-6 sm:p-8 rounded-3xl premium-card-glow">
+              <div className="mt-8 sm:mt-14 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full">
                 {statsList.map((stat, idx) => (
                   <div
                     key={stat.key}
-                    className="text-left"
+                    className="group relative bg-white dark:bg-slate-900/50 backdrop-blur-xl border border-slate-200 dark:border-slate-800/60 p-4 sm:p-5 rounded-2xl transition-all duration-300 hover:border-indigo-200 dark:hover:border-slate-700/80 hover:shadow-lg hover:shadow-indigo-500/8 dark:hover:shadow-indigo-500/5 hover:-translate-y-0.5 overflow-hidden"
                   >
-                    <div className={`text-2xl sm:text-3xl font-extrabold ${stat.colorClass}`}>{stat.value}</div>
-                    <div className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">{stat.label}</div>
+                    {/* Icon */}
+                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${stat.lightIconBg} ${stat.darkIconBg} border ${stat.lightBorder} ${stat.darkBorder} flex items-center justify-center ${stat.iconColor} mb-3 group-hover:scale-110 transition-transform duration-300`}>
+                      {stat.icon}
+                    </div>
+
+                    {/* Number */}
+                    <div className={`text-xl sm:text-2xl font-black ${stat.numColor} leading-tight`}>
+                      {stat.value}
+                    </div>
+
+                    {/* Label */}
+                    <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-wider font-bold">
+                      {stat.label}
+                    </div>
                   </div>
                 ))}
               </div>
