@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS orders (
     status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'processing', 'inprogress', 'success', 'failed'
     start_count INTEGER DEFAULT 0,
     payment_status VARCHAR(50) DEFAULT 'unpaid', -- 'unpaid', 'paid', 'expired'
+    remains INTEGER DEFAULT 0, -- Added remains column for order tracking
     payment_method VARCHAR(100),
     provider_order_id VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

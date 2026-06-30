@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Script from 'next/script';
 import { dbClient as supabase } from '@/lib/db-client';
@@ -48,7 +48,10 @@ import {
   Eye,
   EyeOff,
   Pin,
-  Settings
+  Settings,
+  Menu,
+  ChevronLeft,
+  List
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -153,13 +156,13 @@ const getAnnouncementBadgeClass = (badge: string): string => {
 
 const getOrderStatusBadgeClass = (status: string): string => {
   const s = status ? status.toLowerCase() : '';
-  if (s === 'success') return 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-extrabold shadow-sm shadow-emerald-500/30';
-  if (s === 'inprogress') return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-extrabold shadow-sm shadow-blue-500/30';
-  if (s === 'processing') return 'bg-gradient-to-r from-sky-400 to-cyan-400 text-slate-950 font-extrabold shadow-sm shadow-sky-400/30';
-  if (s === 'failed' || s === 'error' || s === 'dibatalkan') return 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30';
-  if (s === 'partial') return 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30';
-  if (s === 'pending') return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30';
-  return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30';
+  if (s === 'success') return 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white dark:!text-black font-extrabold shadow-sm shadow-emerald-500/30';
+  if (s === 'inprogress') return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white dark:!text-black font-extrabold shadow-sm shadow-blue-500/30';
+  if (s === 'processing') return 'bg-gradient-to-r from-sky-400 to-cyan-400 text-white dark:!text-black font-extrabold shadow-sm shadow-sky-400/30';
+  if (s === 'failed' || s === 'error' || s === 'dibatalkan') return 'bg-gradient-to-r from-red-500 to-rose-600 text-white dark:!text-black font-extrabold shadow-sm shadow-rose-500/30';
+  if (s === 'partial') return 'bg-gradient-to-r from-red-500 to-rose-600 text-white dark:!text-black font-extrabold shadow-sm shadow-rose-500/30';
+  if (s === 'pending') return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white dark:!text-black font-extrabold shadow-sm shadow-amber-500/30';
+  return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white dark:!text-black font-extrabold shadow-sm shadow-amber-500/30';
 };
 
 const getTicketStatusBadgeClass = (status: string): string => {
@@ -176,9 +179,13 @@ export default function UserDashboard() {
   // User state
   const [user, setUser] = useState<any>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const isAutofillNavigating = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   }, []);
 
   // Data state
@@ -207,7 +214,11 @@ export default function UserDashboard() {
   // UI states
   const [loading, setLoading] = useState(true);
   const [submittingOrder, setSubmittingOrder] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services'>('dashboard');
+  const [servicesSearchQuery, setServicesSearchQuery] = useState('');
+  const [servicesCategoryFilter, setServicesCategoryFilter] = useState('all');
+  const [servicesPage, setServicesPage] = useState(1);
+  const [servicesPerPage] = useState(15);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -234,7 +245,7 @@ export default function UserDashboard() {
   const [selectedTxDetail, setSelectedTxDetail] = useState<Transaction | null>(null);
   const [isExamplesExpanded, setIsExamplesExpanded] = useState(false);
   const [isFavoritesExpanded, setIsFavoritesExpanded] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isRecomExpanded, setIsRecomExpanded] = useState(true);
   const [warningExpanded, setWarningExpanded] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -329,13 +340,44 @@ export default function UserDashboard() {
     setFormError(null);
   };
 
+  const handleSidebarTabClick = (tab: 'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services', callback?: () => void) => {
+    if (callback) callback();
+    setActiveTab(tab);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  const handleQuickOrder = (srv: Service) => {
+    isAutofillNavigating.current = true;
+    setSelectedCategory(srv.category || '');
+    setSelectedService(srv);
+    setActiveTab('order');
+  };
+
+  const getNumericId = (srv: Service | string | null): string => {
+    if (!srv) return '';
+    const idStr = typeof srv === 'string' ? srv : (srv.provider_service_id || srv.id);
+    if (!idStr) return '';
+    if (/^\d+$/.test(idStr)) {
+      return idStr;
+    }
+    const hexPart = String(idStr).split('-')[0].slice(0, 5);
+    return String(parseInt(hexPart, 16) || idStr);
+  };
+
   // Refetch data automatically on tab navigation and reset all inputs
   useEffect(() => {
     if (user) {
       fetchProfileAndTransactions(user.id);
       fetchOrders(user.id);
     }
-    clearOrderForm();
+    if (isAutofillNavigating.current) {
+      // Reset the autofill navigation flag and skip resetting the form
+      isAutofillNavigating.current = false;
+    } else {
+      clearOrderForm();
+    }
     setTopupAmount(0);
     setTxMonthFilter('all');
     setTxTypeFilter('all');
@@ -1445,6 +1487,7 @@ export default function UserDashboard() {
   };
 
   const handleReorder = (order: Order) => {
+    isAutofillNavigating.current = true;
     // 1. Set tab to 'order'
     setActiveTab('order');
 
@@ -1746,14 +1789,14 @@ export default function UserDashboard() {
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-200"
         />
       )}
 
       <div className="flex min-h-screen">
 
         {/* Left Sidebar */}
-        <aside className={`fixed top-0 left-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-hidden md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        <aside className={`fixed top-0 left-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-hidden ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}>
 
 
@@ -1784,10 +1827,7 @@ export default function UserDashboard() {
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block px-3 mb-2.5">Menu Utama</span>
                 <nav className="space-y-1">
                   <button
-                    onClick={() => {
-                      setActiveTab('dashboard');
-                      setIsSidebarOpen(false);
-                    }}
+                    onClick={() => handleSidebarTabClick('dashboard')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'dashboard'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
                       : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
@@ -1798,11 +1838,7 @@ export default function UserDashboard() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      clearOrderForm();
-                      setActiveTab('order');
-                      setIsSidebarOpen(false);
-                    }}
+                    onClick={() => handleSidebarTabClick('order', clearOrderForm)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'order'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
                       : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
@@ -1813,11 +1849,18 @@ export default function UserDashboard() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      setActiveTab('history');
-                      fetchOrders(user.id);
-                      setIsSidebarOpen(false);
-                    }}
+                    onClick={() => handleSidebarTabClick('services')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'services'
+                      ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
+                      : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      }`}
+                  >
+                    <List className="w-4 h-4" />
+                    <span>Daftar Layanan</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleSidebarTabClick('history', () => fetchOrders(user.id))}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'history'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
                       : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
@@ -1827,14 +1870,8 @@ export default function UserDashboard() {
                     <span>Riwayat Pesanan</span>
                   </button>
 
-
-
                   <button
-                    onClick={() => {
-                      setActiveTab('deposits');
-                      fetchProfileAndTransactions(user.id);
-                      setIsSidebarOpen(false);
-                    }}
+                    onClick={() => handleSidebarTabClick('deposits', () => fetchProfileAndTransactions(user.id))}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'deposits'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
                       : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
@@ -1845,11 +1882,7 @@ export default function UserDashboard() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      setActiveTab('tickets');
-                      fetchTickets();
-                      setIsSidebarOpen(false);
-                    }}
+                    onClick={() => handleSidebarTabClick('tickets', fetchTickets)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'tickets'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
                       : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
@@ -1875,7 +1908,7 @@ export default function UserDashboard() {
           </div>
         </aside>
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 font-sans md:pl-68">
+        <div className={`flex-1 flex flex-col min-w-0 font-sans transition-all duration-300 ${isSidebarOpen ? 'lg:pl-68' : 'lg:pl-0'}`}>
 
           {/* Top Navbar */}
           <header className="h-16 bg-slate-900 border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
@@ -1883,14 +1916,20 @@ export default function UserDashboard() {
               {/* Mobile Burger Toggle */}
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="md:hidden p-2 hover:bg-slate-800 rounded-xl text-slate-450 transition-colors"
+                className="p-2 bg-white dark:bg-slate-800/60 hover:bg-slate-50 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-white rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center border border-slate-200 dark:border-slate-700/50 shadow-sm"
+                title={isSidebarOpen ? "Sembunyikan Menu" : "Tampilkan Menu"}
               >
-                <Zap className="w-5 h-5 text-indigo-500" />
+                {isSidebarOpen ? (
+                  <ChevronLeft className="w-4.5 h-4.5" />
+                ) : (
+                  <Menu className="w-4.5 h-4.5" />
+                )}
               </button>
 
               <h1 className="text-xs font-black text-slate-100 uppercase tracking-wider hidden sm:block">
                 {activeTab === 'dashboard' && 'Statistik & Ringkasan Akun'}
                 {activeTab === 'order' && 'Buat Pesanan Baru'}
+                {activeTab === 'services' && 'Daftar Layanan SMM & Buzzer'}
                 {activeTab === 'history' && 'Riwayat Pesanan Anda'}
                 {activeTab === 'transactions' && 'Log Mutasi Saldo'}
                 {activeTab === 'deposits' && 'Riwayat Deposit & Top Up'}
@@ -2222,6 +2261,32 @@ export default function UserDashboard() {
 
                     return (
                       <div className="w-full max-w-full overflow-x-auto scrollbar-none">
+                        <style>{`
+                          @keyframes drawPath {
+                            from { stroke-dashoffset: 1200; }
+                            to { stroke-dashoffset: 0; }
+                          }
+                          @keyframes fadeInArea {
+                            from { opacity: 0; }
+                            to { opacity: 1; }
+                          }
+                          @keyframes popPoint {
+                            from { transform: scale(0); opacity: 0; }
+                            to { transform: scale(1); opacity: 1; }
+                          }
+                          .animate-chart-line {
+                            stroke-dasharray: 1200;
+                            stroke-dashoffset: 1200;
+                            animation: drawPath 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+                          }
+                          .animate-chart-area {
+                            opacity: 0;
+                            animation: fadeInArea 1s ease-out 0.8s forwards;
+                          }
+                          .animate-chart-point {
+                            animation: popPoint 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+                          }
+                        `}</style>
                         <div className="relative h-[180px] min-w-[300px] sm:min-w-[555px] w-full">
                           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                             {/* Gradients */}
@@ -2247,14 +2312,21 @@ export default function UserDashboard() {
                             })}
 
                             {/* Area Fill */}
-                            {areaD && <path d={areaD} fill="url(#chartGrad)" />}
+                            {areaD && <path d={areaD} fill="url(#chartGrad)" className="animate-chart-area" />}
 
                             {/* Line Path */}
-                            {pathD && <path d={pathD} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" />}
+                            {pathD && <path d={pathD} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" className="animate-chart-line" />}
 
                             {/* Data Points */}
                             {points.map((p, idx) => (
-                              <g key={idx} className="group/dot cursor-pointer">
+                              <g
+                                key={idx}
+                                className="group/dot cursor-pointer animate-chart-point"
+                                style={{
+                                  transformOrigin: `${p.x}px ${p.y}px`,
+                                  animationDelay: `${idx * 0.05 + 0.6}s`
+                                }}
+                              >
                                 <circle cx={p.x} cy={p.y} r="4" className="fill-indigo-500 stroke-slate-950 stroke-2" />
                                 <circle cx={p.x} cy={p.y} r="8" className="fill-indigo-500/20 opacity-0 group-hover/dot:opacity-100 transition-opacity" />
                                 <text x={p.x} y={p.y - 12} textAnchor="middle" className="fill-slate-100 dark:fill-slate-100 text-[10px] font-bold opacity-0 group-hover/dot:opacity-100 transition-opacity bg-slate-950 px-1.5 py-0.5 rounded shadow-lg border border-slate-850">
@@ -2448,6 +2520,7 @@ export default function UserDashboard() {
                                       </div>
                                       <button
                                         onClick={() => {
+                                          isAutofillNavigating.current = true;
                                           clearOrderForm();
                                           setSelectedCategory(service.category);
                                           setSelectedService(service);
@@ -2585,7 +2658,13 @@ export default function UserDashboard() {
                             }}
                             className="flex-1 flex items-center justify-between force-white-bg border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-200 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm text-left cursor-pointer min-w-0 max-w-[calc(100vw-140px)] sm:max-w-none"
                           >
-                            <span className="truncate block w-full">{selectedService?.name || 'Pilih Layanan...'}</span>
+                            {selectedService ? (
+                              <span className="truncate block w-full">
+                                {getNumericId(selectedService)} - {selectedService.name}
+                              </span>
+                            ) : (
+                              <span className="truncate block w-full text-slate-400">Pilih Layanan...</span>
+                            )}
                             <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isServiceDropdownOpen ? 'rotate-180' : ''}`} />
                           </button>
 
@@ -2610,7 +2689,7 @@ export default function UserDashboard() {
                             <div className="p-3 border-b border-slate-100 dark:border-slate-900 force-white-bg sticky top-0 backdrop-blur-md">
                               <input
                                 type="text"
-                                placeholder="Cari Layanan..."
+                                placeholder="Cari Layanan (Nama atau ID)..."
                                 value={serviceSearchQuery}
                                 onChange={(e) => setServiceSearchQuery(e.target.value)}
                                 className="w-full force-white-bg border border-slate-200 dark:border-slate-800 focus:border-indigo-500 text-slate-250 dark:text-slate-100 px-3 py-2 rounded-xl outline-none text-xs"
@@ -2619,33 +2698,64 @@ export default function UserDashboard() {
                             </div>
                             <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
                               {services
-                                .filter(s => s.category === selectedCategory && s.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()))
-                                .map(service => (
-                                  <button
-                                    key={service.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedService(service);
-                                      setIsServiceDropdownOpen(false);
-                                      setServiceSearchQuery('');
-                                    }}
-                                    className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-500 dark:text-indigo-400 transition-colors flex flex-col gap-0.5 ${selectedService?.id === service.id ? 'bg-indigo-600/20 text-indigo-450 font-semibold' : 'text-slate-300 dark:text-slate-300'
-                                      }`}
-                                  >
-                                    <span className="block truncate">{service.name}</span>
-                                    <span className="text-[10px] text-slate-500 font-mono">
-                                      {formatPrice(service.price_per_k)} / 1K | Min: {service.min_order.toLocaleString()} - Max: {service.max_order.toLocaleString()}
-                                    </span>
-                                  </button>
-                                ))}
-                              {services.filter(s => s.category === selectedCategory && s.name.toLowerCase().includes(serviceSearchQuery.toLowerCase())).length === 0 && (
-                                <div className="px-4 py-3 text-xs text-slate-500 text-center">Layanan tidak ditemukan</div>
-                              )}
+                                .filter(s => {
+                                  const matchesCategory = s.category === selectedCategory;
+                                  const srvId = getNumericId(s);
+                                  const matchesSearch = s.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                                    srvId.toLowerCase().includes(serviceSearchQuery.toLowerCase());
+                                  return matchesCategory && matchesSearch;
+                                })
+                                .map(service => {
+                                  const displayId = getNumericId(service);
+                                  return (
+                                    <button
+                                      key={service.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedService(service);
+                                        setIsServiceDropdownOpen(false);
+                                        setServiceSearchQuery('');
+                                      }}
+                                      className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-500 dark:text-indigo-400 transition-colors flex flex-col gap-0.5 ${selectedService?.id === service.id ? 'bg-indigo-600/20 text-indigo-450 font-semibold' : 'text-slate-300 dark:text-slate-300'
+                                        }`}
+                                    >
+                                      <span className="block truncate">{displayId} - {service.name}</span>
+                                      <span className="text-[10px] text-slate-500 font-mono">
+                                        {formatPrice(service.price_per_k)} / 1K | Min: {service.min_order.toLocaleString()} - Max: {service.max_order.toLocaleString()}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              {services.filter(s => {
+                                const matchesCategory = s.category === selectedCategory;
+                                const srvId = getNumericId(s);
+                                return matchesCategory && (
+                                  s.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                                  srvId.toLowerCase().includes(serviceSearchQuery.toLowerCase())
+                                );
+                              }).length === 0 && (
+                                  <div className="px-4 py-3 text-xs text-slate-500 text-center">Layanan tidak ditemukan</div>
+                                )}
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
+
+                    {/* Service Description */}
+                    {selectedService && selectedService.description && (
+                      <div className="relative overflow-hidden p-4 rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200/85 dark:border-indigo-500/25 text-xs shadow-sm w-full max-w-full break-words">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-xl pointer-events-none" />
+                        <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-slate-200/80 dark:border-slate-850">
+                          <FileText className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                          <span className="font-extrabold text-[10px] text-indigo-500 dark:text-indigo-400 uppercase tracking-wider">Deskripsi Layanan</span>
+                        </div>
+                        <div
+                          className="text-slate-700 dark:text-slate-350 leading-relaxed font-semibold text-xs pl-0.5 whitespace-pre-wrap select-text [&_a]:text-indigo-500 dark:text-slate-400 [&_a]:underline [&_a]:hover:text-indigo-300 tracking-wide font-sans break-words"
+                          dangerouslySetInnerHTML={{ __html: selectedService.description }}
+                        />
+                      </div>
+                    )}
 
                     {/* Target URL */}
                     <div>
@@ -2662,9 +2772,12 @@ export default function UserDashboard() {
                               onChange={(e) => setTargetUrl(e.target.value)}
                               className="w-full force-white-bg border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-200 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm font-medium"
                             />
-                            <p className="mt-2 text-[11px] text-indigo-500 dark:text-indigo-400 font-semibold leading-relaxed bg-indigo-500/5 dark:bg-indigo-950/10 border border-indigo-500/10 rounded-xl p-3.5 flex gap-1.5 items-start">
-                              <span className="font-extrabold uppercase shrink-0 text-indigo-650 dark:text-indigo-400">[Petunjuk]:</span>
-                              <span className="text-slate-500 dark:text-slate-350 font-normal">{targetGuide.guide}</span>
+                            <p className="mt-2 text-[11.5px] leading-relaxed bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/60 rounded-xl p-3.5 flex gap-2 items-start shadow-sm">
+                              <Info className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                              <span className="text-slate-850 dark:text-slate-200 font-semibold">
+                                <strong className="font-black uppercase text-indigo-600 dark:text-indigo-400 mr-1.5">[Petunjuk]:</strong>
+                                {targetGuide.guide}
+                              </span>
                             </p>
                           </>
                         );
@@ -2684,6 +2797,18 @@ export default function UserDashboard() {
                           placeholder="Contoh: 1.000"
                           className="w-full force-white-bg border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-200 dark:text-slate-100 px-4 py-3.5 rounded-2xl outline-none transition-all text-sm font-semibold"
                         />
+                        {selectedService && (
+                          <div className="mt-2.5 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/10 text-[10.5px] text-slate-400 flex items-start gap-2 w-full max-w-full break-words">
+                            <Info className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 shrink-0 mt-0.5" />
+                            <div className="w-full min-w-0">
+                              <p className="font-semibold text-slate-350 dark:text-slate-300">Batas order layanan ini:</p>
+                              <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[10px]">
+                                <li>Min Order: <strong className="text-slate-700 dark:text-slate-200">{selectedService.min_order.toLocaleString()}</strong></li>
+                                <li>Max Order: <strong className="text-slate-700 dark:text-slate-200">{selectedService.max_order.toLocaleString()}</strong></li>
+                              </ul>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Calculations Display */}
@@ -2769,19 +2894,7 @@ export default function UserDashboard() {
                           </div>
                         )}
 
-                        {selectedService.description && (
-                          <div className="relative overflow-hidden p-4 rounded-2xl bg-slate-950/40 border border-indigo-500/20 dark:border-indigo-500/30 text-xs shadow-md w-full max-w-full break-words">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-xl pointer-events-none" />
-                            <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-slate-850">
-                              <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-                              <span className="font-extrabold text-[10px] text-indigo-500 dark:text-indigo-400 uppercase tracking-wider">Deskripsi Layanan</span>
-                            </div>
-                            <div
-                              className="text-slate-200 leading-relaxed font-normal text-xs pl-0.5 whitespace-pre-wrap select-text [&_a]:text-indigo-500 dark:text-slate-400 [&_a]:underline [&_a]:hover:text-indigo-300 tracking-wide font-sans break-words"
-                              dangerouslySetInnerHTML={{ __html: selectedService.description }}
-                            />
-                          </div>
-                        )}
+                        {/* Service Description removed and moved above target input */}
 
                         {selectedService.average_duration && (
                           <div className="relative overflow-hidden p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-xs shadow-md w-full max-w-full break-words">
@@ -2799,16 +2912,7 @@ export default function UserDashboard() {
                           </div>
                         )}
 
-                        <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-xs text-slate-400 flex items-start gap-2.5 w-full max-w-full break-words">
-                          <Info className="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0 mt-0.5" />
-                          <div className="w-full min-w-0">
-                            <p>Aturan batas order untuk layanan ini:</p>
-                            <ul className="list-disc list-inside mt-1 space-y-0.5">
-                              <li>Minimal Order: <strong className="text-slate-200">{selectedService.min_order.toLocaleString()}</strong></li>
-                              <li>Maksimal Order: <strong className="text-slate-200">{selectedService.max_order.toLocaleString()}</strong></li>
-                            </ul>
-                          </div>
-                        </div>
+                        {/* Order limits box removed and moved under quantity input */}
                       </div>
                     )}
 
@@ -3280,7 +3384,8 @@ export default function UserDashboard() {
                                 <th className="py-4 px-4 text-right">Jumlah</th>
                                 <th className="py-4 px-4 text-right">Harga</th>
                                 <th className="py-4 px-4 text-center">Status</th>
-                                <th className="py-4 px-4 text-center">Start Count</th>
+                                <th className="py-4 px-4 text-center whitespace-nowrap">Jumlah Awal</th>
+                                <th className="py-4 px-4 text-center whitespace-nowrap">Jumlah Kurang</th>
                                 <th className="py-4 px-4">Tanggal & Waktu</th>
                                 <th className="py-4 px-4 text-left">Aksi</th>
                               </tr>
@@ -3320,17 +3425,19 @@ export default function UserDashboard() {
                                         </button>
                                       </div>
                                     </td>
-                                    <td className="py-4 px-4">
-                                      <span className="font-semibold text-slate-200">{order.service_name}</span>
-                                      <span className="block text-[10px] text-slate-500 mt-0.5">{order.category}</span>
+                                    <td className="py-4 px-4 max-w-[280px]">
+                                      <span className="font-bold text-slate-800 dark:text-slate-100 block leading-relaxed break-words">{order.service_name}</span>
+                                      <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider mt-1.5 ${getCategoryBadgeClass(order.category)}`}>
+                                        {order.category}
+                                      </span>
                                     </td>
-                                    <td className="py-4 px-4 font-mono text-slate-400 max-w-xs truncate">
-                                      <a href={order.target_url} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-rose-400 hover:underline">
+                                    <td className="py-4 px-4 font-mono text-slate-450 max-w-xs truncate">
+                                      <a href={order.target_url} target="_blank" rel="noreferrer" className="text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:underline">
                                         {order.target_url}
                                       </a>
                                     </td>
-                                    <td className="py-4 px-4 text-right font-medium text-slate-300">{order.quantity.toLocaleString()}</td>
-                                    <td className="py-4 px-4 text-right font-semibold text-slate-200">{formatPrice(order.total_price)}</td>
+                                    <td className="py-4 px-4 text-right font-medium text-slate-700 dark:text-slate-300">{order.quantity.toLocaleString()}</td>
+                                    <td className="py-4 px-4 text-right font-bold text-slate-800 dark:text-slate-100">{formatPrice(order.total_price)}</td>
                                     <td className="py-4 px-4 text-center">
                                       <div className="flex flex-col items-center gap-1.5 justify-center">
                                         <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wide inline-block ${getOrderStatusBadgeClass(order.status)}`}>
@@ -3339,29 +3446,33 @@ export default function UserDashboard() {
                                         {order.payment_status === 'unpaid' && (
                                           <button
                                             onClick={() => handlePayOrderWithBalance(order)}
-                                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold text-white transition-all shadow-sm shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
+                                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold transition-all shadow-sm shadow-indigo-600/25 active:scale-95 cursor-pointer whitespace-nowrap"
                                           >
                                             Bayar via Saldo
                                           </button>
                                         )}
                                       </div>
                                     </td>
-                                    <td className="py-4 px-4 text-center font-mono text-slate-400">
+                                    <td className="py-4 px-4 text-center font-mono text-slate-700 dark:text-slate-300 font-semibold">
                                       {order.start_count !== null && order.start_count !== undefined ? order.start_count.toLocaleString() : '-'}
                                     </td>
-                                    <td className="py-4 px-4 text-slate-500">
+                                    <td className="py-4 px-4 text-center font-mono text-slate-700 dark:text-slate-300 font-semibold">
+                                      {order.remains !== null && order.remains !== undefined ? order.remains.toLocaleString() : '-'}
+                                    </td>
+                                    <td className="py-4 px-4 text-slate-500 dark:text-slate-450 font-medium">
                                       {new Date(order.created_at).toLocaleString('id-ID', {
                                         dateStyle: 'medium',
                                         timeStyle: 'short'
                                       })}
                                     </td>
                                     <td className="py-4 px-4 text-left">
-                                      <div className="flex items-center justify-start gap-2">
+                                      <div className="flex items-center justify-start gap-1.5">
                                         <button
                                           onClick={() => setSelectedOrderDetail(order)}
-                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/15"
+                                          className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-indigo-100/50 dark:border-indigo-500/10 shadow-sm"
+                                          title="Detail Pesanan"
                                         >
-                                          <span>Detail</span>
+                                          <Eye className="w-3.5 h-3.5" />
                                         </button>
                                         {order.payment_status === 'paid' && (
                                           <>
@@ -3375,17 +3486,17 @@ export default function UserDashboard() {
                                                 description: `Pembelian Layanan: ${order.service_name}`,
                                                 status: order.status
                                               })}
-                                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-350 transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-750 shadow-sm"
+                                              title="Cetak Invoice"
                                             >
-                                              <Printer className="w-3 h-3" />
-                                              <span>Invoice</span>
+                                              <Printer className="w-3.5 h-3.5" />
                                             </button>
                                             <button
                                               onClick={() => handleReorder(order)}
-                                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-emerald-500/10"
+                                              className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-600 dark:hover:bg-emerald-600 text-emerald-600 dark:text-emerald-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-emerald-100/50 dark:border-emerald-500/10 shadow-sm"
+                                              title="Pesan Lagi"
                                             >
-                                              <RefreshCw className="w-3 h-3" />
-                                              <span>Pesan Lagi</span>
+                                              <RefreshCw className="w-3.5 h-3.5" />
                                             </button>
                                           </>
                                         )}
@@ -4079,27 +4190,27 @@ export default function UserDashboard() {
                   {/* Stats Cards */}
                   <div className="grid sm:grid-cols-2 gap-4 mb-6">
                     <div className="bg-slate-950/30 border border-slate-850 p-5 rounded-2xl flex items-center gap-4 transition-all hover:border-emerald-500/20">
-                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-450">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 dark:text-emerald-400">
                         <CheckCircle className="w-6 h-6" />
                       </div>
                       <div>
                         <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Berhasil</span>
                         <div className="flex items-baseline gap-2">
-                          <span className="text-lg font-extrabold text-emerald-455">{formatPrice(totalSuccessAmount)}</span>
-                          <span className="text-[11px] font-medium text-slate-500">({totalSuccessCount} Transaksi)</span>
+                          <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{formatPrice(totalSuccessAmount)}</span>
+                          <span className="text-[11px] font-medium text-slate-550 dark:text-slate-400">({totalSuccessCount} Transaksi)</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="bg-slate-950/30 border border-slate-850 p-5 rounded-2xl flex items-center gap-4 transition-all hover:border-rose-500/20">
-                      <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-455">
+                      <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 dark:text-rose-400">
                         <XCircle className="w-6 h-6" />
                       </div>
                       <div>
                         <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Gagal</span>
                         <div className="flex items-baseline gap-2">
-                          <span className="text-lg font-extrabold text-rose-455">{formatPrice(totalFailedAmount)}</span>
-                          <span className="text-[11px] font-medium text-slate-500">({totalFailedCount} Transaksi)</span>
+                          <span className="text-lg font-extrabold text-rose-600 dark:text-rose-400">{formatPrice(totalFailedAmount)}</span>
+                          <span className="text-[11px] font-medium text-slate-550 dark:text-slate-400">({totalFailedCount} Transaksi)</span>
                         </div>
                       </div>
                     </div>
@@ -4854,6 +4965,273 @@ export default function UserDashboard() {
                 </div>
               </div>
             )}
+
+            {activeTab === 'services' && (
+              <div className="space-y-6">
+                {/* Header Card */}
+                <div className="bg-slate-900 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 pointer-events-none opacity-5 blur-[80px] bg-indigo-500 rounded-full"></div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-bold flex items-center gap-2 text-slate-100">
+                        <List className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                        <span>Daftar Layanan Buzziy</span>
+                      </h2>
+                      <p className="text-xs text-slate-400 font-light mt-1">
+                        Temukan berbagai layanan optimasi media sosial terbaik dengan harga murah.
+                      </p>
+                    </div>
+                    <div className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-400 text-xs font-black tracking-wide w-fit">
+                      Total: {services.length} Layanan
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="bg-slate-900 border border-slate-800/80 p-5 rounded-3xl backdrop-blur-md shadow-sm space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {/* Search Input */}
+                    <div className="relative flex-1">
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Cari Layanan</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={servicesSearchQuery}
+                          onChange={(e) => {
+                            setServicesSearchQuery(e.target.value);
+                            setServicesPage(1);
+                          }}
+                          placeholder="Cari berdasarkan nama atau ID layanan..."
+                          className="w-full h-11 pl-11 pr-4 rounded-xl bg-slate-950/40 border border-slate-805 dark:border-slate-850 focus:border-indigo-500 focus:outline-none text-xs text-slate-100 placeholder-slate-500 transition-all font-medium"
+                        />
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                        {servicesSearchQuery && (
+                          <button
+                            onClick={() => { setServicesSearchQuery(''); setServicesPage(1); }}
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-slate-300"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Horizontal Scrollable Categories Filter */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Filter Kategori</label>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                      <button
+                        onClick={() => { setServicesCategoryFilter('all'); setServicesPage(1); }}
+                        className={`px-4 py-2 rounded-2xl text-[11px] font-extrabold whitespace-nowrap transition-all cursor-pointer border ${servicesCategoryFilter === 'all'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-600/20'
+                          : 'bg-slate-950/30 hover:bg-slate-850 text-slate-400 dark:text-slate-400 border-slate-850 hover:text-slate-200'
+                          }`}
+                      >
+                        Semua Kategori
+                      </button>
+                      {categories.map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => { setServicesCategoryFilter(cat); setServicesPage(1); }}
+                          className={`px-4 py-2 rounded-2xl text-[11px] font-extrabold whitespace-nowrap transition-all cursor-pointer border ${servicesCategoryFilter === cat
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-600/20'
+                            : 'bg-slate-950/30 hover:bg-slate-850 text-slate-400 dark:text-slate-400 border-slate-850 hover:text-slate-200'
+                            }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table View (Desktop) & Card View (Mobile) */}
+                <div className="bg-slate-900 border border-slate-800/80 rounded-3xl backdrop-blur-md shadow-sm overflow-hidden">
+                  {(() => {
+                    const filtered = services.filter(s => {
+                      const matchesCategory = servicesCategoryFilter === 'all' || s.category === servicesCategoryFilter;
+                      const srvId = s.provider_service_id || s.id.split('-')[0];
+                      const matchesSearch = s.name.toLowerCase().includes(servicesSearchQuery.toLowerCase()) ||
+                        srvId.toLowerCase().includes(servicesSearchQuery.toLowerCase());
+                      return matchesCategory && matchesSearch;
+                    });
+
+                    const totalItems = filtered.length;
+                    const totalPages = Math.ceil(totalItems / servicesPerPage);
+                    const currentPage = Math.min(servicesPage, totalPages || 1);
+                    const startIndex = (currentPage - 1) * servicesPerPage;
+                    const paginated = filtered.slice(startIndex, startIndex + servicesPerPage);
+
+                    if (paginated.length === 0) {
+                      return (
+                        <div className="py-20 text-center text-slate-500 font-medium">
+                          Tidak ada layanan ditemukan untuk filter ini.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="border-b border-slate-850 bg-slate-950/20">
+                                <th className="py-4 px-4 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider w-16">ID</th>
+                                <th className="py-4 px-4 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Nama Layanan</th>
+                                <th className="py-4 px-4 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider w-40">Kategori</th>
+                                <th className="py-4 px-4 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider text-right w-32">Harga / 1K</th>
+                                <th className="py-4 px-4 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider text-center w-28">Min</th>
+                                <th className="py-4 px-4 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider text-center w-28">Max</th>
+                                <th className="py-4 px-4 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider text-center w-24">Aksi</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paginated.map((srv) => {
+                                const displayId = getNumericId(srv);
+                                return (
+                                  <tr key={srv.id} className="border-b border-slate-850 hover:bg-slate-950/20 transition-colors group">
+                                    <td className="py-3.5 px-4 font-mono font-bold text-indigo-500 dark:text-indigo-400 text-xs">#{displayId}</td>
+                                    <td className="py-3.5 px-4 font-semibold text-slate-200 text-xs">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span>{srv.name}</span>
+                                        {srv.is_recommended && (
+                                          <span className="w-fit px-1.5 py-0.2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 text-amber-500 text-[8.5px] font-black rounded-md tracking-wider uppercase">★ Recommended</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="py-3.5 px-4">
+                                      <span className="px-2 py-0.5 rounded-full bg-slate-950/40 border border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                                        {srv.category}
+                                      </span>
+                                    </td>
+                                    <td className="py-3.5 px-4 text-right font-extrabold text-emerald-500 dark:text-emerald-400 text-xs">{formatPrice(srv.price_per_k)}</td>
+                                    <td className="py-3.5 px-4 text-center font-bold text-slate-300 dark:text-slate-300 text-xs">{srv.min_order.toLocaleString()}</td>
+                                    <td className="py-3.5 px-4 text-center font-bold text-slate-300 dark:text-slate-300 text-xs">{srv.max_order.toLocaleString()}</td>
+                                    <td className="py-3.5 px-4 text-center">
+                                      <button
+                                        onClick={() => handleQuickOrder(srv)}
+                                        className="inline-flex items-center gap-2 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-indigo-50/50 hover:to-indigo-100/50 dark:from-slate-800 dark:to-slate-850 dark:hover:from-slate-750 dark:hover:to-slate-800 text-slate-855 dark:text-slate-200 border border-slate-250 dark:border-slate-700/50 font-black px-3.5 py-1.5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 text-[10px] justify-center cursor-pointer"
+                                      >
+                                        Pesan
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile Card View */}
+                        <div className="md:hidden divide-y divide-slate-850">
+                          {paginated.map((srv) => {
+                            const displayId = getNumericId(srv);
+                            return (
+                              <div key={srv.id} className="p-4 space-y-3">
+                                <div className="flex justify-between items-start gap-2">
+                                  <span className="font-mono font-bold text-indigo-500 dark:text-indigo-400 text-xs">#{displayId}</span>
+                                  <span className="px-2 py-0.5 rounded-full bg-slate-950/40 border border-slate-800 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                                    {srv.category}
+                                  </span>
+                                </div>
+                                <div className="font-semibold text-slate-200 text-xs">
+                                  {srv.name}
+                                  {srv.is_recommended && (
+                                    <span className="ml-1.5 inline-block px-1 py-0.2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 text-amber-500 text-[8px] font-black rounded-md tracking-wider uppercase">★ Rec</span>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 pt-1.5 text-[10.5px]">
+                                  <div>
+                                    <span className="text-slate-500 block">Harga/1K</span>
+                                    <strong className="text-emerald-500 dark:text-emerald-400 font-extrabold">{formatPrice(srv.price_per_k)}</strong>
+                                  </div>
+                                  <div className="text-center">
+                                    <span className="text-slate-500 block">Min</span>
+                                    <strong className="text-slate-300 dark:text-slate-300 font-bold">{srv.min_order.toLocaleString()}</strong>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-slate-500 block">Max</span>
+                                    <strong className="text-slate-300 dark:text-slate-300 font-bold">{srv.max_order.toLocaleString()}</strong>
+                                  </div>
+                                </div>
+                                <div className="pt-2 flex">
+                                  <button
+                                    onClick={() => handleQuickOrder(srv)}
+                                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-indigo-50/50 hover:to-indigo-100/50 dark:from-slate-800 dark:to-slate-850 dark:hover:from-slate-750 dark:hover:to-slate-800 text-slate-855 dark:text-slate-200 border border-slate-250 dark:border-slate-700/50 font-black px-4 py-2 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 text-[10.5px] cursor-pointer"
+                                  >
+                                    Pesan Layanan
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-850 bg-slate-950/10">
+                            <span className="text-slate-500 text-xs font-semibold">
+                              Menampilkan {startIndex + 1} - {Math.min(startIndex + servicesPerPage, totalItems)} dari {totalItems} layanan
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => setServicesPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="h-9 px-3.5 rounded-xl border border-slate-850 dark:border-slate-800 bg-slate-950/20 text-slate-400 dark:text-slate-300 text-xs font-black hover:bg-slate-850 hover:text-slate-200 transition-all disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
+                              >
+                                Sebelum
+                              </button>
+
+                              {/* Pages list */}
+                              {(() => {
+                                const pages = [];
+                                const maxVisible = 3;
+                                let startPage = Math.max(1, currentPage - 1);
+                                let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+                                if (endPage - startPage < maxVisible - 1) {
+                                  startPage = Math.max(1, endPage - maxVisible + 1);
+                                }
+
+                                for (let p = startPage; p <= endPage; p++) {
+                                  pages.push(
+                                    <button
+                                      key={p}
+                                      onClick={() => setServicesPage(p)}
+                                      className={`w-9 h-9 rounded-xl border text-xs font-black transition-all cursor-pointer ${currentPage === p
+                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-600/10'
+                                        : 'border-slate-855 dark:border-slate-800 bg-slate-950/20 text-slate-400 hover:bg-slate-850 hover:text-slate-200'
+                                        }`}
+                                    >
+                                      {p}
+                                    </button>
+                                  );
+                                }
+                                return pages;
+                              })()}
+
+                              <button
+                                onClick={() => setServicesPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="h-9 px-3.5 rounded-xl border border-slate-850 dark:border-slate-800 bg-slate-950/20 text-slate-400 dark:text-slate-300 text-xs font-black hover:bg-slate-850 hover:text-slate-200 transition-all disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
+                              >
+                                Lanjut
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </main>
         </div>
       </div>
@@ -4864,6 +5242,7 @@ export default function UserDashboard() {
           {[
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
             { id: 'order', label: 'Pesan', icon: ShoppingBag },
+            { id: 'services', label: 'Layanan', icon: List },
             { id: 'history', label: 'Pesanan', icon: History, action: () => fetchOrders(user?.id) },
             { id: 'deposits', label: 'Deposit', icon: Wallet, action: () => fetchProfileAndTransactions(user?.id) },
             { id: 'tickets', label: 'Tiket', icon: MessageSquare, action: () => fetchTickets() },
@@ -5059,62 +5438,65 @@ export default function UserDashboard() {
       {/* Premium Confirmation Dialog */}
       {/* Announcement Detail Modal */}
       {selectedAnnouncement && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl bg-white text-zinc-900 border border-zinc-200 p-6 sm:p-8 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 text-zinc-900 dark:text-slate-100 border border-zinc-200 dark:border-slate-800/80 p-5 sm:p-8 rounded-2xl sm:rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col overflow-hidden">
 
             {/* Header */}
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start mb-4 shrink-0">
               <div className="flex items-center gap-2">
                 {selectedAnnouncement.badge && (
-                  <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-200/50">
+                  <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/20">
                     {selectedAnnouncement.badge}
                   </span>
                 )}
-                <span className="text-[10px] text-zinc-400 font-bold">
+                <span className="text-[10px] text-zinc-400 dark:text-slate-400 font-bold">
                   {new Date(selectedAnnouncement.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
                 </span>
               </div>
               <button
                 onClick={() => setSelectedAnnouncement(null)}
-                className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer"
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-slate-200 p-1.5 hover:bg-zinc-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Title */}
-            <h3 className="text-lg sm:text-xl font-extrabold text-zinc-950 mb-4 tracking-tight leading-snug">{selectedAnnouncement.title}</h3>
+            {/* Scrollable body content container */}
+            <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 min-h-0 scrollbar-thin scrollbar-thumb-zinc-250 dark:scrollbar-thumb-slate-800">
+              {/* Title */}
+              <h3 className="announcement-content-text text-base sm:text-xl font-extrabold tracking-tight leading-snug">{selectedAnnouncement.title}</h3>
 
-            {/* Image Banner if exists */}
-            {selectedAnnouncement.image_url && (
-              <div
-                className="w-full h-48 sm:h-64 md:h-72 relative overflow-hidden rounded-2xl bg-zinc-950 border border-zinc-200/80 mb-4 cursor-zoom-in group"
-                onClick={() => setShowImageZoom(selectedAnnouncement.image_url || null)}
-                title="Klik untuk memperbesar gambar"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={selectedAnnouncement.image_url}
-                  alt={selectedAnnouncement.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
-                />
-                {/* Overlay hint on hover */}
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
-                  <span className="text-white text-[9px] font-bold bg-black/75 px-3.5 py-2 rounded-full border border-white/10 tracking-widest">KLIK UNTUK MEMPERBESAR</span>
+              {/* Image Banner if exists */}
+              {selectedAnnouncement.image_url && (
+                <div
+                  className="w-full h-40 sm:h-64 relative overflow-hidden rounded-2xl bg-zinc-950 border border-zinc-200/80 dark:border-slate-800 mb-2 cursor-zoom-in group"
+                  onClick={() => setShowImageZoom(selectedAnnouncement.image_url || null)}
+                  title="Klik untuk memperbesar gambar"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedAnnouncement.image_url}
+                    alt={selectedAnnouncement.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
+                  />
+                  {/* Overlay hint on hover */}
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
+                    <span className="text-white text-[9px] font-bold bg-black/75 px-3.5 py-2 rounded-full border border-white/10 tracking-widest">KLIK UNTUK MEMPERBESAR</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Body Content */}
-            <div className="max-h-56 overflow-y-auto pr-2 text-zinc-700 text-xs sm:text-sm font-light leading-relaxed whitespace-pre-wrap scrollbar-thin scrollbar-thumb-zinc-200 mb-6">
-              {selectedAnnouncement.content}
+              {/* Body Content Text */}
+              <div className="announcement-content-text text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap">
+                {selectedAnnouncement.content}
+              </div>
             </div>
 
             {/* Footer */}
-            <div className="pt-4 border-t border-zinc-150 flex justify-end">
+            <div className="pt-4 border-t border-zinc-150 dark:border-slate-850 flex justify-end shrink-0 mt-4">
               <button
                 onClick={() => setSelectedAnnouncement(null)}
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-white font-bold rounded-xl text-xs transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-600/10"
+                className="w-full sm:w-auto text-center px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-600/10"
               >
                 Tutup
               </button>
@@ -5124,35 +5506,35 @@ export default function UserDashboard() {
       )}
       {/* News & Announcements Modal */}
       {showNewsModal && announcements.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 animate-in fade-in duration-200">
-          <div className="w-full sm:max-w-4xl bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[72vh] overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 bg-slate-950/60 animate-in fade-in duration-200">
+          <div className="w-[92%] sm:w-full sm:max-w-lg bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-2xl sm:rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[50vh] sm:max-h-[480px] overflow-hidden">
 
             {/* Header */}
-            <div className="flex justify-between items-center px-5 sm:px-6 pt-5 pb-3 border-b border-slate-100 dark:border-slate-850">
-              <div className="flex items-center gap-2.5">
-                <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
-                  <Megaphone className="w-4 h-4 animate-bounce" />
+            <div className="flex justify-between items-center px-4 sm:px-6 pt-3.5 sm:pt-5 pb-2.5 border-b border-slate-100 dark:border-slate-850">
+              <div className="flex items-center gap-2">
+                <div className="relative flex items-center justify-center w-7.5 h-7.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <Megaphone className="w-3.5 h-3.5 animate-bounce" />
                   <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 border border-white dark:border-slate-900 rounded-full animate-ping" />
                   <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 border border-white dark:border-slate-900 rounded-full" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                  <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">
                     Berita &amp; Informasi!
                   </h3>
-                  <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-medium">Update terbaru layanan kami</p>
+                  <p className="text-[8.5px] sm:text-[9.5px] text-slate-500 dark:text-white font-medium">Update terbaru layanan kami</p>
                 </div>
               </div>
 
               <button
                 onClick={() => setShowNewsModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 hover:bg-slate-55 dark:hover:bg-slate-850 rounded-lg transition-all cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 hover:bg-slate-900 dark:hover:bg-slate-850 rounded-lg transition-all cursor-pointer"
               >
-                <X className="w-4.5 h-4.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            {/* Content List - Unified Scrollable sky-blue Area (displays up to 30 items) */}
-            <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4.5">
-              <div className="bg-[#e0f2fe]/45 dark:bg-slate-950/20 border border-[#bae6fd]/60 dark:border-slate-850 rounded-2xl p-4 sm:p-5 max-h-[52vh] overflow-y-auto scrollbar-thin scrollbar-thumb-sky-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent space-y-3.5">
+            {/* Content List - Unified Scrollable Area (displays up to 30 items) */}
+            <div className="flex-1 flex flex-col min-h-0 px-4 sm:px-6 py-3">
+              <div className="flex-1 bg-[#e0f2fe]/45 dark:bg-slate-950/20 border border-[#bae6fd]/60 dark:border-slate-850 rounded-xl p-3 sm:p-5 overflow-y-auto scrollbar-thin scrollbar-thumb-sky-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent space-y-3">
                 {[...announcements]
                   .sort((a, b) => {
                     if (a.is_pinned && !b.is_pinned) return -1;
@@ -5168,7 +5550,7 @@ export default function UserDashboard() {
                         onClick={() => setSelectedAnnouncement(ann)}
                       >
                         <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+                          <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-bold">
                             {new Date(ann.created_at).toLocaleString('id-ID', {
                               day: 'numeric',
                               month: 'long',
@@ -5178,7 +5560,7 @@ export default function UserDashboard() {
                               second: '2-digit'
                             })}
                           </span>
-                          
+
                           <div className="flex items-center gap-1.5">
                             {ann.badge && (
                               <span className={`px-1.5 py-0.2 rounded text-[7px] font-black uppercase tracking-wider inline-block ${getAnnouncementBadgeClass(ann.badge)}`}>
@@ -5221,16 +5603,16 @@ export default function UserDashboard() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20">
-              <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3.5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 w-full">
+              <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-bold text-center sm:text-left">
                 {Math.min(announcements.length, 30)} Update Terbaru
               </span>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setShowNewsModal(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-bold rounded-xl transition-all cursor-pointer border border-slate-200/40 dark:border-slate-800/50"
+                  className="flex-1 sm:flex-initial text-center px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-bold rounded-xl transition-all cursor-pointer border border-slate-200/40 dark:border-slate-800/50"
                 >
                   Tutup
                 </button>
@@ -5247,9 +5629,9 @@ export default function UserDashboard() {
                     setShowNewsModal(false);
                     showToast('Pengumuman ditandai sebagai sudah dibaca', 'success');
                   }}
-                  className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-[11px] font-extrabold rounded-xl transition-all shadow-md shadow-indigo-500/10 flex items-center justify-center gap-1 cursor-pointer"
+                  className="flex-1 sm:flex-initial text-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-[11px] font-extrabold rounded-xl transition-all shadow-md shadow-indigo-500/10 flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <Check className="w-3 h-3" />
+                  <Check className="w-3 h-3 shrink-0" />
                   <span>Saya sudah membaca</span>
                 </button>
               </div>
@@ -5529,14 +5911,14 @@ export default function UserDashboard() {
               </div>
 
               <div className="space-y-3.5 text-xs text-slate-300">
-                <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
-                  <span className="text-slate-550 dark:text-slate-500 font-light">Order ID</span>
-                  <span className="font-mono font-semibold text-slate-200">{selectedOrderDetail.id}</span>
+                <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 gap-4">
+                  <span className="text-slate-550 dark:text-slate-500 font-light shrink-0">Order ID</span>
+                  <span className="font-mono font-semibold text-slate-200 break-all text-right select-all">{selectedOrderDetail.id}</span>
                 </div>
 
-                <div className="flex justify-between items-center py-2.5 border-b border-slate-850/60">
-                  <span className="text-slate-550 dark:text-slate-500 font-light">Layanan</span>
-                  <span className="font-bold text-slate-200">{selectedOrderDetail.service_name}</span>
+                <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 gap-4">
+                  <span className="text-slate-550 dark:text-slate-500 font-light shrink-0">Layanan</span>
+                  <span className="font-bold text-slate-200 text-right break-words max-w-[70%]">{selectedOrderDetail.service_name}</span>
                 </div>
 
                 <div className="flex justify-between items-start py-2.5 border-b border-slate-850/60 gap-4">

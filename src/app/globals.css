@@ -260,5 +260,12 @@ input[type="number"] {
   background-color: var(--color-slate-950) !important;
 }
 
+.announcement-content-text {
+  color: #111827 !important;
+}
+.dark .announcement-content-text {
+  color: #ffffff !important;
+}
+
 
 

@@ -72,23 +72,34 @@ const getAnnouncementBadgeClass = (badge: string): string => {
   return 'bg-slate-500/10 text-slate-600 dark:text-slate-450 border border-slate-500/20 backdrop-blur-md shadow-sm';
 };
 
+const getNumericId = (srv: any): string => {
+  if (!srv) return '';
+  const idStr = typeof srv === 'string' ? srv : (srv.provider_service_id || srv.id);
+  if (!idStr) return '';
+  if (/^\d+$/.test(idStr)) {
+    return idStr;
+  }
+  const hexPart = String(idStr).split('-')[0].slice(0, 5);
+  return String(parseInt(hexPart, 16) || idStr);
+};
+
 const getOrderStatusBadgeClass = (status: string): string => {
   const s = status ? status.toLowerCase() : '';
-  if (s === 'success') return 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-extrabold shadow-sm shadow-emerald-500/30';
-  if (s === 'inprogress') return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-extrabold shadow-sm shadow-blue-500/30';
-  if (s === 'processing') return 'bg-gradient-to-r from-sky-400 to-cyan-400 text-slate-950 font-extrabold shadow-sm shadow-sky-400/30';
-  if (s === 'failed' || s === 'error' || s === 'dibatalkan') return 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30';
-  if (s === 'partial') return 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30';
-  if (s === 'pending') return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30';
-  return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30';
+  if (s === 'success') return 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white dark:!text-black font-extrabold shadow-sm shadow-emerald-500/30';
+  if (s === 'inprogress') return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white dark:!text-black font-extrabold shadow-sm shadow-blue-500/30';
+  if (s === 'processing') return 'bg-gradient-to-r from-sky-400 to-cyan-400 text-white dark:!text-black font-extrabold shadow-sm shadow-sky-400/30';
+  if (s === 'failed' || s === 'error' || s === 'dibatalkan') return 'bg-gradient-to-r from-red-500 to-rose-600 text-white dark:!text-black font-extrabold shadow-sm shadow-rose-500/30';
+  if (s === 'partial') return 'bg-gradient-to-r from-red-500 to-rose-600 text-white dark:!text-black font-extrabold shadow-sm shadow-rose-500/30';
+  if (s === 'pending') return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white dark:!text-black font-extrabold shadow-sm shadow-amber-500/30';
+  return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white dark:!text-black font-extrabold shadow-sm shadow-amber-500/30';
 };
 
 const getPaymentStatusBadgeClass = (paymentStatus: string): string => {
   const ps = paymentStatus ? paymentStatus.toLowerCase() : '';
-  if (ps === 'paid') return 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-extrabold shadow-sm shadow-emerald-500/30';
-  if (ps === 'refunded') return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-extrabold shadow-sm shadow-blue-500/30';
-  if (ps === 'pending_refund') return 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold shadow-sm shadow-orange-550/30';
-  return 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30'; // unpaid/default
+  if (ps === 'paid') return 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white dark:!text-black font-extrabold shadow-sm shadow-emerald-500/30';
+  if (ps === 'refunded') return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white dark:!text-black font-extrabold shadow-sm shadow-blue-500/30';
+  if (ps === 'pending_refund') return 'bg-gradient-to-r from-amber-500 to-orange-500 text-white dark:!text-black font-extrabold shadow-sm shadow-orange-550/30';
+  return 'bg-gradient-to-r from-red-500 to-rose-600 text-white dark:!text-black font-extrabold shadow-sm shadow-rose-500/30'; // unpaid/default
 };
 
 const getTicketStatusBadgeClass = (status: string): string => {
@@ -319,6 +330,7 @@ export default function AdminDashboard() {
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [retryingOrderId, setRetryingOrderId] = useState<string | null>(null);
   const [orderStartCountInput, setOrderStartCountInput] = useState<number>(0);
+  const [orderRemainsInput, setOrderRemainsInput] = useState<number>(0);
   const [orderStatusSelect, setOrderStatusSelect] = useState<'pending' | 'processing' | 'inprogress' | 'success' | 'failed' | 'partial'>('pending');
   const [customRefundInput, setCustomRefundInput] = useState<string>('');
 
@@ -914,6 +926,7 @@ export default function AdminDashboard() {
   const openOrderEditor = (order: Order) => {
     setUpdatingOrderId(order.id);
     setOrderStartCountInput(order.start_count || 0);
+    setOrderRemainsInput(order.remains || 0);
     setOrderStatusSelect(order.status);
     setCustomRefundInput(String(order.total_price));
   };
@@ -951,6 +964,7 @@ export default function AdminDashboard() {
           orderId: orderId,
           status: orderStatusSelect,
           startCount: orderStartCountInput,
+          remains: orderRemainsInput,
           refundAmount: (orderStatusSelect === 'failed' || orderStatusSelect === 'partial') ? parseFloat(customRefundInput) : undefined
         })
       });
@@ -971,6 +985,7 @@ export default function AdminDashboard() {
             ...o,
             status: orderStatusSelect,
             start_count: orderStartCountInput,
+            remains: orderRemainsInput,
             payment_status: 'paid'
           };
         }
@@ -988,6 +1003,7 @@ export default function AdminDashboard() {
                 ...o,
                 status: orderStatusSelect,
                 start_count: orderStartCountInput,
+                remains: orderRemainsInput,
                 payment_status: 'paid'
               };
             }
@@ -1257,7 +1273,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-955 text-slate-100 selection:bg-indigo-500 selection:text-white font-sans transition-colors duration-300">
+    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white font-sans transition-colors duration-300">
 
       {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
@@ -1449,15 +1465,15 @@ export default function AdminDashboard() {
             {/* Provider Balance Info & Theme Toggle */}
             <div className="flex items-center gap-3">
               {providerBalance !== null && (
-                <div className="h-10 px-4 rounded-xl bg-slate-800 text-slate-300 dark:text-slate-400 font-extrabold border border-slate-800/80 text-xs tracking-tight flex items-center gap-2" title="Saldo BuzzerPanel">
-                  <Wallet className="w-4.5 h-4.5 text-slate-400 shrink-0" />
-                  <span className="hidden lg:inline">BuzzerPanel:</span> <span>{formatPrice(parseInt(providerBalance))}</span>
+                <div className="h-10 px-4 rounded-xl bg-white dark:bg-slate-900 text-slate-300 dark:text-slate-200 font-extrabold border border-slate-200 dark:border-slate-800/80 text-xs tracking-tight flex items-center gap-2 shadow-sm" title="Saldo BuzzerPanel">
+                  <Wallet className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span className="hidden lg:inline text-slate-400 dark:text-slate-400 font-bold">BuzzerPanel:</span> <span className="text-slate-200 dark:text-slate-100 font-black">{formatPrice(parseInt(providerBalance))}</span>
                 </div>
               )}
               {medanpediaBalance !== null && (
-                <div className="h-10 px-4 rounded-xl bg-slate-800 text-slate-300 dark:text-slate-400 font-extrabold border border-slate-800/80 text-xs tracking-tight flex items-center gap-2" title="Saldo MedanPedia">
-                  <Wallet className="w-4.5 h-4.5 text-slate-400 shrink-0" />
-                  <span className="hidden lg:inline">MedanPedia:</span> <span>{formatPrice(parseInt(medanpediaBalance))}</span>
+                <div className="h-10 px-4 rounded-xl bg-white dark:bg-slate-900 text-slate-300 dark:text-slate-200 font-extrabold border border-slate-200 dark:border-slate-800/80 text-xs tracking-tight flex items-center gap-2 shadow-sm" title="Saldo MedanPedia">
+                  <Wallet className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span className="hidden lg:inline text-slate-400 dark:text-slate-400 font-bold">MedanPedia:</span> <span className="text-slate-200 dark:text-slate-100 font-black">{formatPrice(parseInt(medanpediaBalance))}</span>
                 </div>
               )}
               <PremiumThemeToggle />
@@ -1465,7 +1481,7 @@ export default function AdminDashboard() {
           </header>
 
           {/* Main Dashboard Container */}
-          <main className="p-6 md:p-8 space-y-6 flex-1 overflow-y-auto bg-slate-955">
+          <main className="p-6 md:p-8 space-y-6 flex-1 overflow-y-auto bg-slate-950">
 
 
             {/* Tab 1: Orders Management */}
@@ -1657,8 +1673,15 @@ export default function AdminDashboard() {
                                   )}
                                 </td>
                                 <td className="py-4 px-3 font-semibold text-slate-200">
-                                  <div className="flex flex-col gap-1 max-w-[160px]">
-                                    <span className="font-bold text-slate-200 text-xs truncate" title={order.service_name}>{order.service_name}</span>
+                                  <div className="flex flex-col gap-1 max-w-[280px]">
+                                    {(() => {
+                                       const displaySrvId = getNumericId(order.service_id);
+                                       return (
+                                         <span className="font-bold text-slate-200 text-xs whitespace-normal break-words" title={order.service_name}>
+                                           [#{displaySrvId}] {order.service_name}
+                                         </span>
+                                       );
+                                    })()}
                                     <div className="flex gap-1.5 items-center flex-wrap">
                                       <span className={`px-1.5 py-0.5 rounded-md font-extrabold text-[8px] uppercase tracking-wider border w-fit ${getCategoryBadgeClass(order.category)}`}>
                                         {order.category}
@@ -1742,9 +1765,11 @@ export default function AdminDashboard() {
                                           <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Jumlah Sisa (Remains)</label>
                                           <input
                                             type="number"
+                                            value={orderRemainsInput}
                                             placeholder="Sisa yg gagal kirim..."
                                             onChange={(e) => {
                                               const remains = parseFloat(e.target.value) || 0;
+                                              setOrderRemainsInput(remains);
                                               const quantity = order.quantity || 1;
                                               const calculatedRefund = Math.min((remains / quantity) * order.total_price, order.total_price);
                                               setCustomRefundInput(String(Math.round(calculatedRefund)));
@@ -1822,7 +1847,7 @@ export default function AdminDashboard() {
                                       })()}
                                       <button
                                         onClick={() => openOrderEditor(order)}
-                                        className="inline-flex items-center gap-1.5 bg-rose-50/80 dark:bg-rose-950/15 hover:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 px-3.5 py-1.5 rounded-xl border border-indigo-500/20 font-extrabold cursor-pointer transition-all active:scale-95 text-[10px] w-full justify-center"
+                                        className="inline-flex items-center gap-2 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-indigo-50/50 hover:to-indigo-100/50 dark:from-slate-800 dark:to-slate-850 dark:hover:from-slate-750 dark:hover:to-slate-800 text-slate-850 dark:text-slate-200 border border-slate-250 dark:border-slate-700/50 font-black px-3.5 py-1.5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 text-[10px] w-full justify-center"
                                       >
                                         <Edit2 className="w-3 h-3" />
                                         Atur Progres
@@ -1865,13 +1890,31 @@ export default function AdminDashboard() {
                                 <span className="text-slate-400 font-medium">User:</span>
                                 <span className="font-semibold text-slate-200 truncate max-w-[180px]">{order.profiles?.email || 'User/Simulated'}</span>
                               </div>
-                              <div className="flex justify-between items-center text-xs">
+                               <div className="flex justify-between items-center text-xs">
                                 <span className="text-slate-400 font-medium">Layanan:</span>
-                                <div className="flex flex-col items-end gap-1">
-                                  <span className="font-bold text-slate-100 text-right truncate max-w-[180px]" title={order.service_name}>{order.service_name}</span>
-                                  <span className={`px-1.5 py-0.5 rounded-md font-extrabold text-[8px] uppercase tracking-wider border w-fit ${getCategoryBadgeClass(order.category)}`}>
-                                    {order.category}
-                                  </span>
+                                <div className="flex flex-col items-end gap-1 max-w-[280px]">
+                                   {(() => {
+                                      const displaySrvId = getNumericId(order.service_id);
+                                      return (
+                                        <span className="font-bold text-slate-100 text-right whitespace-normal break-words" title={order.service_name}>
+                                          [#{displaySrvId}] {order.service_name}
+                                        </span>
+                                      );
+                                   })()}
+                                  <div className="flex gap-1 items-center flex-wrap">
+                                    <span className={`px-1.5 py-0.5 rounded-md font-extrabold text-[8px] uppercase tracking-wider border w-fit ${getCategoryBadgeClass(order.category)}`}>
+                                      {order.category}
+                                    </span>
+                                    {(() => {
+                                       const service = services.find(s => s.id === order.service_id);
+                                       const displayProvider = order.provider_id || (service ? service.provider_id : null) || 'manual';
+                                       return (
+                                         <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-800 text-slate-350 border border-slate-700/60 w-fit flex items-center gap-0.5">
+                                           🔌 {displayProvider}
+                                         </span>
+                                       );
+                                     })()}
+                                  </div>
                                 </div>
                               </div>
                               <div className="flex justify-between items-center text-xs">
@@ -1902,7 +1945,7 @@ export default function AdminDashboard() {
                             {/* Actions */}
                             <div className="pt-2">
                               {updatingOrderId === order.id ? (
-                                <div className="space-y-3.5 p-3.5 bg-slate-955 border border-slate-800 text-slate-100 rounded-2xl text-left shadow-xl">
+                                <div className="space-y-3.5 p-3.5 bg-slate-950 border border-slate-800 text-slate-100 rounded-2xl text-left shadow-xl">
                                   {orderStatusSelect === 'pending' && (
                                     <div>
                                       <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Jumlah Awal</label>
@@ -1944,9 +1987,11 @@ export default function AdminDashboard() {
                                       <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Jumlah Sisa (Remains)</label>
                                       <input
                                         type="number"
+                                        value={orderRemainsInput}
                                         placeholder="Sisa yg gagal kirim..."
                                         onChange={(e) => {
                                           const remains = parseFloat(e.target.value) || 0;
+                                          setOrderRemainsInput(remains);
                                           const quantity = order.quantity || 1;
                                           const calculatedRefund = Math.min((remains / quantity) * order.total_price, order.total_price);
                                           setCustomRefundInput(String(Math.round(calculatedRefund)));
@@ -2006,7 +2051,7 @@ export default function AdminDashboard() {
                                   })()}
                                   <button
                                     onClick={() => openOrderEditor(order)}
-                                    className="flex-1 inline-flex items-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 px-3.5 py-2 rounded-xl border border-rose-500/20 font-extrabold cursor-pointer transition-all active:scale-95 text-[10px] justify-center"
+                                    className="flex-1 inline-flex items-center gap-2 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-indigo-50/50 hover:to-indigo-100/50 dark:from-slate-800 dark:to-slate-850 dark:hover:from-slate-750 dark:hover:to-slate-800 text-slate-850 dark:text-slate-200 border border-slate-250 dark:border-slate-700/50 font-black px-3.5 py-1.5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 text-[10px] justify-center"
                                   >
                                     <Edit2 className="w-3 h-3" />
                                     Atur Progres
@@ -2100,7 +2145,7 @@ export default function AdminDashboard() {
                           return (
                             <div
                               key={service.id}
-                              className="bg-slate-55 dark:bg-slate-950/50 border border-slate-850 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-950/10 transition-all duration-300 p-5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs group"
+                              className="bg-slate-900 dark:bg-slate-950/50 border border-slate-850 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-950/10 transition-all duration-300 p-5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs group"
                             >
                               <div className="flex items-start sm:items-center gap-3.5 flex-1">
                                 {serviceIconUrl ? (
@@ -2116,10 +2161,13 @@ export default function AdminDashboard() {
 
                                 <div className="space-y-1.5 flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="px-2 py-0.5 rounded-lg font-mono font-bold text-[9px] bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                                      #{getNumericId(service)}
+                                    </span>
                                     <span className={`px-2 py-0.5 rounded-lg font-extrabold text-[9px] uppercase tracking-wider ${getCategoryBadgeClass(service.category)}`}>
                                       {service.category}
                                     </span>
-                                    <span className="font-extrabold text-slate-800 dark:text-slate-200 text-sm group-hover:text-rose-600 dark:text-indigo-400 dark:group-hover:text-white transition-colors">
+                                    <span className="font-extrabold text-zinc-900 dark:text-zinc-100 text-sm group-hover:text-rose-600 dark:text-indigo-400 dark:group-hover:text-white transition-colors">
                                       {service.name}
                                     </span>
                                     {/* Provider badge in SMM list */}
@@ -2130,19 +2178,19 @@ export default function AdminDashboard() {
                                     )}
                                   </div>
 
-                                  <div className="text-slate-600 dark:text-slate-400 font-light flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                                  <div className="text-zinc-500 dark:text-zinc-400 font-medium flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
                                     <span className="flex items-center gap-1">
-                                      <span className="text-slate-500">Min:</span> <strong className="text-slate-700 dark:text-slate-305">{service.min_order.toLocaleString()}</strong>
+                                      <span className="text-zinc-500 dark:text-zinc-400">Min:</span> <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{service.min_order.toLocaleString()}</strong>
                                     </span>
                                     <span className="text-slate-300 dark:text-slate-700">•</span>
                                     <span className="flex items-center gap-1">
-                                      <span className="text-slate-500">Max:</span> <strong className="text-slate-700 dark:text-slate-305">{service.max_order.toLocaleString()}</strong>
+                                      <span className="text-zinc-500 dark:text-zinc-400">Max:</span> <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{service.max_order.toLocaleString()}</strong>
                                     </span>
                                     {service.created_at && (
                                       <>
                                         <span className="text-slate-300 dark:text-slate-700">•</span>
-                                        <span className="text-slate-500">
-                                          Dibuat: {new Date(service.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        <span className="text-zinc-500 dark:text-zinc-400">
+                                          Dibuat: <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{new Date(service.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
                                         </span>
                                       </>
                                     )}
@@ -2160,9 +2208,9 @@ export default function AdminDashboard() {
                                   )}
 
                                   {service.description && expandedServices[service.id] && (
-                                    <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-2.5 bg-slate-100/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200 dark:border-slate-850/60 max-w-xl font-light leading-relaxed whitespace-pre-wrap select-text animate-in fade-in slide-in-from-top-2 duration-250">
-                                      <span className="block font-bold text-[9px] text-rose-650 dark:text-indigo-500 dark:text-indigo-450 uppercase tracking-wider mb-1">Deskripsi Detail:</span>
-                                      <div className="text-slate-700 dark:text-slate-300">{service.description}</div>
+                                    <div className="text-[11px] text-zinc-650 dark:text-zinc-300 mt-2.5 bg-slate-100/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-250 dark:border-slate-850/60 max-w-xl font-medium leading-relaxed whitespace-pre-wrap select-text animate-in fade-in slide-in-from-top-2 duration-250">
+                                      <span className="block font-bold text-[9px] text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Deskripsi Detail:</span>
+                                      <div className="text-zinc-800 dark:text-zinc-200">{service.description}</div>
                                     </div>
                                   )}
                                 </div>
@@ -2172,7 +2220,7 @@ export default function AdminDashboard() {
                                 <div className="text-right">
                                   <div className="text-[10px] text-slate-500 font-medium">Harga / 1K</div>
                                   <div className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                                    Rp {service.price_per_k.toLocaleString()}
+                                    Rp {Number(service.price_per_k).toLocaleString('id-ID')}
                                   </div>
                                 </div>
 
@@ -2534,6 +2582,7 @@ export default function AdminDashboard() {
                                               onClick={() => {
                                                 setIsProviderCategoryDropdownOpen(!isProviderCategoryDropdownOpen);
                                                 setIsProviderServiceDropdownOpen(false);
+                                                setProviderCategorySearch('');
                                               }}
                                               className="w-full flex items-center justify-between bg-slate-900 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl outline-none text-xs cursor-pointer"
                                             >
@@ -2541,30 +2590,67 @@ export default function AdminDashboard() {
                                               <ChevronDown className="w-4 h-4 text-slate-400" />
                                             </button>
                                             {isProviderCategoryDropdownOpen && (
-                                              <div className="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl shadow-xl z-50 overflow-hidden max-h-[180px] overflow-y-auto">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    setProviderCategoryFilter('all');
-                                                    setIsProviderCategoryDropdownOpen(false);
-                                                  }}
-                                                  className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-850 hover:text-indigo-400"
-                                                >
-                                                  Semua Kategori
-                                                </button>
-                                                {uniqueProviderCategories.map(cat => (
+                                              <div className="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[280px]">
+                                                {/* Search Input Box */}
+                                                <div className="p-2 border-b border-slate-800/80 bg-slate-950 sticky top-0 z-10">
+                                                  <div className="relative">
+                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                                                    <input
+                                                      type="text"
+                                                      placeholder="Cari kategori..."
+                                                      value={providerCategorySearch}
+                                                      onChange={(e) => setProviderCategorySearch(e.target.value)}
+                                                      className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 pl-8 pr-3 py-1.5 rounded-lg outline-none text-[11px] placeholder:text-slate-500"
+                                                      onClick={(e) => e.stopPropagation()} 
+                                                    />
+                                                    {providerCategorySearch && (
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          setProviderCategorySearch('');
+                                                        }}
+                                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                                                      >
+                                                        <X className="w-3 h-3" />
+                                                      </button>
+                                                    )}
+                                                  </div>
+                                                </div>
+
+                                                {/* Options List */}
+                                                <div className="overflow-y-auto max-h-[220px] scrollbar-thin">
                                                   <button
-                                                    key={cat}
                                                     type="button"
                                                     onClick={() => {
-                                                      setProviderCategoryFilter(cat);
+                                                      setProviderCategoryFilter('all');
+                                                      setProviderCategorySearch('');
                                                       setIsProviderCategoryDropdownOpen(false);
                                                     }}
-                                                    className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-855 hover:text-indigo-405"
+                                                    className="w-full text-left px-4 py-2 text-xs hover:bg-slate-850 hover:text-indigo-400 cursor-pointer"
                                                   >
-                                                    {cat}
+                                                    Semua Kategori
                                                   </button>
-                                                ))}
+                                                  {uniqueProviderCategories
+                                                    .filter(cat => cat.toLowerCase().includes(providerCategorySearch.toLowerCase()))
+                                                    .map(cat => (
+                                                      <button
+                                                        key={cat}
+                                                        type="button"
+                                                        onClick={() => {
+                                                          setProviderCategoryFilter(cat);
+                                                          setProviderCategorySearch('');
+                                                          setIsProviderCategoryDropdownOpen(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-850 hover:text-indigo-400 cursor-pointer"
+                                                      >
+                                                        {cat}
+                                                      </button>
+                                                    ))}
+                                                  {uniqueProviderCategories.filter(cat => cat.toLowerCase().includes(providerCategorySearch.toLowerCase())).length === 0 && (
+                                                    <div className="px-4 py-3 text-xs text-slate-500 text-center font-medium">Kategori tidak ditemukan</div>
+                                                  )}
+                                                </div>
                                               </div>
                                             )}
                                           </div>
@@ -3096,7 +3182,7 @@ export default function AdminDashboard() {
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                   <div className="text-right">
-                                    <span className="font-extrabold text-indigo-500 dark:text-indigo-400 block">{formatPrice(prof.balance || 0)}</span>
+                                    <span className="font-extrabold text-white block">{formatPrice(prof.balance || 0)}</span>
                                     <span className="text-[9px] text-slate-500 uppercase tracking-wider block mt-0.5">{prof.role}</span>
                                   </div>
                                   <button
@@ -3108,7 +3194,7 @@ export default function AdminDashboard() {
                                       setBalanceError(null);
                                       setShowBalanceModal(true);
                                     }}
-                                    className="p-1.5 rounded-lg bg-rose-50/80 dark:bg-rose-950/20 text-rose-600 dark:text-indigo-400 border border-rose-200/40 dark:border-rose-900/25 transition-all cursor-pointer"
+                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 hover:border-slate-600 transition-all cursor-pointer"
                                     title="Kelola Saldo"
                                   >
                                     <Wallet className="w-3.5 h-3.5" />
@@ -3774,7 +3860,7 @@ export default function AdminDashboard() {
                   <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-850">
                     <table className="w-full border-collapse text-left">
                       <thead>
-                        <tr className="bg-slate-955 border-b border-slate-850 text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                        <tr className="bg-slate-950 border-b border-slate-850 text-slate-400 text-[10px] font-black uppercase tracking-wider">
                           <th className="py-4 px-6">ID</th>
                           <th className="py-4 px-6">User</th>
                           <th className="py-4 px-6">Subjek</th>

@@ -36,6 +36,7 @@ export interface Order {
   total_price: number;
   status: 'pending' | 'processing' | 'inprogress' | 'success' | 'failed' | 'partial';
   start_count: number;
+  remains?: number | null;
   payment_status: 'unpaid' | 'paid' | 'expired' | 'refunded' | 'pending_refund';
   payment_method: string;
   created_at: string;

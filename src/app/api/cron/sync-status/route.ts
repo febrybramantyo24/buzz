@@ -94,9 +94,9 @@ export async function GET(request: Request) {
             // and save provider details so admin can review and execute it
             await query(
               `UPDATE orders 
-               SET status = $1, start_count = $2, payment_status = 'pending_refund', provider_refund_amount = $3, provider_id = $4 
-               WHERE id = $5`,
-              [localStatus, startCount, cappedRefund, order.provider_id || 'manual', order.id]
+               SET status = $1, start_count = $2, remains = $3, payment_status = 'pending_refund', provider_refund_amount = $4, provider_id = $5 
+               WHERE id = $6`,
+              [localStatus, startCount, remains, cappedRefund, order.provider_id || 'manual', order.id]
             );
 
             console.log(`Order ${order.id} marked as pending_refund with amount Rp ${cappedRefund} (${refundReason})`);
@@ -115,9 +115,9 @@ export async function GET(request: Request) {
             // Just update order status and provider_id
             await query(
               `UPDATE orders 
-               SET status = $1, start_count = $2, provider_id = $3 
-               WHERE id = $4`,
-              [localStatus, startCount, order.provider_id || 'manual', order.id]
+               SET status = $1, start_count = $2, remains = $3, provider_id = $4 
+               WHERE id = $5`,
+              [localStatus, startCount, remains, order.provider_id || 'manual', order.id]
             );
 
             results.push({

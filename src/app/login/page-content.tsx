@@ -18,7 +18,8 @@ import {
   ShieldCheck,
   CheckCircle,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Home
 } from 'lucide-react';
 
 import PremiumThemeToggle from '@/components/PremiumThemeToggle';
@@ -49,6 +50,18 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isAutoSubmit, setIsAutoSubmit] = useState(false);
+
+  // Lock document scroll on desktop
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   useEffect(() => {
     if (message) {
@@ -322,10 +335,22 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
 
   if (isResetPassword) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-indigo-500 selection:text-white">
+      <div className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative selection:bg-indigo-500 selection:text-white">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full"></div>
 
-        <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 animate-fade-in">
+        {/* Absolute floating controls */}
+        <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+          <Link
+            href="/"
+            className="w-10 h-10 rounded-xl bg-slate-900/60 dark:bg-slate-900/40 backdrop-blur-md hover:bg-slate-800 text-slate-700 dark:text-slate-350 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 flex items-center justify-center shadow-sm cursor-pointer transition-all duration-200 active:scale-95"
+            title="Kembali ke Beranda"
+          >
+            <Home className="w-5 h-5" />
+          </Link>
+          <PremiumThemeToggle />
+        </div>
+
+        <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 md:-translate-y-8 animate-fade-in">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold">Atur Ulang Password</h2>
             <p className="text-slate-400 text-xs mt-1.5 font-light">
@@ -395,10 +420,22 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
 
   if (isForgotPassword) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-indigo-500 selection:text-white">
+      <div className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative selection:bg-indigo-500 selection:text-white">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full"></div>
 
-        <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 animate-fade-in">
+        {/* Absolute floating controls */}
+        <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+          <Link
+            href="/"
+            className="w-10 h-10 rounded-xl bg-slate-900/60 dark:bg-slate-900/40 backdrop-blur-md hover:bg-slate-800 text-slate-700 dark:text-slate-350 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 flex items-center justify-center shadow-sm cursor-pointer transition-all duration-200 active:scale-95"
+            title="Kembali ke Beranda"
+          >
+            <Home className="w-5 h-5" />
+          </Link>
+          <PremiumThemeToggle />
+        </div>
+
+        <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 md:-translate-y-8 animate-fade-in">
           <button
             onClick={() => {
               setIsForgotPassword(false);
@@ -456,16 +493,23 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-indigo-500 selection:text-white">
-      {/* Absolute floating theme toggle */}
-      <div className="absolute top-6 right-6 z-20">
+    <div className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative selection:bg-indigo-500 selection:text-white">
+      {/* Absolute floating controls */}
+      <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+        <Link
+          href="/"
+          className="w-10 h-10 rounded-xl bg-slate-900/60 dark:bg-slate-900/40 backdrop-blur-md hover:bg-slate-800 text-slate-700 dark:text-slate-350 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 flex items-center justify-center shadow-sm cursor-pointer transition-all duration-200 active:scale-95"
+          title="Kembali ke Beranda"
+        >
+          <Home className="w-5 h-5" />
+        </Link>
         <PremiumThemeToggle />
       </div>
 
       {/* Background radial highlight */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full"></div>
 
-      <div className={`w-full ${isRegister ? 'max-w-xl' : 'max-w-md'} bg-slate-900/90 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 transition-all duration-300`}>
+      <div className={`w-full ${isRegister ? 'max-w-xl' : 'max-w-md'} bg-slate-900/90 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 md:-translate-y-8 transition-all duration-300`}>
 
         {/* Logo / Header */}
         <div className="flex flex-col items-center mb-8">

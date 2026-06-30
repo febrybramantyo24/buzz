@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { action, orderId, status, startCount, refundAmount, targetUserId, adjustmentType, amount, reason } = body;
+    const { action, orderId, status, startCount, remains, refundAmount, targetUserId, adjustmentType, amount, reason } = body;
 
     if (action === 'process_refund') {
       if (!orderId) {
@@ -323,9 +323,15 @@ export async function POST(request: Request) {
     // Update order status
     const isRefundedStatus = status === 'failed' || status === 'partial';
     await query(
-      'UPDATE orders SET status = $1, start_count = $2, payment_status = $3 WHERE id = $4',
-      [status, startCount || 0, isRefundedStatus ? 'refunded' : 'paid', orderId]
-    );
+  'UPDATE orders SET status = $1, start_count = $2, remains = $3, payment_status = $4 WHERE id = $5',
+  [
+    status,
+    startCount || 0,
+    remains !== undefined && remains !== null ? parseInt(remains) : (order.remains ?? 0),
+    isRefundedStatus ? 'refunded' : 'paid',
+    orderId
+  ]
+);
 
     // If status is changed to failed or partial, and order wasn't refunded before, process refund
     if (isRefundedStatus && order.payment_status !== 'refunded' && order.user_id) {

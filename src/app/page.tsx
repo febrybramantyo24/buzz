@@ -210,7 +210,7 @@ export default function LandingPage() {
                   <Zap className="w-5 h-5 text-white animate-pulse" />
                 )}
               </div>
-              <span className="font-extrabold text-xl tracking-tight text-slate-800 dark:text-white">
+              <span className="font-extrabold text-xl tracking-tight text-zinc-850 dark:text-white">
                 {brandName === 'Buzzify' ? (
                   <>Buzz<span className="text-indigo-600 dark:text-indigo-400">ify</span></>
                 ) : (
