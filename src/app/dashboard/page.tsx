@@ -51,9 +51,37 @@ import {
   Settings,
   Menu,
   ChevronLeft,
-  List
+  List,
+  Crown,
+  Trophy
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+// Leaderboard response typings
+interface LeaderboardResponse {
+  topOrders: Array<{
+    name: string;
+    totalSpent: number;
+    totalOrders: number;
+  }>;
+  topDeposits: Array<{
+    name: string;
+    totalDeposit: number;
+  }>;
+  topServicesCount: Array<{
+    name: string;
+    serviceId: string;
+    totalOrders: number;
+    totalQuantity: number;
+  }>;
+  topServicesRevenue: Array<{
+    name: string;
+    serviceId: string;
+    totalRevenue: number;
+    totalOrders: number;
+  }>;
+  period: string;
+}
 
 const formatNumberWithDots = (num: number | string | null | undefined): string => {
   if (num === null || num === undefined || num === 0 || num === '0' || num === '') return '';
@@ -214,7 +242,11 @@ export default function UserDashboard() {
   // UI states
   const [loading, setLoading] = useState(true);
   const [submittingOrder, setSubmittingOrder] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services' | 'leaderboard'>('dashboard');
+  const [leaderboardData, setLeaderboardData] = useState<any>(null);
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<'current' | 'last'>('current');
+  const [leaderboardSubTab, setLeaderboardSubTab] = useState<'orders' | 'deposits' | 'services'>('orders');
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [servicesSearchQuery, setServicesSearchQuery] = useState('');
   const [servicesCategoryFilter, setServicesCategoryFilter] = useState('all');
   const [servicesPage, setServicesPage] = useState(1);
@@ -296,6 +328,7 @@ export default function UserDashboard() {
   const [showNewsModal, setShowNewsModal] = useState(false);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isServicesCategoryDropdownOpen, setIsServicesCategoryDropdownOpen] = useState(false);
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [chartDataType, setChartDataType] = useState<'spending' | 'orders'>('spending');
@@ -340,7 +373,21 @@ export default function UserDashboard() {
     setFormError(null);
   };
 
-  const handleSidebarTabClick = (tab: 'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services', callback?: () => void) => {
+  const fetchLeaderboard = async (period: 'current' | 'last' = 'current') => {
+    setLeaderboardLoading(true);
+    try {
+      const res = await fetch(`/api/leaderboard?period=${period}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setLeaderboardData(data);
+    } catch (err) {
+      console.error('Failed to fetch leaderboard:', err);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
+
+  const handleSidebarTabClick = (tab: 'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services' | 'leaderboard', callback?: () => void) => {
     if (callback) callback();
     setActiveTab(tab);
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -384,6 +431,13 @@ export default function UserDashboard() {
     setDepMonthFilter('all');
     setTxYearFilter('2026');
   }, [activeTab, user]);
+
+  // Auto‑fetch leaderboard when tab becomes active
+  useEffect(() => {
+    if (activeTab === 'leaderboard') {
+      fetchLeaderboard(leaderboardPeriod);
+    }
+  }, [activeTab, leaderboardPeriod]);
 
   // Clear topup input box when the modal is closed
   useEffect(() => {
@@ -1891,6 +1945,17 @@ export default function UserDashboard() {
                     <MessageSquare className="w-4 h-4" />
                     <span>Tiket Bantuan</span>
                   </button>
+
+                  <button
+                    onClick={() => handleSidebarTabClick('leaderboard', () => fetchLeaderboard(leaderboardPeriod))}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'leaderboard'
+                      ? 'bg-amber-500/10 dark:bg-amber-500/15 text-amber-500 dark:text-amber-400'
+                      : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      }`}
+                  >
+                    <Crown className="w-4 h-4" />
+                    <span>Peringkat</span>
+                  </button>
                 </nav>
               </div>
             </div>
@@ -1916,7 +1981,7 @@ export default function UserDashboard() {
               {/* Mobile Burger Toggle */}
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-2 bg-white dark:bg-slate-800/60 hover:bg-slate-50 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-white rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center border border-slate-200 dark:border-slate-700/50 shadow-sm"
+                className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-indigo-600 dark:text-slate-300 dark:hover:text-slate-100 rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm"
                 title={isSidebarOpen ? "Sembunyikan Menu" : "Tampilkan Menu"}
               >
                 {isSidebarOpen ? (
@@ -1934,6 +1999,7 @@ export default function UserDashboard() {
                 {activeTab === 'transactions' && 'Log Mutasi Saldo'}
                 {activeTab === 'deposits' && 'Riwayat Deposit & Top Up'}
                 {activeTab === 'tickets' && 'Tiket Bantuan Pelanggan'}
+                {activeTab === 'leaderboard' && '🏆 Peringkat Pengguna'}
               </h1>
             </div>
 
@@ -2045,7 +2111,7 @@ export default function UserDashboard() {
                     <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-500/5 blur-3xl rounded-full"></div>
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Saldo Anda</span>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Saldo Anda</span>
                         <div className="text-3xl font-black text-slate-100 mt-1.5">{formatPrice(balance)}</div>
                       </div>
                       <div
@@ -2071,7 +2137,7 @@ export default function UserDashboard() {
                     <div className="absolute top-0 right-0 w-28 h-28 bg-purple-500/5 blur-3xl rounded-full"></div>
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Pesanan</span>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Pesanan</span>
                         <div className="text-3xl font-black text-slate-100 mt-1.5">{orders.length}</div>
                       </div>
                       <div
@@ -2081,7 +2147,7 @@ export default function UserDashboard() {
                         <ShoppingBag className="w-5.5 h-5.5" />
                       </div>
                     </div>
-                    <div className="mt-5 text-[11px] text-slate-450 dark:text-slate-500 font-medium">
+                    <div className="mt-5 text-[11px] text-slate-450 dark:text-slate-400 font-medium">
                       Semua transaksi pesanan yang pernah Anda buat
                     </div>
                   </div>
@@ -2094,7 +2160,7 @@ export default function UserDashboard() {
                         <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 blur-3xl rounded-full"></div>
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                               Layanan Aktif
                               {activeCount > 0 && (
                                 <span className="relative flex h-2 w-2">
@@ -2105,7 +2171,7 @@ export default function UserDashboard() {
                             </span>
                             <div className="text-3xl font-black text-slate-100 mt-1.5 flex items-baseline gap-2">
                               {activeCount}
-                              <span className="text-xs font-semibold text-slate-450 dark:text-slate-500">berjalan</span>
+                              <span className="text-xs font-semibold text-slate-450 dark:text-slate-400">berjalan</span>
                             </div>
                           </div>
                           <div
@@ -2115,7 +2181,7 @@ export default function UserDashboard() {
                             <Activity className="w-5.5 h-5.5" />
                           </div>
                         </div>
-                        <div className="mt-5 text-[11px] text-slate-455 dark:text-slate-500 font-medium">
+                        <div className="mt-5 text-[11px] text-slate-455 dark:text-slate-400 font-medium">
                           Pesanan Anda yang sedang dalam proses pengiriman
                         </div>
                       </div>
@@ -3459,7 +3525,7 @@ export default function UserDashboard() {
                                     <td className="py-4 px-4 text-center font-mono text-slate-700 dark:text-slate-300 font-semibold">
                                       {order.remains !== null && order.remains !== undefined ? order.remains.toLocaleString() : '-'}
                                     </td>
-                                    <td className="py-4 px-4 text-slate-500 dark:text-slate-450 font-medium">
+                                    <td className="py-4 px-4 text-slate-500 dark:text-slate-300 font-medium">
                                       {new Date(order.created_at).toLocaleString('id-ID', {
                                         dateStyle: 'medium',
                                         timeStyle: 'short'
@@ -3486,7 +3552,7 @@ export default function UserDashboard() {
                                                 description: `Pembelian Layanan: ${order.service_name}`,
                                                 status: order.status
                                               })}
-                                              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-350 transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-750 shadow-sm"
+                                              className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-slate-200 shadow-sm"
                                               title="Cetak Invoice"
                                             >
                                               <Printer className="w-3.5 h-3.5" />
@@ -3607,7 +3673,7 @@ export default function UserDashboard() {
 
                                     <div className="flex justify-between items-center">
                                       <span className="text-slate-400 font-medium">Mulai Count:</span>
-                                      <span className="font-mono text-slate-500 dark:text-slate-450">{order.start_count !== null && order.start_count !== undefined ? order.start_count.toLocaleString() : '-'}</span>
+                                      <span className="font-mono text-slate-500 dark:text-slate-300">{order.start_count !== null && order.start_count !== undefined ? order.start_count.toLocaleString() : '-'}</span>
                                     </div>
 
                                     <div className="flex justify-between items-center">
@@ -3680,7 +3746,7 @@ export default function UserDashboard() {
                         >
                           Sebelumnya
                         </button>
-                        <span className="text-xs text-slate-500 font-medium">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                           Menampilkan {((ordersPage - 1) * itemsPerPage) + 1} - {Math.min(ordersPage * itemsPerPage, filteredOrders.length)} dari {filteredOrders.length} orderan
                         </span>
                         <button
@@ -3774,7 +3840,7 @@ export default function UserDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     {/* Pencarian */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Cari Mutasi</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2">Cari Mutasi</label>
                       <div className="flex gap-2">
                         <select
                           value={txSearchType}
@@ -3805,7 +3871,7 @@ export default function UserDashboard() {
 
                     {/* Filter Tipe Mutasi */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Tipe Mutasi</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2">Tipe Mutasi</label>
                       <select
                         value={txTypeFilter}
                         onChange={(e) => setTxTypeFilter(e.target.value)}
@@ -3820,7 +3886,7 @@ export default function UserDashboard() {
 
                     {/* Filter Bulan */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Bulan</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2">Bulan</label>
                       <select
                         value={txMonthFilter}
                         onChange={(e) => setTxMonthFilter(e.target.value)}
@@ -3844,7 +3910,7 @@ export default function UserDashboard() {
 
                     {/* Filter Tahun */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Tahun</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2">Tahun</label>
                       <select
                         value={txYearFilter}
                         onChange={(e) => setTxYearFilter(e.target.value)}
@@ -3951,7 +4017,7 @@ export default function UserDashboard() {
                                     <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 leading-snug">
                                       {formattedDescription}
                                     </span>
-                                    <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-1">
+                                    <span className="block text-[10px] text-slate-400 dark:text-slate-300 font-medium mt-1">
                                       {dateStr}
                                     </span>
                                   </div>
@@ -3964,7 +4030,7 @@ export default function UserDashboard() {
                                     }`}>
                                     {isAddition ? '+' : '-'}{formatPrice(Math.abs(displayAmount))}
                                   </span>
-                                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 font-semibold mt-1">
+                                  <span className="block text-[10px] text-slate-450 dark:text-slate-300 font-semibold mt-1">
                                     Saldo Akhir: {balanceAfterStr}
                                   </span>
                                 </div>
@@ -4058,7 +4124,7 @@ export default function UserDashboard() {
                                     <span className="block text-[11px] font-bold text-slate-200 truncate leading-tight">
                                       {formattedDescription}
                                     </span>
-                                    <span className="block text-[9px] text-slate-500 font-medium mt-1">
+                                    <span className="block text-[9px] text-slate-500 dark:text-slate-400 font-medium mt-1">
                                       {dateStr}
                                     </span>
                                   </div>
@@ -4071,7 +4137,7 @@ export default function UserDashboard() {
                                     }`}>
                                     {isAddition ? '+' : '-'}{formatPrice(Math.abs(displayAmount))}
                                   </span>
-                                  <span className="block text-[9px] text-slate-500 font-medium mt-0.5">
+                                  <span className="block text-[9px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                                     {balanceAfterStr}
                                   </span>
                                 </div>
@@ -4090,7 +4156,7 @@ export default function UserDashboard() {
                           >
                             Sebelumnya
                           </button>
-                          <span className="text-xs text-slate-500 font-medium">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                             Menampilkan {((transactionsPage - 1) * itemsPerPage) + 1} - {Math.min(transactionsPage * itemsPerPage, mutationTxs.length)} dari {mutationTxs.length} transaksi
                           </span>
                           <button
@@ -4194,7 +4260,7 @@ export default function UserDashboard() {
                         <CheckCircle className="w-6 h-6" />
                       </div>
                       <div>
-                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Berhasil</span>
+                        <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-0.5">Total Deposit Berhasil</span>
                         <div className="flex items-baseline gap-2">
                           <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{formatPrice(totalSuccessAmount)}</span>
                           <span className="text-[11px] font-medium text-slate-550 dark:text-slate-400">({totalSuccessCount} Transaksi)</span>
@@ -4207,7 +4273,7 @@ export default function UserDashboard() {
                         <XCircle className="w-6 h-6" />
                       </div>
                       <div>
-                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-0.5">Total Deposit Gagal</span>
+                        <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-0.5">Total Deposit Gagal</span>
                         <div className="flex items-baseline gap-2">
                           <span className="text-lg font-extrabold text-rose-600 dark:text-rose-400">{formatPrice(totalFailedAmount)}</span>
                           <span className="text-[11px] font-medium text-slate-550 dark:text-slate-400">({totalFailedCount} Transaksi)</span>
@@ -4220,7 +4286,7 @@ export default function UserDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                     {/* Pencarian */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Cari Deposit</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2">Cari Deposit</label>
                       <div className="flex gap-2">
                         <select
                           value={txSearchType}
@@ -4251,7 +4317,7 @@ export default function UserDashboard() {
 
                     {/* Filter Bulan */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Bulan</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2">Bulan</label>
                       <select
                         value={depMonthFilter}
                         onChange={(e) => setDepMonthFilter(e.target.value)}
@@ -4275,7 +4341,7 @@ export default function UserDashboard() {
 
                     {/* Filter Tahun */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Tahun</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2">Tahun</label>
                       <select
                         value={txYearFilter}
                         onChange={(e) => setTxYearFilter(e.target.value)}
@@ -4290,7 +4356,7 @@ export default function UserDashboard() {
 
                     {/* Filter Metode */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Metode Pembayaran</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2">Metode Pembayaran</label>
                       <select
                         value={txMethodFilter}
                         onChange={(e) => setTxMethodFilter(e.target.value)}
@@ -4307,7 +4373,7 @@ export default function UserDashboard() {
 
                     {/* Filter Status */}
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Status Pembayaran</label>
+                      <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2">Status Pembayaran</label>
                       <select
                         value={txStatusFilter}
                         onChange={(e) => setTxStatusFilter(e.target.value)}
@@ -4332,7 +4398,7 @@ export default function UserDashboard() {
                       <div className="hidden md:block overflow-x-auto scrollbar-thin font-inter">
                         <table className="w-full min-w-[750px] text-left border-collapse text-xs">
                           <thead>
-                            <tr className="border-b border-slate-850 text-slate-450 text-xs font-semibold uppercase tracking-wider">
+                            <tr className="border-b border-slate-850 text-slate-300 text-xs font-semibold uppercase tracking-wider">
                               <th className="py-4 px-4">ID</th>
                               <th className="py-4 px-4">Tanggal</th>
                               <th className="py-4 px-4">Metode & Keterangan</th>
@@ -4370,11 +4436,11 @@ export default function UserDashboard() {
 
                                 return (
                                   <tr key={tx.id} className="hover:bg-slate-900/30 transition-colors">
-                                    <td className="py-4 px-4 font-mono text-slate-400">
+                                    <td className="py-4 px-4 font-mono text-slate-300">
                                       {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 6)}
                                     </td>
-                                    <td className="py-4 px-4 text-slate-500">{dateStr}</td>
-                                    <td className="py-4 px-4 font-medium text-slate-650 dark:text-slate-350">
+                                    <td className="py-4 px-4 text-slate-300">{dateStr}</td>
+                                    <td className="py-4 px-4 font-medium text-slate-650 dark:text-slate-200">
                                       <div className="flex items-center gap-1.5">
                                         <span className="font-semibold">{formatPaymentMethod(tx.payment_method)}</span>
                                         <span className="text-[10px] text-slate-500 px-1.5 py-0.5 rounded bg-slate-950/45 border border-slate-850 uppercase font-mono">
@@ -4382,7 +4448,7 @@ export default function UserDashboard() {
                                         </span>
                                       </div>
                                       {tx.description && (
-                                        <div className="text-[10px] text-slate-500 mt-1 max-w-[320px] leading-relaxed font-light">{tx.description}</div>
+                                        <div className="text-[10px] text-slate-400 mt-1 max-w-[320px] leading-relaxed font-light">{tx.description}</div>
                                       )}
                                     </td>
                                     <td className={`py-4 px-4 font-bold text-sm ${isAddition ? 'text-emerald-500' : 'text-red-455'}`}>
@@ -4402,12 +4468,13 @@ export default function UserDashboard() {
                                       </span>
                                     </td>
                                     <td className="py-4 px-4 text-left">
-                                      <div className="flex gap-2">
+                                      <div className="flex gap-1.5">
                                         <button
                                           onClick={() => setSelectedTxDetail(tx)}
-                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/15"
+                                          className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-indigo-100/50 dark:border-indigo-500/10 shadow-sm"
+                                          title="Detail Transaksi"
                                         >
-                                          <span>Detail</span>
+                                          <Eye className="w-3.5 h-3.5" />
                                         </button>
                                         {tx.status === 'success' && (
                                           <button
@@ -4420,10 +4487,10 @@ export default function UserDashboard() {
                                               description: 'Top Up Saldo Akun',
                                               status: tx.status
                                             })}
-                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-855 text-slate-700 dark:text-slate-300 text-[10px] font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap border border-slate-200 dark:border-slate-750 shadow-sm"
+                                            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-350 transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-750 shadow-sm"
+                                            title="Cetak Invoice"
                                           >
-                                            <Printer className="w-3 h-3" />
-                                            <span>Invoice</span>
+                                            <Printer className="w-3.5 h-3.5" />
                                           </button>
                                         )}
                                       </div>
@@ -4467,7 +4534,7 @@ export default function UserDashboard() {
                                   <span className="font-mono font-extrabold text-indigo-655 dark:text-indigo-400">
                                     {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 6)}
                                   </span>
-                                  <span className="text-slate-400 dark:text-slate-500 font-medium">{dateStr}</span>
+                                  <span className="text-slate-400 dark:text-slate-300 font-medium">{dateStr}</span>
                                 </div>
 
                                 <div className="border-t border-b border-slate-200/60 dark:border-slate-900/40 py-3 space-y-2">
@@ -4484,13 +4551,13 @@ export default function UserDashboard() {
 
                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                   <div>
-                                    <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Saldo Didapat</span>
+                                    <span className="text-[8px] text-slate-400 dark:text-slate-300 uppercase tracking-widest font-black block mb-0.5">Saldo Didapat</span>
                                     <span className="font-extrabold text-xs text-emerald-650 dark:text-emerald-400">
                                       +{formatPrice(Math.abs(creditedAmount))}
                                     </span>
                                   </div>
                                   <div>
-                                    <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block mb-0.5">Total Bayar</span>
+                                    <span className="text-[8px] text-slate-400 dark:text-slate-300 uppercase tracking-widest font-black block mb-0.5">Total Bayar</span>
                                     <span className="font-extrabold text-xs text-slate-105">
                                       {formatPrice(Math.abs(baseAmount))}
                                     </span>
@@ -4548,7 +4615,7 @@ export default function UserDashboard() {
                           >
                             Sebelumnya
                           </button>
-                          <span className="text-xs text-slate-500 font-medium">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                             Menampilkan {((transactionsPage - 1) * itemsPerPage) + 1} - {Math.min(transactionsPage * itemsPerPage, depositTxs.length)} dari {depositTxs.length} transaksi
                           </span>
                           <button
@@ -4665,7 +4732,7 @@ export default function UserDashboard() {
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-extrabold text-zinc-500 dark:text-slate-400 uppercase tracking-wider mb-2">Gambar <span className="text-zinc-400 dark:text-slate-500">*Tidak wajib</span></label>
+                        <label className="block text-[10px] font-extrabold text-zinc-500 dark:text-slate-400 uppercase tracking-wider mb-2">Gambar <span className="text-zinc-400 dark:text-slate-400">*Tidak wajib</span></label>
                         <div className="flex items-center gap-3">
                           <input
                             type="file"
@@ -4843,9 +4910,14 @@ export default function UserDashboard() {
                               <td className="py-4 px-6 text-left">
                                 <button
                                   onClick={() => fetchTicketDetails(ticket.id)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/15"
+                                  className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-indigo-100/50 dark:border-indigo-500/10 shadow-sm"
+                                  title={ticket.status === 'Closed' ? 'Lihat Tiket' : 'Balas Tiket'}
                                 >
-                                  <span>{ticket.status === 'Closed' ? 'Lihat' : 'Balas'}</span>
+                                  {ticket.status === 'Closed' ? (
+                                    <Eye className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                  )}
                                 </button>
                               </td>
                             </tr>
@@ -4988,7 +5060,7 @@ export default function UserDashboard() {
                 </div>
 
                 {/* Filter and Search Bar */}
-                <div className="bg-slate-900 border border-slate-800/80 p-5 rounded-3xl backdrop-blur-md shadow-sm space-y-4">
+                <div className="relative z-30 bg-slate-900 border border-slate-800/80 p-5 rounded-3xl backdrop-blur-md shadow-sm space-y-4">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     {/* Search Input */}
                     <div className="relative flex-1">
@@ -5021,32 +5093,63 @@ export default function UserDashboard() {
                     </div>
                   </div>
 
-                  {/* Horizontal Scrollable Categories Filter */}
-                  <div>
+                  {/* Dropdown Categories Filter */}
+                  <div className="relative">
                     <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Filter Kategori</label>
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-                      <button
-                        onClick={() => { setServicesCategoryFilter('all'); setServicesPage(1); }}
-                        className={`px-4 py-2 rounded-2xl text-[11px] font-extrabold whitespace-nowrap transition-all cursor-pointer border ${servicesCategoryFilter === 'all'
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-600/20'
-                          : 'bg-slate-950/30 hover:bg-slate-850 text-slate-400 dark:text-slate-400 border-slate-850 hover:text-slate-200'
-                          }`}
-                      >
-                        Semua Kategori
-                      </button>
-                      {categories.map((cat) => (
-                        <button
-                          key={cat}
-                          onClick={() => { setServicesCategoryFilter(cat); setServicesPage(1); }}
-                          className={`px-4 py-2 rounded-2xl text-[11px] font-extrabold whitespace-nowrap transition-all cursor-pointer border ${servicesCategoryFilter === cat
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-600/20'
-                            : 'bg-slate-950/30 hover:bg-slate-850 text-slate-400 dark:text-slate-400 border-slate-850 hover:text-slate-200'
-                            }`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsServicesCategoryDropdownOpen(!isServicesCategoryDropdownOpen)}
+                      className="w-full md:w-72 flex items-center justify-between bg-slate-950/40 border border-slate-805 dark:border-slate-850 focus:border-indigo-500 text-slate-100 px-4 py-3 rounded-xl outline-none transition-all text-xs text-left cursor-pointer font-semibold"
+                    >
+                      <span className="truncate">
+                        {servicesCategoryFilter === 'all' ? 'Semua Kategori' : servicesCategoryFilter}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isServicesCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isServicesCategoryDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setIsServicesCategoryDropdownOpen(false)}
+                        />
+                        <div className="absolute left-0 mt-1.5 w-full md:w-72 bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
+                          <div className="overflow-y-auto scrollbar-thin py-1 flex-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setServicesCategoryFilter('all');
+                                setServicesPage(1);
+                                setIsServicesCategoryDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-500 dark:text-indigo-400 transition-colors ${servicesCategoryFilter === 'all'
+                                ? 'bg-indigo-600/20 text-indigo-450 font-semibold'
+                                : 'text-slate-300 dark:text-slate-300'
+                                }`}
+                            >
+                              Semua Kategori
+                            </button>
+                            {categories.map((cat) => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => {
+                                  setServicesCategoryFilter(cat);
+                                  setServicesPage(1);
+                                  setIsServicesCategoryDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-500 dark:text-indigo-400 transition-colors ${servicesCategoryFilter === cat
+                                  ? 'bg-indigo-600/20 text-indigo-450 font-semibold'
+                                  : 'text-slate-350 dark:text-slate-300'
+                                  }`}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -5116,9 +5219,10 @@ export default function UserDashboard() {
                                     <td className="py-3.5 px-4 text-center">
                                       <button
                                         onClick={() => handleQuickOrder(srv)}
-                                        className="inline-flex items-center gap-2 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-indigo-50/50 hover:to-indigo-100/50 dark:from-slate-800 dark:to-slate-850 dark:hover:from-slate-750 dark:hover:to-slate-800 text-slate-855 dark:text-slate-200 border border-slate-250 dark:border-slate-700/50 font-black px-3.5 py-1.5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 text-[10px] justify-center cursor-pointer"
+                                        className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-indigo-100/50 dark:border-indigo-500/10 shadow-sm"
+                                        title="Pesan Layanan"
                                       >
-                                        Pesan
+                                        <ShoppingBag className="w-3.5 h-3.5" />
                                       </button>
                                     </td>
                                   </tr>
@@ -5232,6 +5336,242 @@ export default function UserDashboard() {
                 </div>
               </div>
             )}
+
+            {/* ===================== LEADERBOARD TAB ===================== */}
+            {activeTab === 'leaderboard' && (
+              <div className="space-y-6 animate-fade-in-up">
+                {/* Period Toggle */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => { setLeaderboardPeriod('current'); fetchLeaderboard('current'); }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${leaderboardPeriod === 'current'
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                      : 'bg-slate-850 dark:bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      }`}
+                  >
+                    Bulan Ini
+                  </button>
+                  <button
+                    onClick={() => { setLeaderboardPeriod('last'); fetchLeaderboard('last'); }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${leaderboardPeriod === 'last'
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                      : 'bg-slate-850 dark:bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      }`}
+                  >
+                    Lihat Bulan Lalu
+                  </button>
+                </div>
+
+                {/* Sub-Tab Navigation */}
+                <div className="flex gap-2 flex-wrap">
+                  {([
+                    { id: 'orders' as const, label: 'Top 10 Pemesanan', icon: '🛒' },
+                    { id: 'deposits' as const, label: 'Top 10 Deposit', icon: '💰' },
+                    { id: 'services' as const, label: 'Top 10 Layanan', icon: '🔥' },
+                  ]).map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setLeaderboardSubTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${leaderboardSubTab === tab.id
+                        ? 'bg-indigo-500/15 dark:bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30'
+                        : 'bg-slate-850 dark:bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                        }`}
+                    >
+                      <span>{tab.icon}</span>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Loading State */}
+                {leaderboardLoading && (
+                  <div className="flex items-center justify-center py-20">
+                    <RefreshCw className="w-6 h-6 text-indigo-500 animate-spin" />
+                    <span className="ml-3 text-sm text-slate-400 font-medium">Memuat data peringkat...</span>
+                  </div>
+                )}
+
+                {/* No data */}
+                {!leaderboardLoading && !leaderboardData && (
+                  <div className="text-center py-20">
+                    <Crown className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-400 text-sm font-medium">Klik salah satu tab untuk memuat data peringkat.</p>
+                  </div>
+                )}
+
+                {/* ===== TOP ORDERS ===== */}
+                {!leaderboardLoading && leaderboardData && leaderboardSubTab === 'orders' && (() => {
+                  const items = leaderboardData.topOrders || [];
+                  const maxVal = items[0]?.totalSpent || 1;
+                  return (
+                    <div className="bg-slate-850 dark:bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-amber-500" />
+                        <h3 className="announcement-content-text text-sm font-extrabold">
+                          Top Pemesanan {leaderboardPeriod === 'current' ? 'Bulan Ini' : 'Bulan Lalu'}
+                        </h3>
+                      </div>
+                      {items.length === 0 ? (
+                        <div className="py-12 text-center text-slate-500 text-xs">Belum ada data pemesanan.</div>
+                      ) : (
+                        <div className="divide-y divide-slate-800/50">
+                          {items.map((item: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-800/30 dark:hover:bg-slate-950/30 transition-all group" style={{ animationDelay: `${idx * 50}ms` }}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${idx === 0 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-500/30' :
+                                idx === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-lg shadow-slate-400/20' :
+                                  idx === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white shadow-lg shadow-amber-700/20' :
+                                    'bg-slate-800 dark:bg-slate-850 text-slate-400 border border-slate-700'
+                                }`}>
+                                #{idx + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="announcement-content-text text-sm font-bold block truncate">{item.name}</span>
+                                <div className="mt-1 h-1.5 bg-slate-800 dark:bg-slate-950 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500" style={{ width: `${Math.max((item.totalSpent / maxVal) * 100, 5)}%` }} />
+                                </div>
+                              </div>
+                              <span className="announcement-content-text text-sm font-extrabold tabular-nums shrink-0">
+                                Rp {Number(item.totalSpent).toLocaleString('id-ID')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* ===== TOP DEPOSITS ===== */}
+                {!leaderboardLoading && leaderboardData && leaderboardSubTab === 'deposits' && (() => {
+                  const items = leaderboardData.topDeposits || [];
+                  const maxVal = items[0]?.totalDeposit || 1;
+                  return (
+                    <div className="bg-slate-850 dark:bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-amber-500" />
+                        <h3 className="announcement-content-text text-sm font-extrabold">
+                          Top Deposit {leaderboardPeriod === 'current' ? 'Bulan Ini' : 'Bulan Lalu'}
+                        </h3>
+                      </div>
+                      {items.length === 0 ? (
+                        <div className="py-12 text-center text-slate-500 text-xs">Belum ada data deposit.</div>
+                      ) : (
+                        <div className="divide-y divide-slate-800/50">
+                          {items.map((item: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-800/30 dark:hover:bg-slate-950/30 transition-all group">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${idx === 0 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-500/30' :
+                                idx === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-lg shadow-slate-400/20' :
+                                  idx === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white shadow-lg shadow-amber-700/20' :
+                                    'bg-slate-800 dark:bg-slate-850 text-slate-400 border border-slate-700'
+                                }`}>
+                                #{idx + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="announcement-content-text text-sm font-bold block truncate">{item.name}</span>
+                                <div className="mt-1 h-1.5 bg-slate-800 dark:bg-slate-950 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500" style={{ width: `${Math.max((item.totalDeposit / maxVal) * 100, 5)}%` }} />
+                                </div>
+                              </div>
+                              <span className="announcement-content-text text-sm font-extrabold tabular-nums shrink-0">
+                                Rp {Number(item.totalDeposit).toLocaleString('id-ID')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* ===== TOP SERVICES (Side-by-Side) ===== */}
+                {!leaderboardLoading && leaderboardData && leaderboardSubTab === 'services' && (() => {
+                  const countItems = leaderboardData.topServicesCount || [];
+                  const revenueItems = leaderboardData.topServicesRevenue || [];
+                  const maxCount = countItems[0]?.totalOrders || 1;
+                  const maxRevenue = revenueItems[0]?.totalRevenue || 1;
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                      {/* Layanan Terlaris (by count) */}
+                      <div className="bg-slate-850 dark:bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                        <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-orange-500" />
+                          <h3 className="announcement-content-text text-sm font-extrabold">
+                            Layanan Terlaris {leaderboardPeriod === 'current' ? 'Bulan Ini' : 'Bulan Lalu'}
+                          </h3>
+                        </div>
+                        {countItems.length === 0 ? (
+                          <div className="py-12 text-center text-slate-500 text-xs">Belum ada data layanan.</div>
+                        ) : (
+                          <div className="divide-y divide-slate-800/50">
+                            {countItems.map((item: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800/30 dark:hover:bg-slate-950/30 transition-all">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${idx === 0 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white' :
+                                  idx === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white' :
+                                    idx === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white' :
+                                      'bg-slate-800 dark:bg-slate-850 text-slate-400 border border-slate-700'
+                                  }`}>
+                                  #{idx + 1}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="announcement-content-text text-[11px] font-bold block leading-tight" title={item.name}>{item.name}</span>
+                                  <div className="mt-1 h-1 bg-slate-800 dark:bg-slate-950 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-500" style={{ width: `${Math.max((item.totalOrders / maxCount) * 100, 5)}%` }} />
+                                  </div>
+                                </div>
+                                <span className="text-slate-400 text-[11px] font-bold tabular-nums shrink-0">
+                                  {item.totalOrders.toLocaleString('id-ID')}x dipesan
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Penjualan Tertinggi (by revenue) */}
+                      <div className="bg-slate-850 dark:bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                        <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-violet-500" />
+                          <h3 className="announcement-content-text text-sm font-extrabold">
+                            Penjualan Tertinggi {leaderboardPeriod === 'current' ? 'Bulan Ini' : 'Bulan Lalu'}
+                          </h3>
+                        </div>
+                        {revenueItems.length === 0 ? (
+                          <div className="py-12 text-center text-slate-500 text-xs">Belum ada data penjualan.</div>
+                        ) : (
+                          <div className="divide-y divide-slate-800/50">
+                            {revenueItems.map((item: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800/30 dark:hover:bg-slate-950/30 transition-all">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${idx === 0 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white' :
+                                  idx === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white' :
+                                    idx === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white' :
+                                      'bg-slate-800 dark:bg-slate-850 text-slate-400 border border-slate-700'
+                                  }`}>
+                                  #{idx + 1}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="announcement-content-text text-[11px] font-bold block leading-tight" title={item.name}>{item.name}</span>
+                                  <div className="mt-1 h-1 bg-slate-800 dark:bg-slate-950 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-500" style={{ width: `${Math.max((item.totalRevenue / maxRevenue) * 100, 5)}%` }} />
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className="announcement-content-text text-[11px] font-extrabold tabular-nums block">
+                                    Rp {Number(item.totalRevenue).toLocaleString('id-ID')}
+                                  </span>
+                                  <span className="text-slate-500 text-[9px] font-medium">
+                                    ({item.totalOrders.toLocaleString('id-ID')}x dipesan)
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </main>
         </div>
       </div>
@@ -5246,6 +5586,7 @@ export default function UserDashboard() {
             { id: 'history', label: 'Pesanan', icon: History, action: () => fetchOrders(user?.id) },
             { id: 'deposits', label: 'Deposit', icon: Wallet, action: () => fetchProfileAndTransactions(user?.id) },
             { id: 'tickets', label: 'Tiket', icon: MessageSquare, action: () => fetchTickets() },
+            { id: 'leaderboard', label: 'Peringkat', icon: Crown, action: () => fetchLeaderboard(leaderboardPeriod) },
           ].map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -5303,7 +5644,7 @@ export default function UserDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowDepositGuide(!showDepositGuide)}
-                  className="p-1 rounded-md bg-slate-950 hover:bg-rose-50/80 dark:bg-rose-950/15 hover:text-indigo-500 dark:text-indigo-400 transition-all cursor-pointer text-slate-500 shrink-0"
+                  className="p-1 rounded-md bg-white hover:bg-indigo-50 hover:text-indigo-500 dark:text-indigo-400 transition-all cursor-pointer text-slate-500 shrink-0 border border-slate-200 shadow-sm"
                   title="Lihat Panduan & Ketentuan"
                 >
                   <Info className="w-4 h-4" />
@@ -5326,7 +5667,7 @@ export default function UserDashboard() {
                     <h4 className="font-extrabold text-[11px] uppercase text-amber-500 tracking-wider mb-1">Penting:</h4>
                     <ul className="list-disc list-inside space-y-1 pl-0 text-slate-455 font-light">
                       <li>Anda hanya dapat memiliki maksimal <strong className="text-amber-500/90 font-bold">3 permintaan deposit Pending</strong>, jangan melakukan spam dan segera lunasi pembayaran.</li>
-                      <li>Jika permintaan deposit tidak dibayar dalam waktu lebih dari <strong className="text-slate-350 font-semibold">24 jam</strong>, maka permintaan deposit akan <strong className="text-red-400/90 font-bold">otomatis dibatalkan (Failed)</strong>.</li>
+                      <li>Jika permintaan deposit tidak dibayar dalam waktu lebih dari <strong className="text-slate-350 font-semibold"> 120 menit </strong>, maka permintaan deposit akan <strong className="text-red-400/90 font-bold">otomatis dibatalkan (Failed)</strong>.</li>
                     </ul>
                   </div>
                 </div>

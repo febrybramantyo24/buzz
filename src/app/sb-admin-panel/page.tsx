@@ -164,8 +164,17 @@ export default function AdminDashboard() {
   const [submittingBalance, setSubmittingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
 
+  // Edit User Modal State
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedEditUser, setSelectedEditUser] = useState<any>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editRole, setEditRole] = useState<'user' | 'admin'>('user');
+  const [submittingEditUser, setSubmittingEditUser] = useState(false);
+  const [editUserError, setEditUserError] = useState<string | null>(null);
+
   // Navigation tab
-  const [activeTab, setActiveTab] = useState<'orders' | 'services' | 'announcements' | 'transactions' | 'landing' | 'tickets'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'services' | 'announcements' | 'transactions' | 'landing' | 'tickets' | 'users'>('orders');
 
   // Service Form State
   const [serviceCategory, setServiceCategory] = useState('Instagram');
@@ -1286,9 +1295,9 @@ export default function AdminDashboard() {
       <div className="flex min-h-screen">
 
         {/* Left Sidebar */}
-        <aside className={`fixed top-0 left-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-y-auto md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        <aside className={`fixed top-0 left-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col transition-transform duration-300 ease-in-out shrink-0 md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}>
-          <div className="space-y-6">
+          <div className="space-y-6 overflow-y-auto flex-1 pr-1 scrollbar-thin">
             {/* Logo/Brand */}
             <div className="flex items-center gap-2.5 px-2">
               <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2.5 rounded-2xl shadow-md shadow-indigo-500/10 w-10 h-10 flex items-center justify-center overflow-hidden shrink-0">
@@ -1320,16 +1329,33 @@ export default function AdminDashboard() {
                       setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'orders'
-                        ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
-                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
                     <ShoppingBag className="w-4 h-4" />
                     <span>Manajemen Order</span>
                     <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold ${activeTab === 'orders'
-                        ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
-                        : 'bg-slate-800 text-slate-400 dark:text-slate-400'
+                      ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
+                      : 'bg-slate-800 text-slate-400 dark:text-slate-400'
                       }`}>{orders.length}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab('users');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'users'
+                      ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>Kelola User</span>
+                    <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold ${activeTab === 'users'
+                      ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
+                      : 'bg-slate-800 text-slate-400 dark:text-slate-400'
+                      }`}>{userProfiles.length}</span>
                   </button>
 
                   <button
@@ -1339,15 +1365,15 @@ export default function AdminDashboard() {
                       setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'transactions'
-                        ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
-                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
                     <CreditCard className="w-4 h-4" />
                     <span>Log Transaksi</span>
                     <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold ${activeTab === 'transactions'
-                        ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
-                        : 'bg-slate-800 text-slate-400 dark:text-slate-400'
+                      ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
+                      : 'bg-slate-800 text-slate-400 dark:text-slate-400'
                       }`}>{transactions.length}</span>
                   </button>
 
@@ -1358,15 +1384,15 @@ export default function AdminDashboard() {
                       setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'tickets'
-                        ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
-                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
                     <MessageSquare className="w-4 h-4" />
                     <span>Tiket Bantuan</span>
                     <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold ${activeTab === 'tickets'
-                        ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                        : 'bg-slate-800 text-slate-400 dark:text-slate-400'
+                      ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                      : 'bg-slate-800 text-slate-400 dark:text-slate-400'
                       }`}>{tickets.filter(t => t.status === 'Pending').length}</span>
                   </button>
                 </nav>
@@ -1381,15 +1407,15 @@ export default function AdminDashboard() {
                       setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'services'
-                        ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
-                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
                     <Settings className="w-4 h-4" />
                     <span>Atur Layanan</span>
                     <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold ${activeTab === 'services'
-                        ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
-                        : 'bg-slate-800 text-slate-400 dark:text-slate-400'
+                      ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400'
+                      : 'bg-slate-800 text-slate-400 dark:text-slate-400'
                       }`}>{services.length}</span>
                   </button>
 
@@ -1399,8 +1425,8 @@ export default function AdminDashboard() {
                       setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'announcements'
-                        ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
-                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-850/45 hover:text-slate-200 dark:hover:text-slate-200'
+                      ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-850/45 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
                     <Megaphone className="w-4 h-4" />
@@ -1414,8 +1440,8 @@ export default function AdminDashboard() {
                       setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'landing'
-                        ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
-                        : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-850/45 hover:text-slate-200 dark:hover:text-slate-200'
+                      ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-850/45 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
                     <Award className="w-4 h-4" />
@@ -1426,8 +1452,8 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Sidebar Footer Logout */}
-          <div className="pt-4 border-t border-slate-800 dark:border-slate-800/60">
+          {/* Sidebar Footer Logout - always pinned at bottom */}
+          <div className="pt-4 mt-4 border-t border-slate-800 dark:border-slate-800/60 shrink-0">
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/10 transition-all cursor-pointer text-left"
@@ -1459,6 +1485,7 @@ export default function AdminDashboard() {
                 {activeTab === 'transactions' && 'Log & Saldo Transaksi'}
                 {activeTab === 'landing' && 'Konfigurasi Landing Page'}
                 {activeTab === 'tickets' && 'Tiket Bantuan Pelanggan'}
+                {activeTab === 'users' && 'Kelola User'}
               </h1>
             </div>
 
@@ -1477,6 +1504,14 @@ export default function AdminDashboard() {
                 </div>
               )}
               <PremiumThemeToggle />
+              <button
+                onClick={handleLogout}
+                title="Keluar Akun"
+                className="h-9 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/20 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer flex items-center gap-1.5 shadow-sm text-xs font-semibold"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Keluar</span>
+              </button>
             </div>
           </header>
 
@@ -1589,8 +1624,8 @@ export default function AdminDashboard() {
                         key={status}
                         onClick={() => setOrderStatusFilter(status)}
                         className={`px-4 py-2 rounded-2xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer ${orderStatusFilter === status
-                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30'
-                            : 'bg-slate-950/60 text-slate-400 hover:text-slate-250 border border-slate-900'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30'
+                          : 'bg-slate-950/60 text-slate-400 hover:text-slate-250 border border-slate-900'
                           }`}
                       >
                         {status === 'all' ? 'Semua' : (status === 'failed' ? 'error' : status)}
@@ -1675,26 +1710,26 @@ export default function AdminDashboard() {
                                 <td className="py-4 px-3 font-semibold text-slate-200">
                                   <div className="flex flex-col gap-1 max-w-[280px]">
                                     {(() => {
-                                       const displaySrvId = getNumericId(order.service_id);
-                                       return (
-                                         <span className="font-bold text-slate-200 text-xs whitespace-normal break-words" title={order.service_name}>
-                                           [#{displaySrvId}] {order.service_name}
-                                         </span>
-                                       );
+                                      const displaySrvId = getNumericId(order.service_id);
+                                      return (
+                                        <span className="font-bold text-slate-200 text-xs whitespace-normal break-words" title={order.service_name}>
+                                          [#{displaySrvId}] {order.service_name}
+                                        </span>
+                                      );
                                     })()}
                                     <div className="flex gap-1.5 items-center flex-wrap">
                                       <span className={`px-1.5 py-0.5 rounded-md font-extrabold text-[8px] uppercase tracking-wider border w-fit ${getCategoryBadgeClass(order.category)}`}>
                                         {order.category}
                                       </span>
                                       {(() => {
-                                         const service = services.find(s => s.id === order.service_id);
-                                         const displayProvider = order.provider_id || (service ? service.provider_id : null) || 'manual';
-                                         return (
-                                           <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-800 text-slate-350 border border-slate-700/60 w-fit flex items-center gap-0.5">
-                                             🔌 {displayProvider}
-                                           </span>
-                                         );
-                                       })()}
+                                        const service = services.find(s => s.id === order.service_id);
+                                        const displayProvider = order.provider_id || (service ? service.provider_id : null) || 'manual';
+                                        return (
+                                          <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-800 text-slate-350 border border-slate-700/60 w-fit flex items-center gap-0.5">
+                                            🔌 {displayProvider}
+                                          </span>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 </td>
@@ -1890,30 +1925,30 @@ export default function AdminDashboard() {
                                 <span className="text-slate-400 font-medium">User:</span>
                                 <span className="font-semibold text-slate-200 truncate max-w-[180px]">{order.profiles?.email || 'User/Simulated'}</span>
                               </div>
-                               <div className="flex justify-between items-center text-xs">
+                              <div className="flex justify-between items-center text-xs">
                                 <span className="text-slate-400 font-medium">Layanan:</span>
                                 <div className="flex flex-col items-end gap-1 max-w-[280px]">
-                                   {(() => {
-                                      const displaySrvId = getNumericId(order.service_id);
-                                      return (
-                                        <span className="font-bold text-slate-100 text-right whitespace-normal break-words" title={order.service_name}>
-                                          [#{displaySrvId}] {order.service_name}
-                                        </span>
-                                      );
-                                   })()}
+                                  {(() => {
+                                    const displaySrvId = getNumericId(order.service_id);
+                                    return (
+                                      <span className="font-bold text-slate-100 text-right whitespace-normal break-words" title={order.service_name}>
+                                        [#{displaySrvId}] {order.service_name}
+                                      </span>
+                                    );
+                                  })()}
                                   <div className="flex gap-1 items-center flex-wrap">
                                     <span className={`px-1.5 py-0.5 rounded-md font-extrabold text-[8px] uppercase tracking-wider border w-fit ${getCategoryBadgeClass(order.category)}`}>
                                       {order.category}
                                     </span>
                                     {(() => {
-                                       const service = services.find(s => s.id === order.service_id);
-                                       const displayProvider = order.provider_id || (service ? service.provider_id : null) || 'manual';
-                                       return (
-                                         <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-800 text-slate-350 border border-slate-700/60 w-fit flex items-center gap-0.5">
-                                           🔌 {displayProvider}
-                                         </span>
-                                       );
-                                     })()}
+                                      const service = services.find(s => s.id === order.service_id);
+                                      const displayProvider = order.provider_id || (service ? service.provider_id : null) || 'manual';
+                                      return (
+                                        <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-800 text-slate-350 border border-slate-700/60 w-fit flex items-center gap-0.5">
+                                          🔌 {displayProvider}
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
                               </div>
@@ -2097,7 +2132,7 @@ export default function AdminDashboard() {
             {/* Tab 2: Service Management */}
             {activeTab === 'services' && (
               <div className="space-y-6">
-                
+
                 {/* Clean Header Panel with Action Button */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900 border border-slate-800/80 p-6 sm:p-8 rounded-3xl shadow-sm">
                   <div>
@@ -2180,16 +2215,16 @@ export default function AdminDashboard() {
 
                                   <div className="text-zinc-500 dark:text-zinc-400 font-medium flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
                                     <span className="flex items-center gap-1">
-                                      <span className="text-zinc-500 dark:text-zinc-400">Min:</span> <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{service.min_order.toLocaleString()}</strong>
+                                      <span className="text-zinc-600 dark:text-zinc-400">Min:</span> <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{service.min_order.toLocaleString()}</strong>
                                     </span>
-                                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                                    <span className="text-slate-400 dark:text-slate-600">•</span>
                                     <span className="flex items-center gap-1">
-                                      <span className="text-zinc-500 dark:text-zinc-400">Max:</span> <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{service.max_order.toLocaleString()}</strong>
+                                      <span className="text-zinc-600 dark:text-zinc-400">Max:</span> <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{service.max_order.toLocaleString()}</strong>
                                     </span>
                                     {service.created_at && (
                                       <>
-                                        <span className="text-slate-300 dark:text-slate-700">•</span>
-                                        <span className="text-zinc-500 dark:text-zinc-400">
+                                        <span className="text-slate-400 dark:text-slate-600">•</span>
+                                        <span className="text-zinc-600 dark:text-zinc-400">
                                           Dibuat: <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{new Date(service.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
                                         </span>
                                       </>
@@ -2218,7 +2253,7 @@ export default function AdminDashboard() {
 
                               <div className="flex sm:flex-row items-center gap-4 shrink-0 justify-end w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-850">
                                 <div className="text-right">
-                                  <div className="text-[10px] text-slate-500 font-medium">Harga / 1K</div>
+                                  <div className="text-[10px] text-slate-600 dark:text-slate-500 font-medium">Harga / 1K</div>
                                   <div className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">
                                     Rp {Number(service.price_per_k).toLocaleString('id-ID')}
                                   </div>
@@ -2234,11 +2269,10 @@ export default function AdminDashboard() {
                                         .eq('id', service.id);
                                       if (!error) fetchServices();
                                     }}
-                                    className={`p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${
-                                      service.is_recommended
-                                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
-                                        : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                                    }`}
+                                    className={`p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${service.is_recommended
+                                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                                      : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                                      }`}
                                     title={service.is_recommended ? 'Rekomendasi Aktif' : 'Atur Sebagai Rekomendasi'}
                                   >
                                     <Star className={`w-3.5 h-3.5 ${service.is_recommended ? 'fill-amber-500' : ''}`} />
@@ -2297,7 +2331,7 @@ export default function AdminDashboard() {
                 {showServiceFormModal && (
                   <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
                     <div className="bg-slate-900 border border-slate-800/80 shadow-2xl rounded-3xl w-full max-w-3xl overflow-hidden relative max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-200">
-                      
+
                       {/* Modal Header */}
                       <div className="flex items-center justify-between px-6 py-5 border-b border-slate-850 bg-slate-900/90 backdrop-blur-md sticky top-0 z-10">
                         <div className="flex items-center gap-2">
@@ -2320,7 +2354,7 @@ export default function AdminDashboard() {
                       {/* Modal Body */}
                       <div className="p-6 overflow-y-auto space-y-6 flex-1 min-h-0 scrollbar-thin">
                         <form id="service-form" onSubmit={handleSaveService} className="space-y-6">
-                          
+
                           {/* Main Info Row */}
                           <div className="grid md:grid-cols-2 gap-5">
                             {/* Category */}
@@ -2601,7 +2635,7 @@ export default function AdminDashboard() {
                                                       value={providerCategorySearch}
                                                       onChange={(e) => setProviderCategorySearch(e.target.value)}
                                                       className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 pl-8 pr-3 py-1.5 rounded-lg outline-none text-[11px] placeholder:text-slate-500"
-                                                      onClick={(e) => e.stopPropagation()} 
+                                                      onClick={(e) => e.stopPropagation()}
                                                     />
                                                     {providerCategorySearch && (
                                                       <button
@@ -3134,104 +3168,10 @@ export default function AdminDashboard() {
 
             {/* Tab 4: Transactions & Balances Logs */}
             {activeTab === 'transactions' && (
-              <div className="grid lg:grid-cols-3 gap-8 items-start">
-
-                {/* User Balances List */}
-                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md flex flex-col max-h-[640px]">
-                  <h3 className="font-bold text-base text-slate-200 mb-2 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-                    <span>Saldo Akun User</span>
-                  </h3>
-                  <p className="text-xs text-slate-400 mb-4 font-light">
-                    Daftar lengkap saldo tersimpan user terdaftar di sistem.
-                  </p>
-
-                  {/* User search box */}
-                  <div className="relative mb-4 shrink-0">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-550" />
-                    <input
-                      type="text"
-                      placeholder="Cari email user..."
-                      value={userSearchTerm}
-                      onChange={(e) => setUserSearchTerm(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-855 focus:border-indigo-500 text-slate-200 pl-10 pr-4 py-2 rounded-xl outline-none transition-colors text-xs"
-                    />
-                  </div>
-
-                  {/* Scrollable list */}
-                  <div className="divide-y divide-slate-850 overflow-y-auto pr-1 flex-1 max-h-[480px]">
-                    {(() => {
-                      const filteredUsers = userProfiles.filter(prof =>
-                        (prof.email || '').toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                        prof.id.toLowerCase().includes(userSearchTerm.toLowerCase())
-                      );
-
-                      if (filteredUsers.length === 0) {
-                        return <div className="py-8 text-center text-slate-500 text-xs">Tidak ada user ditemukan.</div>;
-                      }
-
-                      return (
-                        <>
-                          {filteredUsers
-                            .slice((usersPage - 1) * 10, usersPage * 10)
-                            .map(prof => (
-                              <div key={prof.id} className="py-3.5 flex justify-between items-center gap-2 text-xs">
-                                <div className="truncate min-w-0 flex-1">
-                                  <span className="font-bold text-slate-250 block truncate pr-2">{prof.email}</span>
-                                  <span className="text-[10px] text-slate-550 font-mono block mt-0.5">{prof.id.slice(0, 8)}</span>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <div className="text-right">
-                                    <span className="font-extrabold text-white block">{formatPrice(prof.balance || 0)}</span>
-                                    <span className="text-[9px] text-slate-500 uppercase tracking-wider block mt-0.5">{prof.role}</span>
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedUserForBalance(prof);
-                                      setAdjustmentAmount(0);
-                                      setAdjustmentType('add');
-                                      setAdjustmentReason('');
-                                      setBalanceError(null);
-                                      setShowBalanceModal(true);
-                                    }}
-                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 hover:border-slate-600 transition-all cursor-pointer"
-                                    title="Kelola Saldo"
-                                  >
-                                    <Wallet className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-
-                          {filteredUsers.length > 10 && (
-                            <div className="flex justify-between items-center gap-2 pt-3 border-t border-slate-850 mt-3 shrink-0">
-                              <button
-                                type="button"
-                                disabled={usersPage === 1}
-                                onClick={() => setUsersPage(prev => Math.max(1, prev - 1))}
-                                className="bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 disabled:opacity-40 disabled:hover:border-slate-850 text-slate-350 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-                              >
-                                Sebelumnya
-                              </button>
-                              <span className="text-[10px] text-slate-500 font-medium">Hal {usersPage} dari {Math.ceil(filteredUsers.length / 10)}</span>
-                              <button
-                                type="button"
-                                disabled={usersPage >= Math.ceil(filteredUsers.length / 10)}
-                                onClick={() => setUsersPage(prev => prev + 1)}
-                                className="bg-slate-950 hover:bg-slate-900 border border-slate-855 hover:border-slate-800 disabled:opacity-40 disabled:hover:border-slate-855 text-slate-350 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-                              >
-                                Selanjutnya
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
+              <div className="space-y-6">
 
                 {/* Transaction Logs Table */}
-                <div className="lg:col-span-2 bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 backdrop-blur-md">
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 backdrop-blur-md">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <h3 className="font-bold text-base text-slate-200 flex items-center gap-2">
                       <CreditCard className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
@@ -3301,9 +3241,9 @@ export default function AdminDashboard() {
                                   <td className="py-3 px-3 font-mono text-slate-455 uppercase">{tx.payment_method || '-'}</td>
                                   <td className="py-3 px-3 text-center">
                                     <span className={`px-2.5 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-wider inline-block ${tx.status === 'success' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-extrabold shadow-sm shadow-emerald-500/30' :
-                                        tx.status === 'failed' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30' :
-                                          'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30'
-                                       }`}>
+                                      tx.status === 'failed' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30' :
+                                        'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30'
+                                      }`}>
                                       {tx.status === 'success' ? 'Sukses' : tx.status === 'failed' ? 'Dibatalkan' : 'Belum Dibayar'}
                                     </span>
                                   </td>
@@ -3368,8 +3308,8 @@ export default function AdminDashboard() {
                                 <div className="flex justify-between items-center">
                                   <span className="text-slate-400 font-medium">Status:</span>
                                   <span className={`px-2.5 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-wider inline-block ${tx.status === 'success' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-extrabold shadow-sm shadow-emerald-500/30' :
-                                      tx.status === 'failed' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30' :
-                                        'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30'
+                                    tx.status === 'failed' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30' :
+                                      'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30'
                                     }`}>
                                     {tx.status === 'success' ? 'Sukses' : tx.status === 'failed' ? 'Dibatalkan' : 'Belum Dibayar'}
                                   </span>
@@ -3844,8 +3784,8 @@ export default function AdminDashboard() {
                           key={status}
                           onClick={() => setTicketStatusFilter(status)}
                           className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all ${ticketStatusFilter === status
-                              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/15'
-                              : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/15'
+                            : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
                             }`}
                         >
                           {status === 'all' ? 'Semua' : status}
@@ -4047,6 +3987,219 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {/* Tab: Kelola User */}
+            {activeTab === 'users' && (() => {
+              const filtered = userProfiles.filter(u => {
+                if (!u) return false;
+                const q = userSearchTerm.toLowerCase().trim();
+                if (!q) return true;
+                return (
+                  String(u.email || '').toLowerCase().includes(q) ||
+                  String(u.username || '').toLowerCase().includes(q) ||
+                  String(u.full_name || '').toLowerCase().includes(q)
+                );
+              });
+              const totalPages = Math.ceil(filtered.length / itemsPerPage);
+              const paginatedUsers = filtered.slice((usersPage - 1) * itemsPerPage, usersPage * itemsPerPage);
+
+              return (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-slate-900 border border-slate-800/80 p-5 rounded-3xl">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">Total User</span>
+                      <span className="text-2xl font-black text-slate-100">{userProfiles.length}</span>
+                    </div>
+                    <div className="bg-slate-900 border border-slate-800/80 p-5 rounded-3xl">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">Admin</span>
+                      <span className="text-2xl font-black text-indigo-400">{userProfiles.filter(u => u?.role === 'admin').length}</span>
+                    </div>
+                    <div className="bg-slate-900 border border-slate-800/80 p-5 rounded-3xl">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">User Aktif</span>
+                      <span className="text-2xl font-black text-emerald-400">{userProfiles.filter(u => u?.role === 'user').length}</span>
+                    </div>
+                    <div className="bg-slate-900 border border-slate-800/80 p-5 rounded-3xl">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">Total Saldo</span>
+                      <span className="text-lg font-black text-amber-400">{formatPrice(userProfiles.reduce((sum, u) => sum + (Number(u?.balance) || 0), 0))}</span>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                        <Users className="w-5 h-5 text-indigo-400" />
+                        Daftar User
+                      </h2>
+                      <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                        <input
+                          type="text"
+                          placeholder="Cari email, username, nama..."
+                          value={userSearchTerm}
+                          onChange={e => setUserSearchTerm(e.target.value)}
+                          className="w-full bg-slate-950/50 border border-slate-800 focus:border-indigo-500 text-slate-200 pl-9 pr-4 py-2.5 rounded-xl outline-none text-xs font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    {paginatedUsers.length === 0 ? (
+                      <div className="py-16 text-center text-slate-500 text-xs">
+                        <Users className="w-10 h-10 mx-auto mb-3 text-slate-700" />
+                        <p>Tidak ada user yang ditemukan.</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Desktop Table */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="border-b border-slate-850 text-slate-400 text-[10px] font-extrabold uppercase tracking-wider">
+                                <th className="py-3 px-4">User</th>
+                                <th className="py-3 px-4">Role</th>
+                                <th className="py-3 px-4">Saldo</th>
+                                <th className="py-3 px-4">Bergabung</th>
+                                <th className="py-3 px-4 text-right">Aksi</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-850/40">
+                              {paginatedUsers.map((u: any) => (
+                                <tr key={u.id} className="hover:bg-slate-800/20 transition-colors">
+                                  <td className="py-3.5 px-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-black shrink-0">
+                                        {(u.full_name || u.email || '?')[0].toUpperCase()}
+                                      </div>
+                                      <div>
+                                        <span className="block font-bold text-slate-100">{u.full_name || u.username || '-'}</span>
+                                        <span className="block text-[10px] text-slate-400 font-mono">{u.email}</span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-3.5 px-4">
+                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${u.role === 'admin' ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-750'}`}>
+                                      {u.role || 'user'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 font-bold text-emerald-400">{formatPrice(Number(u.balance) || 0)}</td>
+                                  <td className="py-3.5 px-4 text-slate-400 font-mono text-[10px]">
+                                    {u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                                  </td>
+                                  <td className="py-3.5 px-4 text-right">
+                                    <button
+                                      onClick={() => {
+                                        setSelectedEditUser(u);
+                                        setEditFullName(u.full_name || '');
+                                        setEditUsername(u.username || '');
+                                        setEditRole(u.role === 'admin' ? 'admin' : 'user');
+                                        setEditUserError(null);
+                                        setShowEditUserModal(true);
+                                      }}
+                                      title="Edit User"
+                                      className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-500/10 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-all cursor-pointer border border-slate-300 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500/30 active:scale-95"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedUserForBalance(u);
+                                        setAdjustmentAmount(0);
+                                        setAdjustmentType('add');
+                                        setAdjustmentReason('');
+                                        setBalanceError(null);
+                                        setShowBalanceModal(true);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white text-[10px] font-bold transition-all cursor-pointer border border-indigo-200 dark:border-indigo-500/20 hover:border-indigo-600 active:scale-95"
+                                    >
+                                      <Wallet className="w-3 h-3" />
+
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile Cards */}
+                        <div className="block md:hidden space-y-3">
+                          {paginatedUsers.map((u: any) => (
+                            <div key={u.id} className="bg-slate-950/40 border border-slate-800 rounded-2xl p-4 space-y-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-black shrink-0">
+                                  {(u.full_name || u.email || '?')[0].toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="block font-bold text-slate-100 text-xs">{u.full_name || u.username || '-'}</span>
+                                  <span className="block text-[10px] text-slate-400 truncate">{u.email}</span>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase shrink-0 ${u.role === 'admin' ? 'bg-indigo-500/15 text-indigo-400' : 'bg-slate-800 text-slate-400'}`}>
+                                  {u.role || 'user'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-slate-400">Saldo:</span>
+                                <span className="font-bold text-emerald-400">{formatPrice(Number(u.balance) || 0)}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedEditUser(u);
+                                    setEditFullName(u.full_name || '');
+                                    setEditUsername(u.username || '');
+                                    setEditRole(u.role === 'admin' ? 'admin' : 'user');
+                                    setEditUserError(null);
+                                    setShowEditUserModal(true);
+                                  }}
+                                  title="Edit User"
+                                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-500/10 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 text-[10px] font-bold transition-all cursor-pointer border border-slate-300 dark:border-slate-750 hover:border-amber-400 dark:hover:border-amber-500/30 active:scale-95"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedUserForBalance(u);
+                                    setAdjustmentAmount(0);
+                                    setAdjustmentType('add');
+                                    setAdjustmentReason('');
+                                    setBalanceError(null);
+                                    setShowBalanceModal(true);
+                                  }}
+                                  className="flex-1 inline-flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white text-[10px] font-bold transition-all cursor-pointer border border-indigo-200 dark:border-indigo-500/20 active:scale-95"
+                                >
+                                  <Wallet className="w-3.5 h-3.5" />
+                                  Kelola Saldo
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                          <div className="flex justify-between items-center gap-2 pt-5 border-t border-slate-850 mt-5">
+                            <button
+                              disabled={usersPage === 1}
+                              onClick={() => setUsersPage(p => Math.max(1, p - 1))}
+                              className="bg-slate-950 hover:bg-slate-900 border border-slate-850 disabled:opacity-40 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >Sebelumnya</button>
+                            <span className="text-xs text-slate-400 font-medium">
+                              Halaman {usersPage} dari {totalPages} ({filtered.length} user)
+                            </span>
+                            <button
+                              disabled={usersPage >= totalPages}
+                              onClick={() => setUsersPage(p => p + 1)}
+                              className="bg-slate-950 hover:bg-slate-900 border border-slate-850 disabled:opacity-40 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >Selanjutnya</button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Admin Ticket Detail Chat Modal */}
             {selectedTicket && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -4100,8 +4253,8 @@ export default function AdminDashboard() {
                           </div>
 
                           <div className={`max-w-[85%] p-3.5 rounded-2xl text-xs sm:text-sm font-light leading-relaxed whitespace-pre-wrap shadow-sm text-left ${isUser
-                              ? 'bg-zinc-100 text-zinc-800 rounded-tl-none border border-zinc-200/50'
-                              : 'bg-indigo-600 text-white rounded-tr-none'
+                            ? 'bg-zinc-100 text-zinc-800 rounded-tl-none border border-zinc-200/50'
+                            : 'bg-indigo-600 text-white rounded-tr-none'
                             }`}>
                             {msg.message}
 
@@ -4208,6 +4361,102 @@ export default function AdminDashboard() {
                 />
               </div>
             )}
+            {/* Edit User Modal */}
+            {showEditUserModal && selectedEditUser && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+                  <button
+                    onClick={() => { setShowEditUserModal(false); setSelectedEditUser(null); }}
+                    className="absolute right-4 top-4 p-1.5 rounded-lg bg-slate-950/50 border border-slate-800 hover:bg-slate-900 text-slate-400 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                      <Edit2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-100">Edit User</h3>
+                      <p className="text-[10px] text-slate-400 font-mono">{selectedEditUser.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        value={editFullName}
+                        onChange={e => setEditFullName(e.target.value)}
+                        placeholder="Nama lengkap user"
+                        className="w-full bg-slate-950/50 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none text-xs font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Username</label>
+                      <input
+                        type="text"
+                        value={editUsername}
+                        onChange={e => setEditUsername(e.target.value)}
+                        placeholder="Username"
+                        className="w-full bg-slate-950/50 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none text-xs font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Role</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditRole('user')}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${editRole === 'user' ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-400' : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                        >User</button>
+                        <button
+                          onClick={() => setEditRole('admin')}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${editRole === 'admin' ? 'bg-rose-500/15 border-rose-500/30 text-rose-400' : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                        >Admin</button>
+                      </div>
+                    </div>
+
+                    {editUserError && (
+                      <p className="text-xs text-rose-400 font-medium bg-rose-500/10 px-3 py-2 rounded-xl border border-rose-500/20">{editUserError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => { setShowEditUserModal(false); setSelectedEditUser(null); }}
+                      className="flex-1 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 py-3 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                    >Batal</button>
+                    <button
+                      disabled={submittingEditUser}
+                      onClick={async () => {
+                        setSubmittingEditUser(true);
+                        setEditUserError(null);
+                        try {
+                          const { error } = await supabase
+                            .from('profiles')
+                            .update({ full_name: editFullName, username: editUsername, role: editRole })
+                            .eq('id', selectedEditUser.id);
+                          if (error) throw error;
+                          setUserProfiles(prev => prev.map(p => p.id === selectedEditUser.id ? { ...p, full_name: editFullName, username: editUsername, role: editRole } : p));
+                          setShowEditUserModal(false);
+                          setSelectedEditUser(null);
+                        } catch (err: any) {
+                          setEditUserError(err.message || 'Gagal menyimpan perubahan.');
+                        } finally {
+                          setSubmittingEditUser(false);
+                        }
+                      }}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white py-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20"
+                    >
+                      {submittingEditUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      Simpan
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* User Balance Modification Modal */}
             {showBalanceModal && selectedUserForBalance && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-200">
@@ -4250,8 +4499,8 @@ export default function AdminDashboard() {
                             type="button"
                             onClick={() => setAdjustmentType(type.value as any)}
                             className={`py-2 px-3 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer ${adjustmentType === type.value
-                                ? `${type.color} ring-1 ring-offset-0 ring-indigo-500`
-                                : 'border-slate-800 text-slate-400 bg-slate-50 dark:bg-slate-950/50 hover:bg-slate-900/60'
+                              ? `${type.color} ring-1 ring-offset-0 ring-indigo-500`
+                              : 'border-slate-800 text-slate-400 bg-slate-50 dark:bg-slate-950/50 hover:bg-slate-900/60'
                               }`}
                           >
                             {type.label}
