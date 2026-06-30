@@ -5,18 +5,18 @@
   --foreground: #0f172a;
 
   /* Inverted slate colors for light mode */
-  --color-slate-50: #0f172a;  /* Inverted for light mode */
-  --color-slate-950: #eff6ff; /* Soft elegant blue for page backgrounds */
+  --color-slate-50: #000000;  /* Inverted for light mode */
+  --color-slate-950: #f8fafc; /* Standard clean slate-50/100 light background */
   --color-slate-900: #ffffff; /* White for cards */
   --color-slate-850: #f1f5f9; /* Subtle borders/secondary backgrounds */
-  --color-slate-800: #e2e8f0; /* Default border color */
-  --color-slate-700: #cbd5e1;
-  --color-slate-600: #94a3b8;
-  --color-slate-500: #64748b;
-  --color-slate-400: #475569; /* Muted text */
-  --color-slate-300: #334155; /* Secondary text */
-  --color-slate-200: #1e293b; /* Dark text */
-  --color-slate-100: #0f172a; /* Headings */
+  --color-slate-800: #cbd5e1; /* Bolder border/divider line color */
+  --color-slate-700: #94a3b8;
+  --color-slate-600: #64748b; /* Stronger grey for helper text */
+  --color-slate-500: #475569; /* Stronger grey for secondary labels */
+  --color-slate-400: #334155; /* Bolder slate for muted text */
+  --color-slate-300: #1e293b; /* Very dark slate for secondary text */
+  --color-slate-200: #0f172a; /* Almost black for body/headers */
+  --color-slate-100: #000000; /* Pure black for primary headings */
   --color-selected-row: rgba(99, 102, 241, 0.08); /* 8% Indigo tint for selected rows */
 }
 

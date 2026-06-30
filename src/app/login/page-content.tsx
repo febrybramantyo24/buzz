@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { dbClient as supabase } from '@/lib/db-client';
-import { 
-  Zap, 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Sparkles, 
+import {
+  Zap,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Sparkles,
   Loader2,
   User,
   Phone,
@@ -28,7 +28,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
   const router = useRouter();
   const searchParams = useSearchParams();
   const { logoUrl, brandName } = useBrand();
-  
+
   const [isRegister, setIsRegister] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(false);
@@ -66,7 +66,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
     }
     const tab = searchParams.get('tab');
     const token = searchParams.get('token');
-    
+
     // Check url verification status
     const verified = searchParams.get('verified');
     const error = searchParams.get('error');
@@ -166,7 +166,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
 
         if (password !== confirmPassword) {
           throw new Error('Password dan Ketik Ulang Password tidak cocok.');
-        }        if (!agreeTerms && !forceAgree) {
+        } if (!agreeTerms && !forceAgree) {
           setIsAutoSubmit(true);
           setShowTermsModal(true);
           setLoading(false);
@@ -324,7 +324,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-indigo-500 selection:text-white">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full"></div>
-        
+
         <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 animate-fade-in">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold">Atur Ulang Password</h2>
@@ -334,11 +334,10 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
           </div>
 
           {message && (
-            <div className={`p-4 mb-6 rounded-2xl text-sm leading-relaxed border ${
-              message.type === 'success' 
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+            <div className={`p-4 mb-6 rounded-2xl text-sm leading-relaxed border ${message.type === 'success'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                 : 'bg-red-500/10 border-red-500/30 text-red-400'
-            }`}>
+              }`}>
               {message.text}
             </div>
           )}
@@ -398,13 +397,13 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-indigo-500 selection:text-white">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full"></div>
-        
+
         <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 animate-fade-in">
-          <button 
+          <button
             onClick={() => {
               setIsForgotPassword(false);
               setMessage(null);
-            }} 
+            }}
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors mb-6 font-semibold"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -419,11 +418,10 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
           </div>
 
           {message && (
-            <div className={`p-4 mb-6 rounded-2xl text-sm leading-relaxed border ${
-              message.type === 'success' 
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+            <div className={`p-4 mb-6 rounded-2xl text-sm leading-relaxed border ${message.type === 'success'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                 : 'bg-red-500/10 border-red-500/30 text-red-400'
-            }`}>
+              }`}>
               {message.text}
             </div>
           )}
@@ -463,12 +461,12 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
       <div className="absolute top-6 right-6 z-20">
         <PremiumThemeToggle />
       </div>
-      
+
       {/* Background radial highlight */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none opacity-20 blur-[130px] bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full"></div>
 
       <div className={`w-full ${isRegister ? 'max-w-xl' : 'max-w-md'} bg-slate-900/90 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 transition-all duration-300`}>
-        
+
         {/* Logo / Header */}
         <div className="flex flex-col items-center mb-8">
           <Link href="/" className="flex items-center gap-2 mb-4 group">
@@ -497,11 +495,10 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
         </div>
         {/* Alert message */}
         {message && (
-          <div className={`p-4 mb-6 rounded-2xl border flex items-center gap-3 shadow-sm ${
-            message.type === 'success' 
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-300' 
+          <div className={`p-4 mb-6 rounded-2xl border flex items-center gap-3 shadow-sm ${message.type === 'success'
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-300'
               : 'bg-rose-500/10 border-rose-500/20 text-rose-800 dark:text-rose-300'
-          }`}>
+            }`}>
             {message.type === 'success' ? (
               <CheckCircle className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             ) : (
@@ -635,19 +632,19 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
                   }}
                   className="mt-1 w-4 h-4 accent-indigo-600 rounded cursor-pointer"
                 />
-                <label 
+                <label
                   htmlFor="agreeTerms"
                   className="text-xs text-slate-400 font-light leading-relaxed cursor-pointer selection:bg-transparent"
                 >
                   Saya menyetujui{' '}
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       setIsAutoSubmit(false);
                       setShowTermsModal(true);
-                    }} 
+                    }}
                     className="text-indigo-400 font-semibold hover:underline cursor-pointer focus:outline-none"
                   >
                     Syarat & Ketentuan
@@ -678,7 +675,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Password</label>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => {
                       setIsForgotPassword(true);
@@ -730,11 +727,11 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
           {isRegister ? (
             <p>
               Sudah punya akun?{' '}
-              <button 
+              <button
                 onClick={() => {
                   setIsRegister(false);
                   setMessage(null);
-                }} 
+                }}
                 className="text-indigo-400 font-semibold hover:underline"
               >
                 Masuk disini
@@ -743,11 +740,11 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
           ) : !isAdminFlow && (
             <p>
               Belum punya akun?{' '}
-              <button 
+              <button
                 onClick={() => {
                   setIsRegister(true);
                   setMessage(null);
-                }} 
+                }}
                 className="text-indigo-400 font-semibold hover:underline"
               >
                 Daftar sekarang

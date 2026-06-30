@@ -66,7 +66,7 @@ const parseNumberFromDots = (str: string): number => {
 
 const getTargetGuide = (category: string) => {
   const cat = (category || '').toLowerCase();
-  
+
   if (cat.includes('instagram')) {
     return {
       placeholder: 'Contoh: mustakinnur atau https://www.instagram.com/p/BxilTdssedewBn_p/',
@@ -590,7 +590,9 @@ export default function UserDashboard() {
       const { data, error } = await supabase
         .from('announcements')
         .select('*')
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setAnnouncements(data || []);
@@ -732,10 +734,27 @@ export default function UserDashboard() {
 
       if (error) throw new Error(error.message);
       setOrders(data || []);
+
+      // Trigger sync-status in background to update statuses from provider automatically
+      fetch('/api/cron/sync-status')
+        .then(res => res.json())
+        .then(resData => {
+          if (resData && resData.syncedCount > 0) {
+            // Re-fetch orders if any status actually changed
+            supabase
+              .from('orders')
+              .select('*')
+              .eq('user_id', userId)
+              .order('created_at', { ascending: false })
+              .then(({ data: updatedData }) => {
+                if (updatedData) setOrders(updatedData);
+              });
+          }
+        })
+        .catch(err => console.error('Error auto-syncing statuses:', err));
     } catch (err: any) {
       console.error("Error fetching orders:", err.message || err);
     }
-
   };
 
   // Change service options when category changes
@@ -1912,9 +1931,9 @@ export default function UserDashboard() {
                     <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 py-3 font-inter">
                       {/* User Info Header */}
                       <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-850">
-                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400 dark:text-slate-500 block">Akun Anda</span>
-                        <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 mt-1 truncate">{userProfile?.full_name || 'Pelanggan'}</span>
-                        <span className="block text-[10px] text-slate-450 dark:text-slate-500 truncate">{user?.email}</span>
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400 block">Akun Anda</span>
+                        <span className="block text-xs font-bold text-slate-900 dark:text-slate-100 mt-1 truncate">{userProfile?.full_name || 'Pelanggan'}</span>
+                        <span className="block text-[10.5px] font-medium text-slate-600 dark:text-slate-455 truncate mt-0.5">{user?.email}</span>
                       </div>
 
                       {/* Menu List */}
@@ -1990,7 +2009,7 @@ export default function UserDashboard() {
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Saldo Anda</span>
                         <div className="text-3xl font-black text-slate-100 mt-1.5">{formatPrice(balance)}</div>
                       </div>
-                      <div 
+                      <div
                         style={{ backgroundColor: 'rgba(99, 102, 241, 0.12)' }}
                         className="text-indigo-650 dark:text-indigo-400 p-3.5 rounded-2xl border border-indigo-500/10 shrink-0 shadow-sm"
                       >
@@ -2016,7 +2035,7 @@ export default function UserDashboard() {
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Pesanan</span>
                         <div className="text-3xl font-black text-slate-100 mt-1.5">{orders.length}</div>
                       </div>
-                      <div 
+                      <div
                         style={{ backgroundColor: 'rgba(168, 85, 247, 0.12)' }}
                         className="text-purple-655 dark:text-purple-450 p-3.5 rounded-2xl border border-purple-500/10 shrink-0 shadow-sm"
                       >
@@ -2050,7 +2069,7 @@ export default function UserDashboard() {
                               <span className="text-xs font-semibold text-slate-450 dark:text-slate-500">berjalan</span>
                             </div>
                           </div>
-                          <div 
+                          <div
                             style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)' }}
                             className="text-emerald-650 dark:text-emerald-400 p-3.5 rounded-2xl border border-emerald-500/10 shrink-0 shadow-sm"
                           >
@@ -2265,9 +2284,19 @@ export default function UserDashboard() {
                   {/* Left Column: Info & Pengumuman Penting */}
                   {announcements.length > 0 ? (
                     <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl backdrop-blur-md space-y-4 min-w-0 w-full">
-                      <div className="flex items-center gap-2 pb-3 border-b border-slate-850">
-                        <Megaphone className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-                        <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Info & Pengumuman Penting</span>
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-850">
+                        <div className="flex items-center gap-2">
+                          <Megaphone className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                          <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Info & Pengumuman Penting</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowNewsModal(true)}
+                          className="text-[10px] text-indigo-500 dark:text-indigo-400 hover:text-indigo-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <span>Buka Popup Berita</span>
+                          <span className="animate-pulse">🔔</span>
+                        </button>
                       </div>
                       <div className="space-y-3">
                         {(() => {
@@ -2618,7 +2647,7 @@ export default function UserDashboard() {
                       </div>
                     </div>
 
-                     {/* Target URL */}
+                    {/* Target URL */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Data Target / URL Profil / Link Video</label>
                       {(() => {
@@ -3255,13 +3284,13 @@ export default function UserDashboard() {
                                 <th className="py-4 px-4">Tanggal & Waktu</th>
                                 <th className="py-4 px-4 text-left">Aksi</th>
                               </tr>
-</thead>
+                            </thead>
                             <tbody className="divide-y divide-slate-850/40 text-xs">
                               {currentPageOrders.map(order => {
                                 const isSelected = selectedOrderIds.includes(order.id);
                                 return (
-                                  <tr 
-                                    key={order.id} 
+                                  <tr
+                                    key={order.id}
                                     style={{ backgroundColor: isSelected ? 'var(--color-selected-row)' : undefined }}
                                     className={`transition-colors ${isSelected ? '' : 'hover:bg-slate-900/30'}`}
                                   >
@@ -3318,7 +3347,7 @@ export default function UserDashboard() {
                                       </div>
                                     </td>
                                     <td className="py-4 px-4 text-center font-mono text-slate-400">
-                                      {order.start_count ? order.start_count.toLocaleString() : '-'}
+                                      {order.start_count !== null && order.start_count !== undefined ? order.start_count.toLocaleString() : '-'}
                                     </td>
                                     <td className="py-4 px-4 text-slate-500">
                                       {new Date(order.created_at).toLocaleString('id-ID', {
@@ -3467,7 +3496,7 @@ export default function UserDashboard() {
 
                                     <div className="flex justify-between items-center">
                                       <span className="text-slate-400 font-medium">Mulai Count:</span>
-                                      <span className="font-mono text-slate-500 dark:text-slate-450">{order.start_count ? order.start_count.toLocaleString() : '-'}</span>
+                                      <span className="font-mono text-slate-500 dark:text-slate-450">{order.start_count !== null && order.start_count !== undefined ? order.start_count.toLocaleString() : '-'}</span>
                                     </div>
 
                                     <div className="flex justify-between items-center">
@@ -3578,10 +3607,10 @@ export default function UserDashboard() {
               // Calculate running balance for each transaction using database delta directly
               const txBalancesMap = new Map<string, number>();
               let tempBalance = balance; // current profile balance
-              
+
               for (const tx of sortedMutationTxs) {
                 txBalancesMap.set(tx.id, tempBalance);
-                
+
                 // Subtract delta amount (since delta is positive for additions and negative for deductions)
                 // This gives the balance BEFORE this transaction.
                 tempBalance -= Number(tx.amount);
@@ -3722,7 +3751,7 @@ export default function UserDashboard() {
                     <div className="py-16 text-center text-slate-400 font-light flex flex-col items-center justify-center gap-2">
                       <CreditCard className="w-10 h-10 text-slate-600 mb-2" />
                       <p>Tidak ada riwayat mutasi saldo dengan kriteria ini.</p>
-</div>
+                    </div>
                   ) : (
                     <>
                       {/* Desktop View */}
@@ -3795,11 +3824,10 @@ export default function UserDashboard() {
                               <div key={tx.id} className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 hover:border-indigo-500/30 hover:bg-slate-50 dark:hover:bg-slate-900/40 p-4 rounded-2xl flex items-center justify-between gap-4 transition-all duration-200 shadow-sm">
                                 <div className="flex items-center gap-4 min-w-0">
                                   {/* Activity Icon */}
-                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                                    isAddition 
-                                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10' 
-                                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/10'
-                                  }`}>
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isAddition
+                                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10'
+                                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/10'
+                                    }`}>
                                     {isAddition ? (
                                       <ArrowUpRight className="w-4.5 h-4.5" />
                                     ) : (
@@ -3819,11 +3847,10 @@ export default function UserDashboard() {
                                 </div>
 
                                 <div className="shrink-0 text-right pr-2">
-                                  <span className={`block text-sm font-extrabold tracking-tight ${
-                                    isAddition 
-                                      ? 'text-emerald-500' 
-                                      : 'text-rose-500'
-                                  }`}>
+                                  <span className={`block text-sm font-extrabold tracking-tight ${isAddition
+                                    ? 'text-emerald-500'
+                                    : 'text-rose-500'
+                                    }`}>
                                     {isAddition ? '+' : '-'}{formatPrice(Math.abs(displayAmount))}
                                   </span>
                                   <span className="block text-[10px] text-slate-450 dark:text-slate-500 font-semibold mt-1">
@@ -3865,7 +3892,7 @@ export default function UserDashboard() {
 
                             const balanceAfter = txBalancesMap.get(tx.id) || 0;
                             const balanceAfterStr = formatPrice(balanceAfter);
-                            
+
                             const getOrderDisplayId = (refId?: string) => {
                               if (refId && orderIdMap.has(refId)) {
                                 return orderIdMap.get(refId)!;
@@ -3904,11 +3931,10 @@ export default function UserDashboard() {
                               <div key={tx.id} className="bg-slate-900/40 border border-slate-855 p-4 rounded-2xl flex items-center justify-between gap-3 hover:border-slate-800 transition-all">
                                 <div className="flex items-center gap-3 min-w-0">
                                   {/* Activity Icon */}
-                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                                    isAddition 
-                                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10' 
-                                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/10'
-                                  }`}>
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isAddition
+                                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10'
+                                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/10'
+                                    }`}>
                                     {isAddition ? (
                                       <ArrowUpRight className="w-3.5 h-3.5" />
                                     ) : (
@@ -3928,11 +3954,10 @@ export default function UserDashboard() {
                                 </div>
 
                                 <div className="shrink-0 text-right">
-                                  <span className={`block text-xs font-black ${
-                                    isAddition 
-                                      ? 'text-emerald-500' 
-                                      : 'text-rose-500'
-                                  }`}>
+                                  <span className={`block text-xs font-black ${isAddition
+                                    ? 'text-emerald-500'
+                                    : 'text-rose-500'
+                                    }`}>
                                     {isAddition ? '+' : '-'}{formatPrice(Math.abs(displayAmount))}
                                   </span>
                                   <span className="block text-[9px] text-slate-500 font-medium mt-0.5">
@@ -4461,7 +4486,7 @@ export default function UserDashboard() {
                             setTicketRequestType('');
                             setTicketDepositId('');
                           }}
-                           required
+                          required
                           className="w-full force-white-bg border border-zinc-200 dark:border-slate-800 focus:border-indigo-500 text-zinc-800 dark:text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
                         >
                           <option value="">Pilih...</option>
@@ -5034,7 +5059,7 @@ export default function UserDashboard() {
       {/* Premium Confirmation Dialog */}
       {/* Announcement Detail Modal */}
       {selectedAnnouncement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 animate-in fade-in duration-200">
           <div className="w-full max-w-2xl bg-white text-zinc-900 border border-zinc-200 p-6 sm:p-8 rounded-[32px] shadow-2xl relative animate-in zoom-in-95 duration-200">
 
             {/* Header */}
@@ -5094,6 +5119,142 @@ export default function UserDashboard() {
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* News & Announcements Modal */}
+      {showNewsModal && announcements.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 animate-in fade-in duration-200">
+          <div className="w-full sm:max-w-4xl bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[72vh] overflow-hidden">
+
+            {/* Header */}
+            <div className="flex justify-between items-center px-5 sm:px-6 pt-5 pb-3 border-b border-slate-100 dark:border-slate-850">
+              <div className="flex items-center gap-2.5">
+                <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
+                  <Megaphone className="w-4 h-4 animate-bounce" />
+                  <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 border border-white dark:border-slate-900 rounded-full animate-ping" />
+                  <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 border border-white dark:border-slate-900 rounded-full" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                    Berita &amp; Informasi!
+                  </h3>
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-medium">Update terbaru layanan kami</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowNewsModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 hover:bg-slate-55 dark:hover:bg-slate-850 rounded-lg transition-all cursor-pointer"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+            {/* Content List - Unified Scrollable sky-blue Area (displays up to 30 items) */}
+            <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4.5">
+              <div className="bg-[#e0f2fe]/45 dark:bg-slate-950/20 border border-[#bae6fd]/60 dark:border-slate-850 rounded-2xl p-4 sm:p-5 max-h-[52vh] overflow-y-auto scrollbar-thin scrollbar-thumb-sky-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent space-y-3.5">
+                {[...announcements]
+                  .sort((a, b) => {
+                    if (a.is_pinned && !b.is_pinned) return -1;
+                    if (!a.is_pinned && b.is_pinned) return 1;
+                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                  })
+                  .slice(0, 30)
+                  .map((ann, index, arr) => {
+                    return (
+                      <div
+                        key={ann.id}
+                        className={`pb-3.5 ${index !== arr.length - 1 ? 'border-b border-[#bae6fd]/50 dark:border-slate-800' : ''} hover:bg-sky-100/30 dark:hover:bg-slate-900/10 px-2 rounded-lg transition-all cursor-pointer group`}
+                        onClick={() => setSelectedAnnouncement(ann)}
+                      >
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+                            {new Date(ann.created_at).toLocaleString('id-ID', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit'
+                            })}
+                          </span>
+                          
+                          <div className="flex items-center gap-1.5">
+                            {ann.badge && (
+                              <span className={`px-1.5 py-0.2 rounded text-[7px] font-black uppercase tracking-wider inline-block ${getAnnouncementBadgeClass(ann.badge)}`}>
+                                {ann.badge}
+                              </span>
+                            )}
+                            {ann.is_pinned && (
+                              <div className="flex items-center justify-center p-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0" title="Disematkan">
+                                <Pin className="w-2.5 h-2.5 fill-amber-500 transform rotate-45" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-start justify-between gap-3 mt-1.5">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs sm:text-[13px] font-extrabold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-455 transition-colors leading-tight">
+                              {ann.title}
+                            </h4>
+                            <p className="text-slate-700 dark:text-slate-300 text-[10.5px] font-medium leading-relaxed mt-1 line-clamp-3">
+                              {ann.content}
+                            </p>
+                            <div className="text-[9.5px] text-indigo-650 dark:text-indigo-400 font-extrabold flex items-center gap-0.5 hover:underline mt-1.5">
+                              <span>Detail Selengkapnya</span>
+                              <span>&rarr;</span>
+                            </div>
+                          </div>
+
+                          {ann.image_url && (
+                            <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#bae6fd] dark:border-slate-800 shrink-0 bg-white dark:bg-slate-950 relative mt-0.5 shadow-sm">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={ann.image_url} alt="Thumbnail" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20">
+              <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+                {Math.min(announcements.length, 30)} Update Terbaru
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewsModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-bold rounded-xl transition-all cursor-pointer border border-slate-200/40 dark:border-slate-800/50"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (user && announcements.length > 0) {
+                      const sortedAnnouncements = [...announcements].sort(
+                        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                      );
+                      const latestAnnId = sortedAnnouncements[0]?.id;
+                      localStorage.setItem(`last_read_announcement_id_${user.id}`, latestAnnId);
+                    }
+                    setShowNewsModal(false);
+                    showToast('Pengumuman ditandai sebagai sudah dibaca', 'success');
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-[11px] font-extrabold rounded-xl transition-all shadow-md shadow-indigo-500/10 flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Check className="w-3 h-3" />
+                  <span>Saya sudah membaca</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
@@ -5667,7 +5828,7 @@ export default function UserDashboard() {
                         placeholder="Masukkan password sekarang"
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
-                         className="w-full force-white-bg border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
+                        className="w-full force-white-bg border border-slate-850 text-slate-900 dark:text-slate-100 focus:border-indigo-500 pl-4 pr-10 py-2.5 rounded-xl outline-none transition-all text-xs"
                       />
                       <button
                         type="button"

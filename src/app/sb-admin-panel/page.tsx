@@ -13,6 +13,7 @@ import {
   Settings,
   ShoppingBag,
   Plus,
+  Loader2,
   Trash2,
   Edit2,
   Check,
@@ -86,6 +87,7 @@ const getPaymentStatusBadgeClass = (paymentStatus: string): string => {
   const ps = paymentStatus ? paymentStatus.toLowerCase() : '';
   if (ps === 'paid') return 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-extrabold shadow-sm shadow-emerald-500/30';
   if (ps === 'refunded') return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-extrabold shadow-sm shadow-blue-500/30';
+  if (ps === 'pending_refund') return 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold shadow-sm shadow-orange-550/30';
   return 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30'; // unpaid/default
 };
 
@@ -164,6 +166,7 @@ export default function AdminDashboard() {
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [serviceIcon, setServiceIcon] = useState('');
   const [expandedServices, setExpandedServices] = useState<Record<string, boolean>>({});
+  const [showServiceFormModal, setShowServiceFormModal] = useState(false);
 
   // Provider states
   const [providerId, setProviderId] = useState('manual');
@@ -734,7 +737,6 @@ export default function AdminDashboard() {
         if (error) throw error;
       }
 
-      // Reset Form & Fetch
       setServiceName('');
       setServiceDescription('');
       setServicePrice(0);
@@ -746,6 +748,7 @@ export default function AdminDashboard() {
       setProviderServiceId('');
       setProviderPrice(0);
       setAverageDuration('15 Menit');
+      setShowServiceFormModal(false);
       await fetchServices();
     } catch (err) {
       console.warn('Error saving service (using local fallback):', err);
@@ -765,6 +768,7 @@ export default function AdminDashboard() {
       setServicePrice(0);
       setServiceIcon('');
       setEditingServiceId(null);
+      setShowServiceFormModal(false);
     } finally {
       setSubmittingService(false);
     }
@@ -784,6 +788,7 @@ export default function AdminDashboard() {
     setProviderServiceId(service.provider_service_id || '');
     setProviderPrice(Number(service.provider_price_per_k || 0));
     setAverageDuration(service.average_duration || '15 Menit');
+    setShowServiceFormModal(true);
   };
 
   // Delete Service
@@ -1032,6 +1037,45 @@ export default function AdminDashboard() {
           alert(err.message || 'Terjadi kesalahan');
         } finally {
           setRetryingOrderId(null);
+        }
+      }
+    });
+  };
+  const handleProcessRefund = (orderId: string, refundAmt: number) => {
+    setConfirmModal({
+      show: true,
+      message: `Setujui & proses refund saldo sebesar Rp ${refundAmt.toLocaleString('id-ID')} untuk pesanan ini?`,
+      onConfirm: async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            alert('Sesi login telah berakhir. Silakan login kembali.');
+            return;
+          }
+
+          const res = await fetch('/api/admin', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              action: 'process_refund',
+              orderId: orderId,
+              refundAmount: refundAmt
+            })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            alert(data.error || 'Gagal memproses refund');
+          } else {
+            alert(data.message || 'Refund berhasil diproses!');
+            fetchAdminData();
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Terjadi kesalahan saat memproses refund');
         }
       }
     });
@@ -1604,13 +1648,31 @@ export default function AdminDashboard() {
                                       {order.status === 'failed' ? 'error' : order.status}
                                     </span>
                                   </div>
+                                  {order.payment_status === 'pending_refund' && (
+                                    <div className="mt-2 text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl p-2.5 max-w-[170px] space-y-0.5 shadow-sm">
+                                      <p className="font-extrabold text-amber-550 dark:text-amber-300">Gagal di Pusat</p>
+                                      <p className="font-medium">Provider: <strong className="font-bold text-amber-500 capitalize">{order.provider_id || 'manual'}</strong></p>
+                                      <p className="font-medium">Refund: <strong className="font-bold text-amber-500">Rp {formatNumberWithDots(order.provider_refund_amount)}</strong></p>
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="py-4 px-3 font-semibold text-slate-200">
                                   <div className="flex flex-col gap-1 max-w-[160px]">
                                     <span className="font-bold text-slate-200 text-xs truncate" title={order.service_name}>{order.service_name}</span>
-                                    <span className={`px-1.5 py-0.5 rounded-md font-extrabold text-[8px] uppercase tracking-wider border w-fit ${getCategoryBadgeClass(order.category)}`}>
-                                      {order.category}
-                                    </span>
+                                    <div className="flex gap-1.5 items-center flex-wrap">
+                                      <span className={`px-1.5 py-0.5 rounded-md font-extrabold text-[8px] uppercase tracking-wider border w-fit ${getCategoryBadgeClass(order.category)}`}>
+                                        {order.category}
+                                      </span>
+                                      {(() => {
+                                         const service = services.find(s => s.id === order.service_id);
+                                         const displayProvider = order.provider_id || (service ? service.provider_id : null) || 'manual';
+                                         return (
+                                           <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-800 text-slate-350 border border-slate-700/60 w-fit flex items-center gap-0.5">
+                                             🔌 {displayProvider}
+                                           </span>
+                                         );
+                                       })()}
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="py-4 px-3 font-mono text-slate-400 max-w-xs">
@@ -1720,7 +1782,24 @@ export default function AdminDashboard() {
                                         </button>
                                       </div>
                                     </div>
-                                  ) : order.status === 'success' || order.status === 'failed' || order.payment_status === 'refunded' ? (
+                                  ) : order.payment_status === 'pending_refund' ? (
+                                    <div className="flex flex-col gap-1.5 justify-center items-center">
+                                      <button
+                                        onClick={() => handleProcessRefund(order.id, parseFloat(String(order.provider_refund_amount || 0)))}
+                                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-3 py-1.5 rounded-xl font-extrabold cursor-pointer transition-all active:scale-95 text-[10px] w-full justify-center shadow-md shadow-orange-500/10"
+                                      >
+                                        <Wallet className="w-3 h-3" />
+                                        Proses Refund
+                                      </button>
+                                      <button
+                                        onClick={() => openOrderEditor(order)}
+                                        className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-750 text-slate-350 px-3 py-1.5 rounded-xl border border-slate-700 font-extrabold cursor-pointer transition-all active:scale-95 text-[10px] w-full justify-center"
+                                      >
+                                        <Edit2 className="w-3 h-3" />
+                                        Atur Manual
+                                      </button>
+                                    </div>
+                                  ) : (order.status === 'success' || order.status === 'failed' || order.payment_status === 'refunded') ? (
                                     <span className="text-slate-500 font-mono">-</span>
                                   ) : (
                                     <div className="flex flex-col gap-1.5 justify-center items-center">
@@ -1972,261 +2051,613 @@ export default function AdminDashboard() {
 
             {/* Tab 2: Service Management */}
             {activeTab === 'services' && (
-              <div className="space-y-8">
-                <div className="grid lg:grid-cols-3 gap-8 items-start">
-
-                  {/* Service Form */}
-                  <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 sm:p-8 rounded-3xl backdrop-blur-md">
-                    <h3 className="font-bold text-base text-slate-200 mb-6 flex items-center gap-2">
-                      <Settings className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-                      <span>{editingServiceId ? 'Edit Layanan' : 'Tambah Layanan Baru'}</span>
+              <div className="space-y-6">
+                
+                {/* Clean Header Panel with Action Button */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900 border border-slate-800/80 p-6 sm:p-8 rounded-3xl shadow-sm">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                      <Settings className="w-5 h-5 text-indigo-500" />
+                      Pengaturan Layanan
                     </h3>
+                    <p className="text-xs text-slate-400 mt-1 font-light">
+                      Kelola kategori, harga jual, limit pemesanan, dan sinkronisasi otomatis dengan API provider pusat.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingServiceId(null);
+                      setServiceName('');
+                      setServiceDescription('');
+                      setServicePrice(0);
+                      setServiceMin(100);
+                      setServiceMax(10000);
+                      setServiceIcon('');
+                      setProviderId('manual');
+                      setProviderServiceId('');
+                      setProviderPrice(0);
+                      setAverageDuration('15 Menit');
+                      setShowServiceFormModal(true);
+                    }}
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-3 rounded-2xl text-xs font-black cursor-pointer shadow-lg shadow-indigo-600/20 active:scale-95 transition-all shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tambah Layanan Baru
+                  </button>
+                </div>
 
-                    <form onSubmit={handleSaveService} className="space-y-5">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Kategori</label>
-                        <div className="relative">
-                          {/* Custom Admin Category Selector Button */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsAdminCategoryDropdownOpen(!isAdminCategoryDropdownOpen);
-                            }}
-                            className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs text-left cursor-pointer"
-                          >
-                            <span className="truncate">
-                              {serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X'
-                                ? serviceCategory
-                                : serviceCategory === ''
-                                  ? 'Pilih Kategori / Tulis Kustom'
-                                  : `${serviceCategory} (Kustom)`
-                              }
-                            </span>
-                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isAdminCategoryDropdownOpen ? 'rotate-180' : ''}`} />
-                          </button>
+                {/* Service Lists (Full Width for elegant display) */}
+                <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-200 mb-4 uppercase tracking-wider">Daftar Layanan Tersedia</h3>
+                    <div className="space-y-4">
+                      {services.length === 0 ? (
+                        <div className="py-8 text-center text-slate-500 text-xs">Belum ada layanan di input.</div>
+                      ) : (
+                        services.slice((servicesPage - 1) * servicesPerPage, servicesPage * servicesPerPage).map(service => {
+                          const serviceIconUrl = categoryIconMap[service.category] || service.icon_url;
 
-                          {/* Custom Admin Category Dropdown List */}
-                          {isAdminCategoryDropdownOpen && (
-                            <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[260px] flex flex-col">
-                              <div className="p-2.5 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
-                                <input
-                                  type="text"
-                                  placeholder="Cari atau filter Kategori..."
-                                  value={isAdminCategorySearch}
-                                  onChange={(e) => setIsAdminCategorySearch(e.target.value)}
-                                  className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-1.5 rounded-xl outline-none text-[11px]"
-                                  autoFocus
-                                />
-                              </div>
-                              <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
-                                {['Instagram', 'TikTok', 'YouTube', 'Twitter/X', 'Kustom']
-                                  .filter(cat => cat.toLowerCase().includes(isAdminCategorySearch.toLowerCase()))
-                                  .map(cat => (
+                          return (
+                            <div
+                              key={service.id}
+                              className="bg-slate-55 dark:bg-slate-950/50 border border-slate-850 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-950/10 transition-all duration-300 p-5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs group"
+                            >
+                              <div className="flex items-start sm:items-center gap-3.5 flex-1">
+                                {serviceIconUrl ? (
+                                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-850 flex items-center justify-center shrink-0">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={serviceIconUrl} alt="icon" className="w-full h-full object-cover" />
+                                  </div>
+                                ) : (
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/80 to-purple-600/80 flex items-center justify-center shrink-0 text-white font-extrabold text-xs shadow-md border border-indigo-500/20">
+                                    {service.category[0].toUpperCase()}
+                                  </div>
+                                )}
+
+                                <div className="space-y-1.5 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`px-2 py-0.5 rounded-lg font-extrabold text-[9px] uppercase tracking-wider ${getCategoryBadgeClass(service.category)}`}>
+                                      {service.category}
+                                    </span>
+                                    <span className="font-extrabold text-slate-800 dark:text-slate-200 text-sm group-hover:text-rose-600 dark:text-indigo-400 dark:group-hover:text-white transition-colors">
+                                      {service.name}
+                                    </span>
+                                    {/* Provider badge in SMM list */}
+                                    {service.provider_id && service.provider_id !== 'manual' && (
+                                      <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-800 text-slate-350 border border-slate-700/60 w-fit flex items-center gap-0.5">
+                                        🔌 {service.provider_id}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="text-slate-600 dark:text-slate-400 font-light flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-slate-500">Min:</span> <strong className="text-slate-700 dark:text-slate-305">{service.min_order.toLocaleString()}</strong>
+                                    </span>
+                                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-slate-500">Max:</span> <strong className="text-slate-700 dark:text-slate-305">{service.max_order.toLocaleString()}</strong>
+                                    </span>
+                                    {service.created_at && (
+                                      <>
+                                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                                        <span className="text-slate-500">
+                                          Dibuat: {new Date(service.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+
+                                  {service.description && (
                                     <button
-                                      key={cat}
                                       type="button"
-                                      onClick={() => {
-                                        if (cat === 'Kustom') {
-                                          setServiceCategory('');
-                                        } else {
-                                          setServiceCategory(cat);
-                                        }
-                                        setIsAdminCategoryDropdownOpen(false);
-                                        setIsAdminCategorySearch('');
-                                      }}
-                                      className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-indigo-650/15 hover:text-indigo-500 dark:text-indigo-400 transition-colors"
+                                      onClick={() => setExpandedServices(prev => ({ ...prev, [service.id]: !prev[service.id] }))}
+                                      className="text-[10px] text-indigo-500 dark:text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-bold mt-2.5 flex items-center gap-1 cursor-pointer transition-colors"
                                     >
-                                      {cat === 'Kustom' ? 'Kategori Baru (Kustom)...' : cat}
+                                      <span>{expandedServices[service.id] ? 'Sembunyikan Deskripsi' : 'Lihat Deskripsi'}</span>
+                                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedServices[service.id] ? 'rotate-180' : ''}`} />
                                     </button>
-                                  ))}
+                                  )}
+
+                                  {service.description && expandedServices[service.id] && (
+                                    <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-2.5 bg-slate-100/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200 dark:border-slate-850/60 max-w-xl font-light leading-relaxed whitespace-pre-wrap select-text animate-in fade-in slide-in-from-top-2 duration-250">
+                                      <span className="block font-bold text-[9px] text-rose-650 dark:text-indigo-500 dark:text-indigo-450 uppercase tracking-wider mb-1">Deskripsi Detail:</span>
+                                      <div className="text-slate-700 dark:text-slate-300">{service.description}</div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex sm:flex-row items-center gap-4 shrink-0 justify-end w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-850">
+                                <div className="text-right">
+                                  <div className="text-[10px] text-slate-500 font-medium">Harga / 1K</div>
+                                  <div className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                                    Rp {service.price_per_k.toLocaleString()}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {/* Recomendation toggle */}
+                                  <button
+                                    onClick={async () => {
+                                      const { error } = await supabase
+                                        .from('services')
+                                        .update({ is_recommended: !service.is_recommended })
+                                        .eq('id', service.id);
+                                      if (!error) fetchServices();
+                                    }}
+                                    className={`p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${
+                                      service.is_recommended
+                                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                                        : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                                    }`}
+                                    title={service.is_recommended ? 'Rekomendasi Aktif' : 'Atur Sebagai Rekomendasi'}
+                                  >
+                                    <Star className={`w-3.5 h-3.5 ${service.is_recommended ? 'fill-amber-500' : ''}`} />
+                                  </button>
+
+                                  <button
+                                    onClick={() => startEditService(service)}
+                                    className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-indigo-500 border border-slate-850 hover:border-slate-750 transition-all active:scale-95 cursor-pointer"
+                                    title="Edit Layanan"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteService(service.id)}
+                                    className="p-2.5 rounded-xl bg-slate-950 hover:bg-red-950/20 text-slate-400 hover:text-red-500 border border-slate-850 hover:border-red-900/30 transition-all active:scale-95 cursor-pointer"
+                                    title="Hapus Layanan"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          )}
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Services Pagination */}
+                  {Math.ceil(services.length / servicesPerPage) > 1 && (
+                    <div className="flex items-center justify-between border-t border-slate-850/80 bg-slate-900/10 pt-4 mt-6">
+                      <div className="text-xs text-slate-400">
+                        Menampilkan <span className="font-semibold text-slate-350">{((servicesPage - 1) * servicesPerPage) + 1}</span> - <span className="font-semibold text-slate-350">{Math.min(servicesPage * servicesPerPage, services.length)}</span> dari <span className="font-semibold text-slate-350">{services.length}</span> layanan
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          disabled={servicesPage === 1}
+                          onClick={() => setServicesPage(p => Math.max(1, p - 1))}
+                          className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 disabled:opacity-40 text-slate-300 border border-slate-850 text-xs transition-all active:scale-95 disabled:pointer-events-none cursor-pointer"
+                        >
+                          Sebelumnya
+                        </button>
+                        <button
+                          disabled={servicesPage === Math.ceil(services.length / servicesPerPage)}
+                          onClick={() => setServicesPage(p => Math.min(Math.ceil(services.length / servicesPerPage), p + 1))}
+                          className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 disabled:opacity-40 text-slate-300 border border-slate-850 text-xs transition-all active:scale-95 disabled:pointer-events-none cursor-pointer"
+                        >
+                          Selanjutnya
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Overlay Form Container (Centered, wide, clean) */}
+                {showServiceFormModal && (
+                  <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border border-slate-800/80 shadow-2xl rounded-3xl w-full max-w-3xl overflow-hidden relative max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-200">
+                      
+                      {/* Modal Header */}
+                      <div className="flex items-center justify-between px-6 py-5 border-b border-slate-850 bg-slate-900/90 backdrop-blur-md sticky top-0 z-10">
+                        <div className="flex items-center gap-2">
+                          <Settings className="w-5 h-5 text-indigo-500" />
+                          <h3 className="font-extrabold text-base text-slate-200">
+                            {editingServiceId ? 'Edit Layanan' : 'Tambah Layanan Baru'}
+                          </h3>
                         </div>
-
-                        {!(serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X') && (
-                          <input
-                            type="text"
-                            required
-                            placeholder="Masukkan nama kategori baru..."
-                            value={serviceCategory}
-                            onChange={(e) => setServiceCategory(e.target.value)}
-                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-250 px-4 py-3 rounded-2xl outline-none text-xs mt-2"
-                          />
-                        )}
+                        <button
+                          onClick={() => {
+                            setShowServiceFormModal(false);
+                            setEditingServiceId(null);
+                          }}
+                          className="text-slate-400 hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Nama Layanan</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Contoh: Followers Indo Real"
-                          value={serviceName}
-                          onChange={(e) => setServiceName(e.target.value)}
-                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
-                        />
-                      </div>
+                      {/* Modal Body */}
+                      <div className="p-6 overflow-y-auto space-y-6 flex-1 min-h-0 scrollbar-thin">
+                        <form id="service-form" onSubmit={handleSaveService} className="space-y-6">
+                          
+                          {/* Main Info Row */}
+                          <div className="grid md:grid-cols-2 gap-5">
+                            {/* Category */}
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Kategori</label>
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsAdminCategoryDropdownOpen(!isAdminCategoryDropdownOpen)}
+                                  className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs text-left cursor-pointer focus:border-indigo-500"
+                                >
+                                  <span className="truncate">
+                                    {serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X'
+                                      ? serviceCategory
+                                      : serviceCategory === ''
+                                        ? 'Pilih Kategori / Tulis Kustom'
+                                        : `${serviceCategory} (Kustom)`
+                                    }
+                                  </span>
+                                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isAdminCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Deskripsi Layanan</label>
-                        <textarea
-                          placeholder="Masukkan deskripsi detail layanan (misal: Followers real aktif, proses cepat, garansi 30 hari)..."
-                          value={serviceDescription}
-                          onChange={(e) => setServiceDescription(e.target.value)}
-                          rows={8}
-                          className="w-full bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 text-slate-300 px-5 py-4 rounded-2xl outline-none text-xs font-sans leading-relaxed tracking-wide resize-y min-h-[180px] focus:ring-1 focus:ring-indigo-500/20"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Harga per 1.000 (1K)</label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          required
-                          value={formatNumberWithDots(servicePrice)}
-                          onChange={(e) => setServicePrice(parseNumberFromDots(e.target.value))}
-                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs font-semibold"
-                        />
-                      </div>
-
-                      <div className="border-t border-slate-850 pt-4 mt-4 space-y-4">
-                        <h4 className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider">Integrasi Provider Pusat</h4>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Provider Pusat</label>
-                          <select
-                            value={providerId}
-                            onChange={(e) => {
-                              setProviderId(e.target.value);
-                              setProviderServicesList([]);
-                              setProviderError(null);
-                              setProviderServiceId('');
-                              setProviderPrice(0);
-                            }}
-                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
-                          >
-                            <option value="manual">Manual (Tanpa Provider)</option>
-                            <option value="buzzerpanel">BuzzerPanel</option>
-                            <option value="medanpedia">MedanPedia</option>
-                          </select>
-                        </div>
-
-                        {(providerId === 'buzzerpanel' || providerId === 'medanpedia') && (
-                          <div className="space-y-3 bg-slate-950/50 p-4 rounded-2xl border border-slate-850">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Layanan Pusat</span>
-                              <button
-                                type="button"
-                                disabled={loadingProviderServices}
-                                onClick={fetchProviderServices}
-                                className="text-[10px] bg-indigo-600 hover:bg-indigo-600 text-white text-white px-2.5 py-1 rounded-lg transition-all font-semibold"
-                              >
-                                {loadingProviderServices ? 'Memuat...' : 'Muat Layanan Pusat'}
-                              </button>
-                            </div>
-
-                            {providerError && (
-                              <div className="text-[10px] text-red-400 bg-red-950/20 border border-red-500/20 p-2.5 rounded-xl font-light">
-                                {providerError}
-                              </div>
-                            )}
-
-                            {providerServicesList.length > 0 && (() => {
-                              const uniqueProviderCategories = Array.from(new Set(providerServicesList.map(s => s?.category).filter(Boolean))) as string[];
-                              const filteredProviderServices = providerServicesList.filter(s => {
-                                if (!s) return false;
-
-                                // Bypas kategori jika pencarian adalah angka (ID) agar bisa dicari secara global
-                                const isNumericSearch = /^\d+$/.test(providerSearch.trim());
-                                if (isNumericSearch && String(s.id).includes(providerSearch.trim())) {
-                                  return true;
-                                }
-
-                                const nameMatch = (s.name || '').toLowerCase().includes(providerSearch.toLowerCase());
-                                const idMatch = String(s.id).includes(providerSearch);
-                                const catMatch = (s.category || '').toLowerCase().includes(providerSearch.toLowerCase());
-                                const matchesSearch = nameMatch || idMatch || catMatch;
-                                const matchesCategory = providerCategoryFilter === 'all' || s.category === providerCategoryFilter;
-                                return matchesSearch && matchesCategory;
-                              });
-
-                              return (
-                                <div className="space-y-3">
-                                  <div className="grid grid-cols-3 gap-2">
-                                    <div>
-                                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Cari Nama/ID</label>
+                                {isAdminCategoryDropdownOpen && (
+                                  <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden max-h-[220px] flex flex-col">
+                                    <div className="p-2.5 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
                                       <input
                                         type="text"
-                                        placeholder="Contoh: Followers..."
-                                        value={providerSearch}
-                                        onChange={(e) => setProviderSearch(e.target.value)}
-                                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
+                                        placeholder="Cari Kategori..."
+                                        value={isAdminCategorySearch}
+                                        onChange={(e) => setIsAdminCategorySearch(e.target.value)}
+                                        className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-1.5 rounded-xl outline-none text-[11px]"
+                                        autoFocus
                                       />
                                     </div>
-                                    <div>
-                                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter Kategori</label>
-                                      <input
-                                        type="text"
-                                        placeholder="Cari kategori..."
-                                        value={providerCategorySearch}
-                                        onChange={(e) => {
-                                          const q = e.target.value;
-                                          setProviderCategorySearch(q);
-                                          // Pilih otomatis kategori pertama yang cocok
-                                          const matched = uniqueProviderCategories.find(c => c.toLowerCase().includes(q.toLowerCase()));
-                                          if (matched) {
-                                            setProviderCategoryFilter(matched);
-                                          }
-                                        }}
-                                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px]"
-                                      />
-                                      <div>
-                                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kategori Pusat</label>
-                                        <div className="relative">
-                                          {/* Custom Category Selector Button */}
+                                    <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
+                                      {['Instagram', 'TikTok', 'YouTube', 'Twitter/X', 'Kustom']
+                                        .filter(cat => cat.toLowerCase().includes(isAdminCategorySearch.toLowerCase()))
+                                        .map(cat => (
                                           <button
+                                            key={cat}
                                             type="button"
                                             onClick={() => {
-                                              setIsProviderCategoryDropdownOpen(!isProviderCategoryDropdownOpen);
-                                              setIsProviderServiceDropdownOpen(false);
+                                              if (cat === 'Kustom') {
+                                                setServiceCategory('');
+                                              } else {
+                                                setServiceCategory(cat);
+                                              }
+                                              setIsAdminCategoryDropdownOpen(false);
+                                              setIsAdminCategorySearch('');
                                             }}
-                                            className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-2.5 py-1.5 rounded-lg outline-none text-[11px] text-left cursor-pointer"
+                                            className="w-full text-left px-4 py-2 text-xs text-slate-355 hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors"
                                           >
-                                            <span className="truncate">{providerCategoryFilter === 'all' ? 'Semua Kategori' : providerCategoryFilter}</span>
-                                            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isProviderCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                                            {cat === 'Kustom' ? 'Kategori Baru (Kustom)...' : cat}
                                           </button>
+                                        ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
 
-                                          {/* Custom Category Dropdown List */}
-                                          {isProviderCategoryDropdownOpen && (
-                                            <div className="absolute left-0 right-0 mt-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[220px] flex flex-col">
-                                              <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
+                              {!(serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X') && (
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="Masukkan nama kategori baru..."
+                                  value={serviceCategory}
+                                  onChange={(e) => setServiceCategory(e.target.value)}
+                                  className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs mt-2"
+                                />
+                              )}
+                            </div>
+
+                            {/* Service Name */}
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Nama Layanan</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Contoh: Followers Indo Real"
+                                value={serviceName}
+                                onChange={(e) => setServiceName(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Deskripsi Layanan</label>
+                            <textarea
+                              placeholder="Masukkan deskripsi detail layanan (misal: Followers real aktif, proses cepat, garansi 30 hari)..."
+                              value={serviceDescription}
+                              onChange={(e) => setServiceDescription(e.target.value)}
+                              rows={4}
+                              className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 text-slate-300 px-4 py-3 rounded-2xl outline-none text-xs font-sans leading-relaxed resize-y min-h-[100px]"
+                            />
+                          </div>
+
+                          {/* Price & Duration Row */}
+                          <div className="grid md:grid-cols-2 gap-5">
+                            {/* Price */}
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Harga per 1.000 (1K)</label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                required
+                                value={formatNumberWithDots(servicePrice)}
+                                onChange={(e) => setServicePrice(parseNumberFromDots(e.target.value))}
+                                className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs font-semibold"
+                              />
+                            </div>
+
+                            {/* Average Duration */}
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">⏱️ Rata-Rata Durasi Proses</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Contoh: 15 Menit, 1 Jam, dll."
+                                value={averageDuration}
+                                onChange={(e) => setAverageDuration(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Min & Max Order Row */}
+                          <div className="grid md:grid-cols-2 gap-5">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Min Order</label>
+                              <input
+                                type="number"
+                                required
+                                value={serviceMin}
+                                onChange={(e) => setServiceMin(parseInt(e.target.value) || 0)}
+                                className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Max Order</label>
+                              <input
+                                type="number"
+                                required
+                                value={serviceMax}
+                                onChange={(e) => setServiceMax(parseInt(e.target.value) || 0)}
+                                className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          {/* SMM Provider Integration Block */}
+                          <div className="border-t border-slate-850 pt-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider">Integrasi Provider Pusat</h4>
+                            </div>
+
+                            <div className="grid md:grid-cols-3 gap-4 items-end">
+                              <div className="md:col-span-1">
+                                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Provider Pusat</label>
+                                <select
+                                  value={providerId}
+                                  onChange={(e) => {
+                                    setProviderId(e.target.value);
+                                    setProviderServicesList([]);
+                                    setProviderError(null);
+                                    setProviderServiceId('');
+                                    setProviderPrice(0);
+                                  }}
+                                  className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs cursor-pointer"
+                                >
+                                  <option value="manual">Manual (Tanpa Provider)</option>
+                                  <option value="buzzerpanel">BuzzerPanel</option>
+                                  <option value="medanpedia">MedanPedia</option>
+                                </select>
+                              </div>
+
+                              {providerId !== 'manual' && (
+                                <div className="md:col-span-2 flex gap-3">
+                                  <div className="flex-1">
+                                    <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">ID Layanan Pusat</label>
+                                    <input
+                                      type="text"
+                                      required
+                                      placeholder="Contoh: 140"
+                                      value={providerServiceId}
+                                      onChange={(e) => setProviderServiceId(e.target.value)}
+                                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Harga Modal (1K)</label>
+                                    <input
+                                      type="number"
+                                      required
+                                      placeholder="Harga beli"
+                                      value={providerPrice || ''}
+                                      onChange={(e) => setProviderPrice(parseFloat(e.target.value) || 0)}
+                                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {(providerId === 'buzzerpanel' || providerId === 'medanpedia') && (
+                              <div className="space-y-4 bg-slate-950/60 p-5 rounded-2xl border border-slate-850">
+                                <div className="flex items-center justify-between border-b border-slate-850/60 pb-3">
+                                  <span className="text-xs text-indigo-400 font-extrabold uppercase tracking-widest flex items-center gap-1.5">
+                                    🔌 Hubungkan Langsung dari Database Pusat
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={loadingProviderServices}
+                                    onClick={fetchProviderServices}
+                                    className="inline-flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl transition-all font-bold cursor-pointer"
+                                  >
+                                    {loadingProviderServices ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                    {loadingProviderServices ? 'Mengambil Data...' : 'Muat Layanan Pusat'}
+                                  </button>
+                                </div>
+
+                                {providerError && (
+                                  <div className="text-xs text-red-400 bg-red-950/20 border border-red-500/20 p-3 rounded-xl">
+                                    {providerError}
+                                  </div>
+                                )}
+
+                                {providerServicesList.length > 0 && (() => {
+                                  const uniqueProviderCategories = Array.from(new Set(providerServicesList.map(s => s?.category).filter(Boolean))) as string[];
+                                  const filteredProviderServices = providerServicesList.filter(s => {
+                                    if (!s) return false;
+                                    const isNumericSearch = /^\d+$/.test(providerSearch.trim());
+                                    if (isNumericSearch && String(s.id).includes(providerSearch.trim())) return true;
+                                    const nameMatch = (s.name || '').toLowerCase().includes(providerSearch.toLowerCase());
+                                    const idMatch = String(s.id).includes(providerSearch);
+                                    const catMatch = (s.category || '').toLowerCase().includes(providerSearch.toLowerCase());
+                                    return (nameMatch || idMatch || catMatch) && (providerCategoryFilter === 'all' || s.category === providerCategoryFilter);
+                                  });
+
+                                  return (
+                                    <div className="space-y-4">
+                                      <div className="grid sm:grid-cols-2 gap-4">
+                                        <div>
+                                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Cari Nama atau ID</label>
+                                          <input
+                                            type="text"
+                                            placeholder="Contoh: Followers Indo, Likes..."
+                                            value={providerSearch}
+                                            onChange={(e) => setProviderSearch(e.target.value)}
+                                            className="w-full bg-slate-900 border border-slate-800 text-slate-200 focus:border-indigo-500 px-3.5 py-2 rounded-xl outline-none text-xs"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Filter Kategori Pusat</label>
+                                          <div className="relative">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setIsProviderCategoryDropdownOpen(!isProviderCategoryDropdownOpen);
+                                                setIsProviderServiceDropdownOpen(false);
+                                              }}
+                                              className="w-full flex items-center justify-between bg-slate-900 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl outline-none text-xs cursor-pointer"
+                                            >
+                                              <span className="truncate">{providerCategoryFilter === 'all' ? 'Semua Kategori' : providerCategoryFilter}</span>
+                                              <ChevronDown className="w-4 h-4 text-slate-400" />
+                                            </button>
+                                            {isProviderCategoryDropdownOpen && (
+                                              <div className="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl shadow-xl z-50 overflow-hidden max-h-[180px] overflow-y-auto">
                                                 <button
                                                   type="button"
                                                   onClick={() => {
                                                     setProviderCategoryFilter('all');
                                                     setIsProviderCategoryDropdownOpen(false);
                                                   }}
-                                                  className={`w-full text-left px-3 py-2 text-[11px] hover:bg-indigo-600/10 hover:text-indigo-500 dark:text-indigo-400 transition-colors ${providerCategoryFilter === 'all' ? 'bg-indigo-600/20 text-indigo-500 dark:text-indigo-400 font-semibold' : 'text-slate-350'
-                                                    }`}
+                                                  className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-850 hover:text-indigo-400"
                                                 >
                                                   Semua Kategori
                                                 </button>
-                                                {uniqueProviderCategories
-                                                  .filter(cat => cat.toLowerCase().includes(providerCategorySearch.toLowerCase()))
-                                                  .map(cat => (
+                                                {uniqueProviderCategories.map(cat => (
+                                                  <button
+                                                    key={cat}
+                                                    type="button"
+                                                    onClick={() => {
+                                                      setProviderCategoryFilter(cat);
+                                                      setIsProviderCategoryDropdownOpen(false);
+                                                    }}
+                                                    className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-855 hover:text-indigo-405"
+                                                  >
+                                                    {cat}
+                                                  </button>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider">
+                                            Pilih Layanan Pusat ({filteredProviderServices.length} ditemukan)
+                                          </label>
+                                          {(providerSearch || providerCategoryFilter !== 'all') && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setProviderSearch('');
+                                                setProviderCategoryFilter('all');
+                                              }}
+                                              className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold"
+                                            >
+                                              Clear Filter
+                                            </button>
+                                          )}
+                                        </div>
+
+                                        <div className="relative">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setIsProviderServiceDropdownOpen(!isProviderServiceDropdownOpen);
+                                              setIsProviderCategoryDropdownOpen(false);
+                                            }}
+                                            className="w-full flex items-center justify-between bg-slate-900 border border-slate-800 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs cursor-pointer"
+                                          >
+                                            <span className="truncate">
+                                              {providerServiceId
+                                                ? (() => {
+                                                  const found = providerServicesList.find(s => String(s.id) === providerServiceId);
+                                                  return found ? `[${found.id}] ${found.category} - ${found.name} (Rp ${parseFloat(found.price).toLocaleString()})` : `-- Klik untuk memilih --`;
+                                                })()
+                                                : '-- Klik untuk memilih --'
+                                              }
+                                            </span>
+                                            <ChevronDown className="w-4 h-4 text-slate-450" />
+                                          </button>
+
+                                          {isProviderServiceDropdownOpen && (
+                                            <div className="absolute left-0 right-0 mt-1 bg-slate-950 border border-slate-800 text-slate-250 rounded-2xl shadow-xl z-50 overflow-hidden max-h-[260px] flex flex-col">
+                                              <div className="p-2.5 border-b border-slate-900 sticky top-0 bg-slate-950/90">
+                                                <input
+                                                  type="text"
+                                                  placeholder="Ketik untuk memfilter list..."
+                                                  value={providerServiceSearchQuery}
+                                                  onChange={(e) => setProviderServiceSearchQuery(e.target.value)}
+                                                  className="w-full bg-slate-900 border border-slate-800 text-slate-200 px-3 py-1.5 rounded-xl outline-none text-xs"
+                                                  autoFocus
+                                                />
+                                              </div>
+                                              <div className="overflow-y-auto scrollbar-thin py-1 flex-1">
+                                                {filteredProviderServices
+                                                  .filter((ps: any) => ps && (ps.name || '').toLowerCase().includes(providerServiceSearchQuery.toLowerCase()))
+                                                  .slice(0, 100)
+                                                  .map((ps: any) => (
                                                     <button
-                                                      key={cat}
+                                                      key={ps.id}
                                                       type="button"
                                                       onClick={() => {
-                                                        setProviderCategoryFilter(cat);
-                                                        setIsProviderCategoryDropdownOpen(false);
+                                                        setProviderServiceId(String(ps.id));
+                                                        setProviderPrice(parseFloat(ps.price));
+                                                        setServiceName(ps.name);
+                                                        setServicePrice(Math.round(parseFloat(ps.price) * 1.5));
+                                                        setServiceMin(ps.min);
+                                                        setServiceMax(ps.max);
+                                                        let rawDesc = ps.note || ps.description || '';
+                                                        setServiceDescription(rawDesc);
+                                                        setAverageDuration(ps.average_time || '15 Menit');
+                                                        if (ps.category) {
+                                                          const cat = ps.category.toLowerCase();
+                                                          if (cat.includes('instagram')) setServiceCategory('Instagram');
+                                                          else if (cat.includes('tiktok')) setServiceCategory('TikTok');
+                                                          else if (cat.includes('youtube')) setServiceCategory('YouTube');
+                                                          else if (cat.includes('twitter') || cat.includes('x')) setServiceCategory('Twitter/X');
+                                                          else setServiceCategory(ps.category);
+                                                        }
+                                                        setIsProviderServiceDropdownOpen(false);
+                                                        setProviderServiceSearchQuery('');
                                                       }}
-                                                      className={`w-full text-left px-3 py-2 text-[11px] hover:bg-indigo-600/10 hover:text-indigo-500 dark:text-indigo-400 transition-colors ${providerCategoryFilter === cat ? 'bg-indigo-600/20 text-indigo-500 dark:text-indigo-400 font-semibold' : 'text-slate-350'
-                                                        }`}
+                                                      className="w-full text-left px-4 py-3 text-xs hover:bg-indigo-600/10 text-slate-350 hover:text-indigo-400 border-b border-slate-900/40 last:border-b-0 flex flex-col"
                                                     >
-                                                      {cat}
+                                                      <span className="font-semibold truncate">[{ps.id}] {ps.name}</span>
+                                                      <span className="text-[10px] text-slate-500 mt-0.5">
+                                                        Rp {parseFloat(ps.price).toLocaleString()} | Kategori: {ps.category}
+                                                      </span>
                                                     </button>
                                                   ))}
                                               </div>
@@ -2235,408 +2666,81 @@ export default function AdminDashboard() {
                                         </div>
                                       </div>
                                     </div>
-
-                                    <div>
-                                      <div className="flex items-center justify-between mb-1.5">
-                                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Pilih Layanan ({filteredProviderServices.length} ditemukan{filteredProviderServices.length > 100 ? ', menampilkan 100 teratas' : ''})</label>
-                                        {(providerSearch || providerCategoryFilter !== 'all' || providerCategorySearch) && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setProviderSearch('');
-                                              setProviderCategoryFilter('all');
-                                              setProviderCategorySearch('');
-                                            }}
-                                            className="text-[9px] text-indigo-500 dark:text-indigo-400 hover:text-indigo-300 font-semibold"
-                                          >
-                                            Reset Filter
-                                          </button>
-                                        )}
-                                      </div>
-                                      <div className="relative">
-                                        {/* Custom Service Selector Button */}
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setIsProviderServiceDropdownOpen(!isProviderServiceDropdownOpen);
-                                            setIsProviderCategoryDropdownOpen(false);
-                                          }}
-                                          className="w-full flex items-center justify-between bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs text-left cursor-pointer min-w-0"
-                                        >
-                                          <span className="truncate">
-                                            {providerServiceId
-                                              ? (() => {
-                                                const found = providerServicesList.find(s => String(s.id) === providerServiceId);
-                                                return found ? `[${found.id}] ${found.category} - ${found.name} (Rp ${parseFloat(found.price).toLocaleString()})` : `-- Klik untuk memilih --`;
-                                              })()
-                                              : '-- Klik untuk memilih --'
-                                            }
-                                          </span>
-                                          <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isProviderServiceDropdownOpen ? 'rotate-180' : ''}`} />
-                                        </button>
-
-                                        {/* Custom Service Dropdown List */}
-                                        {isProviderServiceDropdownOpen && (
-                                          <div className="absolute left-0 right-0 mt-1 bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] flex flex-col">
-                                            <div className="p-3 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
-                                              <input
-                                                type="text"
-                                                placeholder="Cari Layanan Provider..."
-                                                value={providerServiceSearchQuery}
-                                                onChange={(e) => setProviderServiceSearchQuery(e.target.value)}
-                                                className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
-                                                autoFocus
-                                              />
-                                            </div>
-                                            <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
-                                              {filteredProviderServices
-                                                .filter((ps: any) => ps && (ps.name || '').toLowerCase().includes(providerServiceSearchQuery.toLowerCase()))
-                                                .map((ps: any) => (
-                                                  <button
-                                                    key={ps.id}
-                                                    type="button"
-                                                    onClick={() => {
-                                                      setProviderServiceId(String(ps.id));
-                                                      setProviderPrice(parseFloat(ps.price));
-                                                      setServiceName(ps.name);
-                                                      setServicePrice(Math.round(parseFloat(ps.price) * 1.5)); // Default markup +50%
-                                                      setServiceMin(ps.min);
-                                                      setServiceMax(ps.max);
-                                                      let rawDesc = ps.note || ps.description || ps.desc || ps.details || '';
-
-                                                      try {
-                                                        rawDesc = decodeURIComponent(escape(rawDesc));
-                                                      } catch (e) { }
-
-                                                      rawDesc = rawDesc
-                                                        .replace(/<br\s*\/?>/gi, '\n')
-                                                        .replace(/<\/p>/gi, '\n')
-                                                        .replace(/<p[^>]*>/gi, '')
-                                                        .replace(/<[^>]*>/g, '')
-                                                        .replace(/&nbsp;/g, ' ')
-                                                        .replace(/&amp;/g, '&')
-                                                        .replace(/&lt;/g, '<')
-                                                        .replace(/&gt;/g, '>')
-                                                        .replace(/\n\s*\n+/g, '\n\n')
-                                                        .trim();
-                                                      setServiceDescription(rawDesc);
-
-                                                      const avgTime = ps.average_time || ps.average_duration || ps.time;
-                                                      if (avgTime) {
-                                                        setAverageDuration(avgTime);
-                                                      } else {
-                                                        setAverageDuration('15 Menit');
-                                                      }
-
-                                                      if (ps.category) {
-                                                        const catLower = ps.category.toLowerCase();
-                                                        if (catLower.includes('instagram')) setServiceCategory('Instagram');
-                                                        else if (catLower.includes('tiktok')) setServiceCategory('TikTok');
-                                                        else if (catLower.includes('youtube')) setServiceCategory('YouTube');
-                                                        else if (catLower.includes('twitter') || catLower.includes('x')) setServiceCategory('Twitter/X');
-                                                        else setServiceCategory(ps.category);
-                                                      }
-
-                                                      setIsProviderServiceDropdownOpen(false);
-                                                      setProviderServiceSearchQuery('');
-                                                    }}
-                                                    className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-500 dark:text-indigo-400 transition-colors flex flex-col gap-0.5 ${providerServiceId === String(ps.id) ? 'bg-indigo-600/20 text-indigo-500 dark:text-indigo-400 font-semibold' : 'text-slate-350'
-                                                      }`}
-                                                  >
-                                                    <span className="block truncate">[{ps.id}] {ps.name}</span>
-                                                    <span className="text-[10px] text-slate-500 font-mono">
-                                                      Kategori: {ps.category} | Rp {parseFloat(ps.price).toLocaleString()}
-                                                    </span>
-                                                  </button>
-                                                ))}
-                                              {filteredProviderServices.length === 0 && (
-                                                <div className="px-4 py-3 text-xs text-slate-500 text-center">Layanan tidak ditemukan</div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>     </div>
-                                </div>
-                              );
-                            })()}
+                                  );
+                                })()}
+                              </div>
+                            )}
                           </div>
-                        )}
 
-                        {providerId !== 'manual' && (
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">ID Layanan Provider</label>
+                          {/* Icon Upload Option */}
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Icon Layanan (Opsional)</label>
+                            <div className="flex items-center gap-3">
                               <input
-                                type="text"
-                                required
-                                placeholder="Contoh: 140"
-                                value={providerServiceId}
-                                onChange={(e) => setProviderServiceId(e.target.value)}
-                                className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => setServiceIcon(reader.result as string);
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                className="hidden"
+                                id="service-icon-upload"
                               />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Harga Modal (1K)</label>
-                              <input
-                                type="number"
-                                required
-                                placeholder="Harga beli"
-                                value={providerPrice || ''}
-                                onChange={(e) => setProviderPrice(parseFloat(e.target.value) || 0)}
-                                className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Min Order</label>
-                          <input
-                            type="number"
-                            required
-                            value={serviceMin}
-                            onChange={(e) => setServiceMin(parseInt(e.target.value) || 0)}
-                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Max Order</label>
-                          <input
-                            type="number"
-                            required
-                            value={serviceMax}
-                            onChange={(e) => setServiceMax(parseInt(e.target.value) || 0)}
-                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">⏱️ Rata-Rata Durasi Proses</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Contoh: 15 Menit, 1 Jam, dll."
-                          value={averageDuration}
-                          onChange={(e) => setAverageDuration(e.target.value)}
-                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Icon Layanan (Opsional)</label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setServiceIcon(reader.result as string);
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                            className="hidden"
-                            id="service-icon-upload"
-                          />
-                          <label
-                            htmlFor="service-icon-upload"
-                            className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-indigo-500/50 text-slate-350 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block hover:text-white"
-                          >
-                            Pilih File Gambar
-                          </label>
-                          {serviceIcon && (
-                            <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 flex items-center justify-center shrink-0">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={serviceIcon} alt="Preview" className="w-full h-full object-cover" />
-                              <button
-                                type="button"
-                                onClick={() => setServiceIcon('')}
-                                className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex items-center justify-center text-red-500 font-bold text-xs transition-opacity"
+                              <label
+                                htmlFor="service-icon-upload"
+                                className="bg-slate-950 border border-slate-800 text-slate-350 hover:text-slate-100 hover:border-indigo-500/50 px-4 py-3 rounded-2xl cursor-pointer text-xs font-semibold transition-all inline-block"
                               >
-                                ✕
-                              </button>
+                                Pilih File Gambar
+                              </label>
+                              {serviceIcon && (
+                                <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+                                  <img src={serviceIcon} alt="Preview" className="w-full h-full object-cover" />
+                                  <button
+                                    type="button"
+                                    onClick={() => setServiceIcon('')}
+                                    className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex items-center justify-center text-red-500 font-bold text-xs"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        </form>
                       </div>
 
-                      <div className="flex gap-2 pt-2">
+                      {/* Modal Footer */}
+                      <div className="px-6 py-4 border-t border-slate-850 bg-slate-950/40 flex items-center justify-end gap-3.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowServiceFormModal(false);
+                            setEditingServiceId(null);
+                            setServiceName('');
+                            setServiceDescription('');
+                            setServicePrice(0);
+                          }}
+                          className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-slate-100 rounded-2xl text-xs font-bold transition-all cursor-pointer"
+                        >
+                          Batal
+                        </button>
                         <button
                           type="submit"
+                          form="service-form"
                           disabled={submittingService}
-                          className="flex-1 bg-indigo-600 hover:bg-indigo-600 text-white text-white font-bold py-3 rounded-2xl transition-all text-xs flex items-center justify-center gap-1.5"
+                          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black rounded-2xl text-xs transition-all shadow-md shadow-indigo-600/10 cursor-pointer flex items-center gap-1.5"
                         >
-                          <Check className="w-4 h-4" />
-                          <span>{editingServiceId ? 'Perbarui Layanan' : 'Simpan Layanan'}</span>
+                          {submittingService ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          <span>{editingServiceId ? 'Simpan Perubahan' : 'Buat Layanan'}</span>
                         </button>
-                        {editingServiceId && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingServiceId(null);
-                              setServiceName('');
-                              setServiceDescription('');
-                              setServicePrice(0);
-                              setProviderId('manual');
-                              setProviderServiceId('');
-                              setProviderPrice(0);
-                            }}
-                            className="px-4 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-2xl text-xs"
-                          >
-                            Batal
-                          </button>
-                        )}
-                      </div>
-                    </form>
-                  </div>
-
-                  {/* Service Lists */}
-                  <div className="lg:col-span-2 bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-200 mb-4 uppercase tracking-wider">Daftar Layanan Tersedia</h3>
-                      <div className="space-y-4">
-                        {services.length === 0 ? (
-                          <div className="py-8 text-center text-slate-500 text-xs">Belum ada layanan di input.</div>
-                        ) : (
-                          services.slice((servicesPage - 1) * servicesPerPage, servicesPage * servicesPerPage).map(service => {
-                            const serviceIconUrl = categoryIconMap[service.category] || service.icon_url;
-
-                            return (
-                              <div
-                                key={service.id}
-                                className="bg-slate-50 dark:bg-slate-950/50 border border-slate-850 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-950/10 transition-all duration-300 p-5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs group"
-                              >
-                                <div className="flex items-start sm:items-center gap-3.5 flex-1">
-                                  {serviceIconUrl ? (
-                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-850 flex items-center justify-center shrink-0">
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={serviceIconUrl} alt="icon" className="w-full h-full object-cover" />
-                                    </div>
-                                  ) : (
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/80 to-purple-600/80 flex items-center justify-center shrink-0 text-white font-extrabold text-xs shadow-md border border-indigo-500/20">
-                                      {service.category[0].toUpperCase()}
-                                    </div>
-                                  )}
-
-                                  <div className="space-y-1.5 flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className={`px-2 py-0.5 rounded-lg font-extrabold text-[9px] uppercase tracking-wider ${getCategoryBadgeClass(service.category)}`}>
-                                        {service.category}
-                                      </span>
-                                      <span className="font-extrabold text-slate-800 dark:text-slate-200 text-sm group-hover:text-rose-600 dark:text-indigo-400 dark:group-hover:text-white transition-colors">
-                                        {service.name}
-                                      </span>
-                                    </div>
-
-                                    <div className="text-slate-600 dark:text-slate-400 font-light flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-                                      <span className="flex items-center gap-1">
-                                        <span className="text-slate-500">Min:</span> <strong className="text-slate-700 dark:text-slate-305">{service.min_order.toLocaleString()}</strong>
-                                      </span>
-                                      <span className="text-slate-300 dark:text-slate-700">•</span>
-                                      <span className="flex items-center gap-1">
-                                        <span className="text-slate-500">Max:</span> <strong className="text-slate-700 dark:text-slate-305">{service.max_order.toLocaleString()}</strong>
-                                      </span>
-                                      {service.created_at && (
-                                        <>
-                                          <span className="text-slate-300 dark:text-slate-700">•</span>
-                                          <span className="text-slate-500">
-                                            Dibuat: {new Date(service.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
-                                          </span>
-                                        </>
-                                      )}
-                                    </div>
-
-                                    {service.description && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setExpandedServices(prev => ({ ...prev, [service.id]: !prev[service.id] }))}
-                                        className="text-[10px] text-indigo-500 dark:text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-bold mt-2.5 flex items-center gap-1 cursor-pointer transition-colors"
-                                      >
-                                        <span>{expandedServices[service.id] ? 'Sembunyikan Deskripsi' : 'Lihat Deskripsi'}</span>
-                                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedServices[service.id] ? 'rotate-180' : ''}`} />
-                                      </button>
-                                    )}
-
-                                    {service.description && expandedServices[service.id] && (
-                                      <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-2.5 bg-slate-100/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200 dark:border-slate-850/60 max-w-xl font-light leading-relaxed whitespace-pre-wrap select-text animate-in fade-in slide-in-from-top-2 duration-250">
-                                        <span className="block font-bold text-[9px] text-rose-600 dark:text-indigo-400 dark:text-indigo-500 dark:text-indigo-400/80 uppercase tracking-wider mb-1">Deskripsi Detail:</span>
-                                        <div className="text-slate-700 dark:text-slate-300">{service.description}</div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="flex sm:flex-col items-end gap-3 sm:gap-2 justify-between sm:justify-center border-t sm:border-t-0 border-slate-900 pt-3 sm:pt-0 shrink-0">
-                                  <div className="bg-rose-50/80 dark:bg-rose-950/15 text-indigo-500 dark:text-indigo-400 font-extrabold px-3 py-1.5 rounded-xl border border-indigo-500/20 text-sm tracking-tight whitespace-nowrap shadow-inner">
-                                    {formatPrice(service.price_per_k)}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <button
-                                      onClick={() => handleToggleRecommend(service)}
-                                      className={`p-2 rounded-xl border transition-colors cursor-pointer ${service.is_recommended
-                                          ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                                          : 'bg-slate-950 border-slate-850 text-slate-500 hover:text-slate-350 dark:hover:text-slate-300'
-                                        }`}
-                                      title={service.is_recommended ? "Hapus Rekomendasi" : "Jadikan Rekomendasi"}
-                                    >
-                                      <Star className={`w-3.5 h-3.5 ${service.is_recommended ? 'fill-current' : ''}`} />
-                                    </button>
-                                    <button
-                                      onClick={() => startEditService(service)}
-                                      className="p-2 bg-rose-50/80 dark:bg-rose-950/20 text-rose-600 dark:text-indigo-400 border border-rose-200/40 dark:border-rose-900/25 rounded-xl transition-colors cursor-pointer"
-                                      title="Edit Layanan"
-                                    >
-                                      <Edit2 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteService(service.id)}
-                                      className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-colors cursor-pointer"
-                                      title="Hapus Layanan"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
                       </div>
                     </div>
-
-                    {/* Services Pagination */}
-                    {Math.ceil(services.length / servicesPerPage) > 1 && (
-                      <div className="flex items-center justify-between border-t border-slate-850/80 bg-slate-900/10 pt-4 mt-6">
-                        <div className="text-xs text-slate-400">
-                          Menampilkan <span className="font-semibold text-slate-350">{((servicesPage - 1) * servicesPerPage) + 1}</span> - <span className="font-semibold text-slate-350">{Math.min(servicesPage * servicesPerPage, services.length)}</span> dari <span className="font-semibold text-slate-350">{services.length}</span> layanan
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            disabled={servicesPage === 1}
-                            onClick={() => setServicesPage(p => Math.max(1, p - 1))}
-                            className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 disabled:opacity-40 text-slate-300 border border-slate-850 text-xs transition-all active:scale-95 disabled:pointer-events-none cursor-pointer"
-                          >
-                            Sebelumnya
-                          </button>
-                          <button
-                            disabled={servicesPage === Math.ceil(services.length / servicesPerPage)}
-                            onClick={() => setServicesPage(p => Math.min(Math.ceil(services.length / servicesPerPage), p + 1))}
-                            className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 disabled:opacity-40 text-slate-300 border border-slate-850 text-xs transition-all active:scale-95 disabled:pointer-events-none cursor-pointer"
-                          >
-                            Selanjutnya
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
-                </div>
+                )}
 
                 {/* Provider Price Matcher */}
                 <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 sm:p-8 rounded-3xl backdrop-blur-md">
@@ -3654,7 +3758,7 @@ export default function AdminDashboard() {
                           key={status}
                           onClick={() => setTicketStatusFilter(status)}
                           className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all ${ticketStatusFilter === status
-                              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-650/15'
+                              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/15'
                               : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
                             }`}
                         >
@@ -3735,7 +3839,7 @@ export default function AdminDashboard() {
                                 <div className="flex items-center justify-center gap-2">
                                   <button
                                     onClick={() => fetchTicketDetails(t.id)}
-                                    className="px-3 py-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-700 text-white text-[10px] font-extrabold transition-all cursor-pointer"
+                                    className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold transition-all cursor-pointer"
                                   >
                                     Balas
                                   </button>
@@ -3888,7 +3992,7 @@ export default function AdminDashboard() {
                     </div>
                     <button
                       onClick={() => setSelectedTicket(null)}
-                      className="text-zinc-400 hover:text-zinc-650 p-1.5 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer"
+                      className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -3970,7 +4074,7 @@ export default function AdminDashboard() {
                           <button
                             type="submit"
                             disabled={sendingTicketMessage || !newTicketMessage.trim()}
-                            className="bg-indigo-600 hover:bg-indigo-750 text-white p-2.5 rounded-xl transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-indigo-650/10 flex items-center justify-center shrink-0"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-xl transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-indigo-600/10 flex items-center justify-center shrink-0"
                           >
                             <Send className="w-4 h-4" />
                           </button>
@@ -3983,7 +4087,7 @@ export default function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() => setNewTicketMessageImage('')}
-                            className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-650 text-white p-1 rounded-full shadow-md scale-75 cursor-pointer"
+                            className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full shadow-md scale-75 cursor-pointer"
                           >
                             <X className="w-4 h-4" />
                           </button>

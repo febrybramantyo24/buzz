@@ -86,52 +86,50 @@ export async function GET(request: Request) {
 
         // If status changed or needs a refund, update database
         if (localStatus !== order.status || shouldRefund) {
-          // Process refund if applicable
           if (shouldRefund && refundAmount > 0 && order.user_id) {
             // Cap refund amount to avoid credit exploitation
             const cappedRefund = Math.min(refundAmount, parseFloat(order.total_price));
 
-            // 1. Credit user balance
-            await query(
-              'UPDATE profiles SET balance = balance + $1 WHERE id = $2',
-              [cappedRefund, order.user_id]
-            );
-
-            // 2. Record transaction log
-            await query(
-              `INSERT INTO transactions (user_id, amount, type, status, reference_id, payment_method)
-               VALUES ($1, $2, 'refund', 'success', $3, 'wallet')`,
-              [order.user_id, cappedRefund, order.id]
-            );
-
-            // 3. Update order in database with refunded payment status
+            // Instead of auto-refunding, set payment_status to 'pending_refund'
+            // and save provider details so admin can review and execute it
             await query(
               `UPDATE orders 
-               SET status = $1, start_count = $2, payment_status = 'refunded' 
-               WHERE id = $3`,
-              [localStatus, startCount, order.id]
+               SET status = $1, start_count = $2, payment_status = 'pending_refund', provider_refund_amount = $3, provider_id = $4 
+               WHERE id = $5`,
+              [localStatus, startCount, cappedRefund, order.provider_id || 'manual', order.id]
             );
 
-            console.log(`Refunded Rp ${cappedRefund} to user ${order.user_id} for order ${order.id} (${refundReason})`);
+            console.log(`Order ${order.id} marked as pending_refund with amount Rp ${cappedRefund} (${refundReason})`);
+            
+            results.push({
+              orderId: order.id,
+              providerOrderId: order.provider_order_id,
+              oldStatus: order.status,
+              newStatus: localStatus,
+              startCount,
+              refunded: false, // Set to false because it's pending admin review
+              refundAmount: cappedRefund,
+              paymentStatus: 'pending_refund'
+            });
           } else {
-            // Just update order status
+            // Just update order status and provider_id
             await query(
               `UPDATE orders 
-               SET status = $1, start_count = $2 
-               WHERE id = $3`,
-              [localStatus, startCount, order.id]
+               SET status = $1, start_count = $2, provider_id = $3 
+               WHERE id = $4`,
+              [localStatus, startCount, order.provider_id || 'manual', order.id]
             );
-          }
 
-          results.push({
-            orderId: order.id,
-            providerOrderId: order.provider_order_id,
-            oldStatus: order.status,
-            newStatus: localStatus,
-            startCount,
-            refunded: shouldRefund,
-            refundAmount
-          });
+            results.push({
+              orderId: order.id,
+              providerOrderId: order.provider_order_id,
+              oldStatus: order.status,
+              newStatus: localStatus,
+              startCount,
+              refunded: false,
+              refundAmount: 0
+            });
+          }
         }
       } catch (orderErr: any) {
         console.error(`Error syncing status for order ${order.id}:`, orderErr);

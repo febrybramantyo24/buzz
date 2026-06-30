@@ -121,6 +121,66 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action, orderId, status, startCount, refundAmount, targetUserId, adjustmentType, amount, reason } = body;
 
+    if (action === 'process_refund') {
+      if (!orderId) {
+        return NextResponse.json({ error: 'Missing orderId' }, { status: 400 });
+      }
+
+      // Get the current order details
+      const orderQuery = await query('SELECT * FROM orders WHERE id = $1', [orderId]);
+      if (orderQuery.rows.length === 0) {
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+      }
+      const order = orderQuery.rows[0];
+
+      if (order.payment_status === 'refunded') {
+        return NextResponse.json({ error: 'Order ini sudah direfund sebelumnya' }, { status: 400 });
+      }
+
+      // Decide refund amount: can accept manual refundAmount from request, or fallback to order.provider_refund_amount, or order.total_price
+      let actualRefund = refundAmount !== undefined ? parseFloat(refundAmount) : parseFloat(order.provider_refund_amount || 0);
+      if (actualRefund <= 0) {
+        actualRefund = parseFloat(order.total_price);
+      }
+
+      const maxRefundable = parseFloat(order.total_price);
+      if (actualRefund > maxRefundable) {
+        actualRefund = maxRefundable;
+      }
+
+      if (actualRefund > 0 && order.user_id) {
+        // Fetch current user balance
+        const userRes = await query('SELECT balance FROM profiles WHERE id = $1', [order.user_id]);
+        const startBalance = userRes.rows[0] ? parseFloat(userRes.rows[0].balance) : 0;
+        const endBalance = startBalance + actualRefund;
+
+        // Update user profile balance
+        await query(
+          'UPDATE profiles SET balance = balance + $1 WHERE id = $2',
+          [actualRefund, order.user_id]
+        );
+
+        // Record a transaction log of type 'refund'
+        const refundNote = `Refund disetujui Admin untuk order #${order.order_id || order.id.slice(0, 8)}. Saldo awal: Rp ${startBalance.toLocaleString('id-ID')} -> Saldo akhir: Rp ${endBalance.toLocaleString('id-ID')}`;
+
+        await query(
+          `INSERT INTO transactions (user_id, amount, type, status, payment_method, reference_id, description) 
+           VALUES ($1, $2, 'refund', 'success', 'wallet', $3, $4)`,
+          [order.user_id, actualRefund, orderId, refundNote]
+        );
+
+        // Update order status to failed and payment_status to refunded
+        await query(
+          `UPDATE orders 
+           SET payment_status = 'refunded', status = 'failed', provider_refund_amount = $1 
+           WHERE id = $2`,
+          [actualRefund, orderId]
+        );
+      }
+
+      return NextResponse.json({ success: true, message: 'Refund berhasil diproses oleh Admin' });
+    }
+
     if (action === 'update_user_balance') {
       if (!targetUserId || !adjustmentType || amount === undefined) {
         return NextResponse.json({ error: 'Data tidak lengkap untuk penyesuaian saldo' }, { status: 400 });

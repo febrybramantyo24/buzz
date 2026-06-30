@@ -36,10 +36,12 @@ export interface Order {
   total_price: number;
   status: 'pending' | 'processing' | 'inprogress' | 'success' | 'failed' | 'partial';
   start_count: number;
-  payment_status: 'unpaid' | 'paid' | 'expired' | 'refunded';
+  payment_status: 'unpaid' | 'paid' | 'expired' | 'refunded' | 'pending_refund';
   payment_method: string;
   created_at: string;
   order_id?: number;
+  provider_id?: string;
+  provider_refund_amount?: number | string;
   profiles?: {
     email: string;
   };

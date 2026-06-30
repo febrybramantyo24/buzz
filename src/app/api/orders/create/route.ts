@@ -143,8 +143,8 @@ export async function POST(request: Request) {
 
     // 9. Create Order record in DB
     const orderInsertRes = await query(
-      `INSERT INTO orders (user_id, service_id, category, service_name, target_url, quantity, price_per_k, total_price, status, start_count, payment_status, payment_method, provider_order_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `INSERT INTO orders (user_id, service_id, category, service_name, target_url, quantity, price_per_k, total_price, status, start_count, payment_status, payment_method, provider_order_id, provider_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
       [
         userId,
@@ -159,7 +159,8 @@ export async function POST(request: Request) {
         0,
         'paid',
         'wallet',
-        providerOrderId
+        providerOrderId,
+        service.provider_id || 'manual'
       ]
     );
 
