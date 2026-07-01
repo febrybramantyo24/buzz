@@ -5,6 +5,13 @@ import { getMedanPediaOrderStatus } from '@/lib/medanpedia';
 
 export async function GET(request: Request) {
   try {
+    // Self-healing schema migration
+    try {
+      await query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS provider_status VARCHAR(50);");
+    } catch (e) {
+      console.error('Migration failed in sync-status:', e);
+    }
+
     // 0. Automatically expire pending topup transactions older than 24 hours (set status to failed)
     const expireRes = await query(
       `UPDATE transactions 
@@ -52,25 +59,32 @@ export async function GET(request: Request) {
         const remains = providerData.remains !== undefined ? parseInt(providerData.remains, 10) : 0;
 
         let localStatus = order.status;
+        let providerStatusDbValue = '';
         let shouldRefund = false;
         let refundAmount = 0;
         let refundReason = '';
 
         if (providerStatus === 'success' || providerStatus === 'completed') {
           localStatus = 'success';
+          providerStatusDbValue = 'success';
         } else if (providerStatus === 'processing') {
           localStatus = 'processing';
+          providerStatusDbValue = 'processing';
         } else if (providerStatus === 'in progress' || providerStatus === 'inprogress') {
           localStatus = 'inprogress';
+          providerStatusDbValue = 'inprogress';
         } else if (providerStatus === 'pending') {
           localStatus = 'pending';
-        } else if (providerStatus === 'failed' || providerStatus === 'canceled') {
-          localStatus = 'failed';
+          providerStatusDbValue = 'pending';
+        } else if (providerStatus === 'failed' || providerStatus === 'canceled' || providerStatus === 'error') {
+          // Dashboard User: Status JANGAN otomatis update menjadi Error atau Partial. Tahan statusnya.
+          providerStatusDbValue = 'failed';
           shouldRefund = true;
           refundAmount = parseFloat(order.total_price);
           refundReason = 'failed/canceled by provider';
         } else if (providerStatus === 'partial') {
-          localStatus = 'failed'; // Mark as failed/partial
+          // Dashboard User: Status JANGAN otomatis update menjadi Error atau Partial. Tahan statusnya.
+          providerStatusDbValue = 'partial';
           shouldRefund = true;
           
           // Calculate partial refund: (remains / quantity) * total_price
@@ -84,8 +98,8 @@ export async function GET(request: Request) {
           refundReason = 'partial delivery by provider';
         }
 
-        // If status changed or needs a refund, update database
-        if (localStatus !== order.status || shouldRefund) {
+        // If status changed, provider_status changed, or needs a refund, update database
+        if (localStatus !== order.status || providerStatusDbValue !== order.provider_status || shouldRefund) {
           if (shouldRefund && refundAmount > 0 && order.user_id) {
             // Cap refund amount to avoid credit exploitation
             const cappedRefund = Math.min(refundAmount, parseFloat(order.total_price));
@@ -94,9 +108,9 @@ export async function GET(request: Request) {
             // and save provider details so admin can review and execute it
             await query(
               `UPDATE orders 
-               SET status = $1, start_count = $2, remains = $3, payment_status = 'pending_refund', provider_refund_amount = $4, provider_id = $5 
-               WHERE id = $6`,
-              [localStatus, startCount, remains, cappedRefund, order.provider_id || 'manual', order.id]
+               SET status = $1, start_count = $2, remains = $3, payment_status = 'pending_refund', provider_refund_amount = $4, provider_id = $5, provider_status = $6 
+               WHERE id = $7`,
+              [localStatus, startCount, remains, cappedRefund, order.provider_id || 'manual', providerStatusDbValue, order.id]
             );
 
             console.log(`Order ${order.id} marked as pending_refund with amount Rp ${cappedRefund} (${refundReason})`);
@@ -109,15 +123,16 @@ export async function GET(request: Request) {
               startCount,
               refunded: false, // Set to false because it's pending admin review
               refundAmount: cappedRefund,
-              paymentStatus: 'pending_refund'
+              paymentStatus: 'pending_refund',
+              providerStatus: providerStatusDbValue
             });
           } else {
-            // Just update order status and provider_id
+            // Just update order status, provider_status, and provider_id
             await query(
               `UPDATE orders 
-               SET status = $1, start_count = $2, remains = $3, provider_id = $4 
-               WHERE id = $5`,
-              [localStatus, startCount, remains, order.provider_id || 'manual', order.id]
+               SET status = $1, start_count = $2, remains = $3, provider_id = $4, provider_status = $5 
+               WHERE id = $6`,
+              [localStatus, startCount, remains, order.provider_id || 'manual', providerStatusDbValue, order.id]
             );
 
             results.push({
@@ -127,7 +142,8 @@ export async function GET(request: Request) {
               newStatus: localStatus,
               startCount,
               refunded: false,
-              refundAmount: 0
+              refundAmount: 0,
+              providerStatus: providerStatusDbValue
             });
           }
         }

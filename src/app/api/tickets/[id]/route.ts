@@ -193,3 +193,35 @@ export async function PATCH(
     return NextResponse.json({ error: err.message || 'Terjadi kesalahan sistem' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const decoded = await authenticate(request);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Sesi login tidak ditemukan. Silakan login kembali.' }, { status: 401 });
+    }
+
+    const userRes = await query('SELECT role FROM profiles WHERE id = $1', [decoded.userId]);
+    const userRole = userRes.rows[0]?.role;
+
+    if (userRole !== 'admin') {
+      return NextResponse.json({ error: 'Akses ditolak.' }, { status: 403 });
+    }
+
+    // Delete messages first, then ticket
+    await query('DELETE FROM ticket_messages WHERE ticket_id = $1', [id]);
+    await query('DELETE FROM tickets WHERE id = $1', [id]);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Tiket berhasil dihapus!'
+    });
+  } catch (err: any) {
+    console.error('Error deleting ticket:', err);
+    return NextResponse.json({ error: err.message || 'Terjadi kesalahan sistem' }, { status: 500 });
+  }
+}

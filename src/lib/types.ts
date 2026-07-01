@@ -42,6 +42,7 @@ export interface Order {
   created_at: string;
   order_id?: number;
   provider_id?: string;
+  provider_status?: string | null;
   provider_refund_amount?: number | string;
   profiles?: {
     email: string;

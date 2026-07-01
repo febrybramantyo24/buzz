@@ -210,7 +210,7 @@ export default function LandingPage() {
                   <Zap className="w-5 h-5 text-white animate-pulse" />
                 )}
               </div>
-              <span className="font-extrabold text-xl tracking-tight text-zinc-850 dark:text-white">
+              <span className="font-extrabold text-xl tracking-tight text-slate-100">
                 {brandName === 'Buzzify' ? (
                   <>Buzz<span className="text-indigo-600 dark:text-indigo-400">ify</span></>
                 ) : (
@@ -281,7 +281,7 @@ export default function LandingPage() {
               {settings.hero_cta_sub_text && (
                 <a
                   href="#services"
-                  className="flex items-center justify-center bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800/80 border-2 border-zinc-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white font-black px-8 py-4 rounded-2xl transition-all shadow-sm active:scale-[0.98] select-none"
+                  className="flex items-center justify-center bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-200 dark:text-slate-300 hover:text-slate-100 dark:hover:text-white font-black px-8 py-4 rounded-2xl transition-all shadow-sm active:scale-[0.98] select-none"
                 >
                   {settings.hero_cta_sub_text}
                 </a>
@@ -416,7 +416,7 @@ export default function LandingPage() {
             {/* Bento Card 1: Large (Processes) */}
             <div className="md:col-span-2 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-indigo-500/30 flex flex-col justify-between group">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
                   <Clock className="w-6 h-6" />
                 </div>
                 <h3 className="text-2xl font-bold mb-3 text-slate-100 group-hover:text-indigo-400 transition-colors">Proses Serba Otomatis</h3>
@@ -433,7 +433,7 @@ export default function LandingPage() {
             {/* Bento Card 2: Small (Security) */}
             <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-purple-500/30 flex flex-col justify-between group">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-purple-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-purple-400 transition-colors">Aman & Rahasia</h3>
@@ -446,7 +446,7 @@ export default function LandingPage() {
             {/* Bento Card 3: Small (Quality) */}
             <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-emerald-500/30 flex flex-col justify-between group">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-650 dark:text-emerald-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
                   <Users className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-emerald-400 transition-colors">Buzzer Berkualitas</h3>
@@ -459,7 +459,7 @@ export default function LandingPage() {
             {/* Bento Card 4: Large (Interface) */}
             <div className="md:col-span-2 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-pink-500/30 flex flex-col justify-between group">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/25 flex items-center justify-center text-pink-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/25 flex items-center justify-center text-pink-600 dark:text-pink-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
                   <Layers className="w-6 h-6" />
                 </div>
                 <h3 className="text-2xl font-bold mb-3 text-slate-100 group-hover:text-pink-400 transition-colors">Interaksi Transparan</h3>
@@ -476,7 +476,7 @@ export default function LandingPage() {
             {/* Bento Card 5: Small (Support) */}
             <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-blue-500/30 flex flex-col justify-between group">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center text-blue-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
                   <Headphones className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-blue-400 transition-colors">Pelayanan Bantuan</h3>
@@ -489,7 +489,7 @@ export default function LandingPage() {
             {/* Bento Card 6: Small (Ease of Use) */}
             <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-amber-500/30 flex flex-col justify-between group">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-amber-400 transition-colors">Kemudahan Penggunaan</h3>
@@ -502,7 +502,7 @@ export default function LandingPage() {
             {/* Bento Card 7: Small (Responsive) */}
             <div className="md:col-span-1 premium-card-glow bg-slate-900/10 backdrop-blur-xl border border-slate-900/60 p-8 rounded-3xl transition-all duration-300 hover:border-teal-500/30 flex flex-col justify-between group">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/25 flex items-center justify-center text-teal-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/25 flex items-center justify-center text-teal-650 dark:text-teal-400 mb-6 shadow-inner group-hover:scale-110 transition-transform">
                   <Smartphone className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-teal-400 transition-colors">Desain Web Responsive</h3>

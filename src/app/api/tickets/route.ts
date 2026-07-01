@@ -149,3 +149,73 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err.message || 'Terjadi kesalahan sistem' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const decoded = await authenticate(request);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Sesi login tidak ditemukan. Silakan login kembali.' }, { status: 401 });
+    }
+
+    const userRes = await query('SELECT role FROM profiles WHERE id = $1', [decoded.userId]);
+    const userRole = userRes.rows[0]?.role;
+
+    if (userRole !== 'admin') {
+      return NextResponse.json({ error: 'Akses ditolak.' }, { status: 403 });
+    }
+
+    const { ticketIds, status } = await request.json();
+    if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return NextResponse.json({ error: 'Ticket ID tidak valid.' }, { status: 400 });
+    }
+
+    if (!status) {
+      return NextResponse.json({ error: 'Status wajib diisi.' }, { status: 400 });
+    }
+
+    await query(
+      'UPDATE tickets SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = ANY($2)',
+      [status, ticketIds]
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: 'Status tiket bantuan berhasil diperbarui!'
+    });
+  } catch (err: any) {
+    console.error('Error updating tickets in bulk:', err);
+    return NextResponse.json({ error: err.message || 'Terjadi kesalahan sistem' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const decoded = await authenticate(request);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Sesi login tidak ditemukan. Silakan login kembali.' }, { status: 401 });
+    }
+
+    const userRes = await query('SELECT role FROM profiles WHERE id = $1', [decoded.userId]);
+    const userRole = userRes.rows[0]?.role;
+
+    if (userRole !== 'admin') {
+      return NextResponse.json({ error: 'Akses ditolak.' }, { status: 403 });
+    }
+
+    const { ticketIds } = await request.json();
+    if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return NextResponse.json({ error: 'Ticket ID tidak valid.' }, { status: 400 });
+    }
+
+    await query('DELETE FROM ticket_messages WHERE ticket_id = ANY($1)', [ticketIds]);
+    await query('DELETE FROM tickets WHERE id = ANY($1)', [ticketIds]);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Tiket bantuan berhasil dihapus!'
+    });
+  } catch (err: any) {
+    console.error('Error deleting tickets:', err);
+    return NextResponse.json({ error: err.message || 'Terjadi kesalahan sistem' }, { status: 500 });
+  }
+}

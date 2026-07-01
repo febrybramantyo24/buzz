@@ -43,7 +43,7 @@ export default function TermsPage() {
                   <Zap className="w-6 h-6 text-white animate-pulse" />
                 )}
               </div>
-              <span className="font-extrabold text-2xl tracking-tight text-zinc-850 dark:text-white">
+              <span className="font-extrabold text-2xl tracking-tight text-slate-100">
                 {brandName === 'Buzzify' ? (
                   <>Buzz<span className="text-indigo-600 dark:text-indigo-400">ify</span></>
                 ) : (
@@ -84,8 +84,8 @@ export default function TermsPage() {
 
         {/* Title */}
         <div className="mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-xs font-black mb-4">
-            <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-150 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-950 dark:text-indigo-300 text-xs font-black mb-4">
+            <BookOpen className="w-3.5 h-3.5 text-indigo-800 dark:text-indigo-400" />
             <span>Dokumen Resmi {brandName}</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">

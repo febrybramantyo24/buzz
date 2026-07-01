@@ -142,29 +142,57 @@ export async function POST(request: Request) {
     await query('UPDATE profiles SET balance = $1 WHERE id = $2', [newBalance, userId]);
 
     // 9. Create Order record in DB
-    const orderInsertRes = await query(
-      `INSERT INTO orders (user_id, service_id, category, service_name, target_url, quantity, price_per_k, total_price, status, start_count, payment_status, payment_method, provider_order_id, provider_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-       RETURNING *`,
-      [
-        userId,
-        service.id,
-        service.category,
-        service.name,
-        target_url,
-        quantity,
-        pricePerK,
-        totalPrice,
-        initialStatus,
-        0,
-        'paid',
-        'wallet',
-        providerOrderId,
-        service.provider_id || 'manual'
-      ]
-    );
+    let createdOrder;
+    const numericProviderOrderId = providerOrderId ? parseInt(providerOrderId, 10) : NaN;
 
-    const createdOrder = orderInsertRes.rows[0];
+    if (!isNaN(numericProviderOrderId)) {
+      const orderInsertRes = await query(
+        `INSERT INTO orders (order_id, user_id, service_id, category, service_name, target_url, quantity, price_per_k, total_price, status, start_count, payment_status, payment_method, provider_order_id, provider_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+         RETURNING *`,
+        [
+          numericProviderOrderId,
+          userId,
+          service.id,
+          service.category,
+          service.name,
+          target_url,
+          quantity,
+          pricePerK,
+          totalPrice,
+          initialStatus,
+          0,
+          'paid',
+          'wallet',
+          providerOrderId,
+          service.provider_id || 'manual'
+        ]
+      );
+      createdOrder = orderInsertRes.rows[0];
+    } else {
+      const orderInsertRes = await query(
+        `INSERT INTO orders (user_id, service_id, category, service_name, target_url, quantity, price_per_k, total_price, status, start_count, payment_status, payment_method, provider_order_id, provider_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         RETURNING *`,
+        [
+          userId,
+          service.id,
+          service.category,
+          service.name,
+          target_url,
+          quantity,
+          pricePerK,
+          totalPrice,
+          initialStatus,
+          0,
+          'paid',
+          'wallet',
+          providerOrderId,
+          service.provider_id || 'manual'
+        ]
+      );
+      createdOrder = orderInsertRes.rows[0];
+    }
 
     // 10. Record Transaction Log
     await query(

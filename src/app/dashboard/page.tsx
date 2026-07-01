@@ -85,9 +85,16 @@ interface LeaderboardResponse {
 
 const formatNumberWithDots = (num: number | string | null | undefined): string => {
   if (num === null || num === undefined || num === 0 || num === '0' || num === '') return '';
-  const clean = String(num).replace(/\D/g, '');
-  if (!clean) return '';
-  return new Intl.NumberFormat('id-ID').format(parseInt(clean, 10));
+  let clean = String(num);
+  if (clean.includes('.')) {
+    const parsed = parseFloat(clean);
+    if (!isNaN(parsed)) {
+      clean = String(Math.round(parsed));
+    }
+  }
+  const cleanDigits = clean.replace(/\D/g, '');
+  if (!cleanDigits) return '';
+  return new Intl.NumberFormat('id-ID').format(parseInt(cleanDigits, 10));
 };
 
 const parseNumberFromDots = (str: string): number => {
@@ -242,6 +249,7 @@ export default function UserDashboard() {
   // UI states
   const [loading, setLoading] = useState(true);
   const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [showOrderConfirmModal, setShowOrderConfirmModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services' | 'leaderboard'>('dashboard');
   const [leaderboardData, setLeaderboardData] = useState<any>(null);
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<'current' | 'last'>('current');
@@ -900,21 +908,15 @@ export default function UserDashboard() {
       return;
     }
 
+    // Instead of executing immediately, show confirmation modal
+    setShowOrderConfirmModal(true);
+  };
+
+  const executePlaceOrder = async () => {
+    if (!selectedService) return;
+    setShowOrderConfirmModal(false);
     setSubmittingOrder(true);
-    const orderPayload = {
-      user_id: user.id,
-      service_id: selectedService.id,
-      category: selectedService.category,
-      service_name: selectedService.name,
-      target_url: targetUrl,
-      quantity: quantity,
-      price_per_k: selectedService.price_per_k,
-      total_price: totalPrice,
-      status: 'pending' as const,
-      start_count: 0,
-      payment_status: 'paid' as const,
-      payment_method: 'wallet',
-    };
+    setFormError(null);
 
     try {
       const response = await fetch('/api/orders/create', {
@@ -1976,12 +1978,12 @@ export default function UserDashboard() {
         <div className={`flex-1 flex flex-col min-w-0 font-sans transition-all duration-300 ${isSidebarOpen ? 'lg:pl-68' : 'lg:pl-0'}`}>
 
           {/* Top Navbar */}
-          <header className="h-16 bg-slate-900 border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+          <header className="h-16 bg-slate-900 border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-45 shadow-sm">
             <div className="flex items-center gap-4">
               {/* Mobile Burger Toggle */}
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-indigo-600 dark:text-slate-300 dark:hover:text-slate-100 rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm"
+                className="p-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-indigo-650 dark:text-indigo-400 hover:text-white dark:hover:text-white rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center border border-indigo-150 dark:border-indigo-500/20 shadow-sm active:scale-95"
                 title={isSidebarOpen ? "Sembunyikan Menu" : "Tampilkan Menu"}
               >
                 {isSidebarOpen ? (
@@ -2104,27 +2106,27 @@ export default function UserDashboard() {
             {/* Dashboard Overview Tab */}
             {activeTab === 'dashboard' && (
               <div className="space-y-8 animate-in fade-in duration-300">
-                {/* Wallet and Stats Cards */}
-                <div className="grid md:grid-cols-3 gap-6">
+                {/* Wallet and Stats Cards — Dribbble Premium */}
+                <div className="grid md:grid-cols-3 gap-5">
                   {/* Balance Card */}
-                  <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-5 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:border-slate-700/50">
-                    <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-500/5 blur-3xl rounded-full"></div>
-                    <div className="flex justify-between items-start">
+                  <div className="relative overflow-hidden bg-slate-900 border border-indigo-500/15 shadow-sm p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-500/25 hover:scale-[1.02] group animate-border-glow">
+                    {/* Subtle glow accent */}
+                    <div className="absolute -top-10 -right-10 w-36 h-36 bg-indigo-500/8 blur-3xl rounded-full group-hover:bg-indigo-500/12 transition-colors"></div>
+                    <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-indigo-400/5 blur-2xl rounded-full"></div>
+
+                    <div className="flex justify-between items-start relative z-10">
                       <div>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Saldo Anda</span>
-                        <div className="text-3xl font-black text-slate-100 mt-1.5">{formatPrice(balance)}</div>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Saldo Anda</span>
+                        <div className="text-3xl font-black text-slate-100 mt-1.5 tabular-nums tracking-tight">{formatPrice(balance)}</div>
                       </div>
-                      <div
-                        style={{ backgroundColor: 'rgba(99, 102, 241, 0.12)' }}
-                        className="text-indigo-650 dark:text-indigo-400 p-3.5 rounded-2xl border border-indigo-500/10 shrink-0 shadow-sm"
-                      >
-                        <Wallet className="w-5.5 h-5.5" />
+                      <div className="bg-indigo-500/12 p-3.5 rounded-2xl border border-indigo-500/15 shrink-0 group-hover:bg-indigo-500/18 transition-colors">
+                        <Wallet className="w-6 h-6 text-indigo-400" />
                       </div>
                     </div>
-                    <div className="mt-6">
+                    <div className="mt-6 relative z-10">
                       <button
                         onClick={() => setShowTopupModal(true)}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/10 flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer hover:scale-102"
+                        className="shimmer-btn w-full bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer hover:scale-102 shadow-lg shadow-indigo-600/20"
                       >
                         <ArrowUpRight className="w-4 h-4" />
                         <span>Top Up Saldo</span>
@@ -2133,22 +2135,26 @@ export default function UserDashboard() {
                   </div>
 
                   {/* Total Orders Card */}
-                  <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-5 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:border-slate-700/50">
-                    <div className="absolute top-0 right-0 w-28 h-28 bg-purple-500/5 blur-3xl rounded-full"></div>
-                    <div className="flex justify-between items-start">
+                  <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/5 hover:border-purple-500/20 hover:scale-[1.02] group">
+                    {/* Glow */}
+                    <div className="absolute -top-8 -right-8 w-32 h-32 bg-purple-500/8 blur-3xl rounded-full group-hover:bg-purple-500/12 transition-colors"></div>
+
+                    <div className="flex justify-between items-start relative z-10">
                       <div>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Pesanan</span>
-                        <div className="text-3xl font-black text-slate-100 mt-1.5">{orders.length}</div>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total Pesanan</span>
+                        <div className="text-3xl font-black text-slate-100 mt-1.5 tabular-nums">{orders.length}</div>
                       </div>
-                      <div
-                        style={{ backgroundColor: 'rgba(168, 85, 247, 0.12)' }}
-                        className="text-purple-655 dark:text-purple-450 p-3.5 rounded-2xl border border-purple-500/10 shrink-0 shadow-sm"
-                      >
-                        <ShoppingBag className="w-5.5 h-5.5" />
+                      <div className="bg-gradient-to-br from-purple-500/20 to-fuchsia-500/15 p-3.5 rounded-2xl border border-purple-500/15 shrink-0 group-hover:from-purple-500/30 group-hover:to-fuchsia-500/25 transition-all">
+                        <ShoppingBag className="w-6 h-6 text-purple-400" />
                       </div>
                     </div>
-                    <div className="mt-5 text-[11px] text-slate-450 dark:text-slate-400 font-medium">
-                      Semua transaksi pesanan yang pernah Anda buat
+                    <div className="mt-5 relative z-10">
+                      <div className="flex items-center gap-2 text-[11px] text-slate-450 dark:text-slate-400 font-medium">
+                        <div className="w-full bg-slate-800/60 rounded-full h-1.5 overflow-hidden">
+                          <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-fuchsia-500 transition-all duration-700" style={{ width: `${Math.min((orders.length / Math.max(orders.length, 10)) * 100, 100)}%` }}></div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 font-medium mt-2 block">Semua transaksi pesanan yang pernah Anda buat</span>
                     </div>
                   </div>
 
@@ -2156,11 +2162,13 @@ export default function UserDashboard() {
                   {(() => {
                     const activeCount = orders.filter(o => o.status === 'processing' || o.status === 'inprogress').length;
                     return (
-                      <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-5 sm:p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:border-slate-700/50">
-                        <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 blur-3xl rounded-full"></div>
-                        <div className="flex justify-between items-start">
+                      <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/5 hover:border-emerald-500/20 hover:scale-[1.02] group">
+                        {/* Glow */}
+                        <div className="absolute -top-8 -right-8 w-32 h-32 bg-emerald-500/8 blur-3xl rounded-full group-hover:bg-emerald-500/12 transition-colors"></div>
+
+                        <div className="flex justify-between items-start relative z-10">
                           <div>
-                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                               Layanan Aktif
                               {activeCount > 0 && (
                                 <span className="relative flex h-2 w-2">
@@ -2169,38 +2177,49 @@ export default function UserDashboard() {
                                 </span>
                               )}
                             </span>
-                            <div className="text-3xl font-black text-slate-100 mt-1.5 flex items-baseline gap-2">
+                            <div className="text-3xl font-black text-slate-100 mt-1.5 flex items-baseline gap-2 tabular-nums">
                               {activeCount}
                               <span className="text-xs font-semibold text-slate-450 dark:text-slate-400">berjalan</span>
                             </div>
                           </div>
-                          <div
-                            style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)' }}
-                            className="text-emerald-650 dark:text-emerald-400 p-3.5 rounded-2xl border border-emerald-500/10 shrink-0 shadow-sm"
-                          >
-                            <Activity className="w-5.5 h-5.5" />
+                          <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/15 p-3.5 rounded-2xl border border-emerald-500/15 shrink-0 group-hover:from-emerald-500/30 group-hover:to-teal-500/25 transition-all">
+                            <Activity className="w-6 h-6 text-emerald-400" />
                           </div>
                         </div>
-                        <div className="mt-5 text-[11px] text-slate-455 dark:text-slate-400 font-medium">
-                          Pesanan Anda yang sedang dalam proses pengiriman
+                        <div className="mt-5 relative z-10">
+                          <div className="flex items-center gap-2">
+                            {activeCount > 0 ? (
+                              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/15">
+                                <Activity className="w-3 h-3" />
+                                {activeCount} sedang diproses
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-500 font-medium">Tidak ada pesanan aktif saat ini</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
                   })()}
                 </div>
                 {/* SVG Line Chart Card (Dribbble-Style) */}
-                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-5 sm:p-6 lg:p-8 rounded-3xl backdrop-blur-md">
+                <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm p-5 sm:p-6 lg:p-8 rounded-3xl backdrop-blur-md">
+                  {/* Subtle background glow */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-32 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none"></div>
+
                   {/* Header & Filters */}
-                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 mb-8">
+                  <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-5 mb-8">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                      <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2.5">
+                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-xl shadow-md shadow-indigo-500/20">
+                          <TrendingUp className="w-4 h-4 text-white" />
+                        </div>
                         <span>Statistik Akun Anda</span>
                       </h3>
-                      <p className="text-slate-400 text-xs mt-1">Analisis visual pengeluaran dan jumlah order berhasil Anda</p>
+                      <p className="text-slate-400 text-xs mt-1.5 ml-[42px]">Analisis visual pengeluaran dan jumlah order berhasil Anda</p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2.5">
                       {/* Year Filter */}
                       <select
                         value={chartYearFilter}
@@ -2211,7 +2230,7 @@ export default function UserDashboard() {
                             setChartMonthFilter('all');
                           }
                         }}
-                        className="force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-100 font-semibold px-3 py-2 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm"
+                        className="force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-100 font-semibold px-3 py-2 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm hover:border-slate-700 transition-colors"
                       >
                         <option value="all">Semua Tahun</option>
                         <option value="2026">Tahun 2026</option>
@@ -2224,7 +2243,7 @@ export default function UserDashboard() {
                         value={chartMonthFilter}
                         onChange={(e) => setChartMonthFilter(e.target.value)}
                         disabled={chartYearFilter === 'all'}
-                        className="force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-100 font-semibold px-3 py-2 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="force-white-bg border border-slate-200 dark:border-slate-800 text-slate-200 dark:text-slate-100 font-semibold px-3 py-2 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:border-slate-700 transition-colors"
                       >
                         <option value="all">Semua Bulan</option>
                         <option value="0">Januari</option>
@@ -2242,11 +2261,11 @@ export default function UserDashboard() {
                       </select>
 
                       {/* Data Type Toggle Buttons */}
-                      <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
+                      <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800">
                         <button
                           onClick={() => setChartDataType('spending')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartDataType === 'spending'
-                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartDataType === 'spending'
+                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/25'
                             : 'text-slate-400 hover:text-slate-200'
                             }`}
                         >
@@ -2254,8 +2273,8 @@ export default function UserDashboard() {
                         </button>
                         <button
                           onClick={() => setChartDataType('orders')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartDataType === 'orders'
-                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartDataType === 'orders'
+                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/25'
                             : 'text-slate-400 hover:text-slate-200'
                             }`}
                         >
@@ -2284,52 +2303,75 @@ export default function UserDashboard() {
                     const averageTicket = totalCount > 0 ? totalSpending / totalCount : 0;
 
                     return (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                        <div className="bg-slate-950/40 border border-slate-850 p-4.5 rounded-2xl">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Pengeluaran</span>
-                          <div className="text-lg font-black text-slate-100 mt-1">{formatPrice(totalSpending)}</div>
+                      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                        <div className="bg-slate-950/50 border border-slate-800/60 p-4.5 rounded-2xl hover:border-indigo-500/20 transition-colors group/card">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="bg-indigo-500/15 p-1.5 rounded-lg">
+                              <Wallet className="w-3.5 h-3.5 text-indigo-400" />
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total Pengeluaran</span>
+                          </div>
+                          <div className="text-lg font-black text-slate-100 tabular-nums">{formatPrice(totalSpending)}</div>
                         </div>
-                        <div className="bg-slate-950/40 border border-slate-850 p-4.5 rounded-2xl">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Rata-rata Order</span>
-                          <div className="text-lg font-black text-indigo-400 mt-1">{formatPrice(averageTicket)}</div>
+                        <div className="bg-slate-950/50 border border-slate-800/60 p-4.5 rounded-2xl hover:border-amber-500/20 transition-colors group/card">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="bg-amber-500/15 p-1.5 rounded-lg">
+                              <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Rata-rata Order</span>
+                          </div>
+                          <div className="text-lg font-black text-amber-400 tabular-nums">{formatPrice(averageTicket)}</div>
                         </div>
-                        <div className="bg-slate-950/40 border border-slate-850 p-4.5 rounded-2xl">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pesanan Sukses</span>
-                          <div className="text-lg font-black text-emerald-450 mt-1">{totalCount.toLocaleString('id-ID')} <span className="text-xs font-normal text-slate-400">Order</span></div>
+                        <div className="bg-slate-950/50 border border-slate-800/60 p-4.5 rounded-2xl hover:border-emerald-500/20 transition-colors group/card">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="bg-emerald-500/15 p-1.5 rounded-lg">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Pesanan Sukses</span>
+                          </div>
+                          <div className="text-lg font-black text-emerald-400 tabular-nums">{totalCount.toLocaleString('id-ID')} <span className="text-xs font-normal text-slate-500">Order</span></div>
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* Responsive SVG Chart */}
+                  {/* Responsive SVG Chart — Premium Dribbble Style */}
                   {(() => {
                     const chartData = getChartData();
                     const maxValue = Math.max(...chartData.map(d => chartDataType === 'spending' ? d.spending : d.count), 1);
-                    const height = 150;
-                    const width = 600;
-                    const padding = 40;
+                    const height = 200;
+                    const width = 640;
+                    const paddingLeft = 55;
+                    const paddingRight = 20;
+                    const paddingTop = 20;
+                    const paddingBottom = 35;
 
                     // Generate points
                     const points = chartData.map((d, index) => {
                       const val = chartDataType === 'spending' ? d.spending : d.count;
-                      const x = padding + (index * (width - 2 * padding)) / (chartData.length - 1);
-                      const y = height - padding - (val / maxValue) * (height - 2 * padding);
+                      const x = paddingLeft + (index * (width - paddingLeft - paddingRight)) / (chartData.length - 1);
+                      const y = paddingTop + (1 - val / maxValue) * (height - paddingTop - paddingBottom);
                       return { x, y, label: d.label, rawVal: val, showLabel: d.showLabel };
                     });
 
-                    const pathD = points.reduce((acc, p, i) => {
-                      return acc + (i === 0 ? `M ${p.x} ${p.y}` : ` L ${p.x} ${p.y}`);
+                    // Smooth bezier curve path
+                    const smoothPath = points.reduce((acc, p, i, arr) => {
+                      if (i === 0) return `M ${p.x} ${p.y}`;
+                      const prev = arr[i - 1];
+                      const cpx1 = prev.x + (p.x - prev.x) * 0.4;
+                      const cpx2 = p.x - (p.x - prev.x) * 0.4;
+                      return `${acc} C ${cpx1} ${prev.y}, ${cpx2} ${p.y}, ${p.x} ${p.y}`;
                     }, '');
 
-                    const areaD = points.length > 0
-                      ? `${pathD} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
+                    const areaPath = points.length > 0
+                      ? `${smoothPath} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z`
                       : '';
 
                     return (
-                      <div className="w-full max-w-full overflow-x-auto scrollbar-none">
+                      <div className="relative z-10 w-full max-w-full overflow-x-auto scrollbar-none">
                         <style>{`
                           @keyframes drawPath {
-                            from { stroke-dashoffset: 1200; }
+                            from { stroke-dashoffset: 2000; }
                             to { stroke-dashoffset: 0; }
                           }
                           @keyframes fadeInArea {
@@ -2340,37 +2382,56 @@ export default function UserDashboard() {
                             from { transform: scale(0); opacity: 0; }
                             to { transform: scale(1); opacity: 1; }
                           }
-                          .animate-chart-line {
-                            stroke-dasharray: 1200;
-                            stroke-dashoffset: 1200;
-                            animation: drawPath 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+                          .animate-chart-line-v2 {
+                            stroke-dasharray: 2000;
+                            stroke-dashoffset: 2000;
+                            animation: drawPath 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
                           }
-                          .animate-chart-area {
+                          .animate-chart-area-v2 {
                             opacity: 0;
-                            animation: fadeInArea 1s ease-out 0.8s forwards;
+                            animation: fadeInArea 1.2s ease-out 1s forwards;
                           }
-                          .animate-chart-point {
+                          .animate-chart-point-v2 {
                             animation: popPoint 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
                           }
                         `}</style>
-                        <div className="relative h-[180px] min-w-[300px] sm:min-w-[555px] w-full">
+                        <div className="relative h-[240px] min-w-[320px] sm:min-w-[580px] w-full">
                           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                             {/* Gradients */}
                             <defs>
-                              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.25" />
+                              <linearGradient id="chartGradV2" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#818cf8" stopOpacity="0.30" />
+                                <stop offset="50%" stopColor="#6366f1" stopOpacity="0.12" />
                                 <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.00" />
                               </linearGradient>
+                              <linearGradient id="lineGradV2" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#818cf8" />
+                                <stop offset="50%" stopColor="#6366f1" />
+                                <stop offset="100%" stopColor="#a78bfa" />
+                              </linearGradient>
+                              <filter id="dotGlow">
+                                <feGaussianBlur stdDeviation="3" result="blur" />
+                                <feMerge>
+                                  <feMergeNode in="blur" />
+                                  <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                              </filter>
                             </defs>
 
-                            {/* Y Grid Lines & Labels */}
-                            {[0, 0.5, 1].map((ratio, idx) => {
-                              const y = padding + ratio * (height - 2 * padding);
+                            {/* Y Grid Lines & Labels — 5 levels */}
+                            {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                              const y = paddingTop + ratio * (height - paddingTop - paddingBottom);
                               const gridVal = maxValue * (1 - ratio);
                               return (
-                                <g key={idx} className="opacity-40">
-                                  <line x1={padding} y1={y} x2={width - padding} y2={y} stroke="#1e293b" strokeDasharray="4 4" />
-                                  <text x={padding - 8} y={y + 4} textAnchor="end" className="fill-slate-400 text-[10px] font-mono">
+                                <g key={idx}>
+                                  <line
+                                    x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y}
+                                    stroke="currentColor"
+                                    className="text-slate-800/40"
+                                    strokeDasharray={idx === 4 ? "0" : "3 6"}
+                                    strokeWidth={idx === 4 ? "1" : "0.5"}
+                                  />
+                                  <text x={paddingLeft - 10} y={y + 4} textAnchor="end" className="fill-slate-500 text-[9px] font-medium" style={{ fontFamily: 'ui-monospace, monospace' }}>
                                     {chartDataType === 'spending' ? formatPrice(gridVal) : Math.round(gridVal)}
                                   </text>
                                 </g>
@@ -2378,26 +2439,47 @@ export default function UserDashboard() {
                             })}
 
                             {/* Area Fill */}
-                            {areaD && <path d={areaD} fill="url(#chartGrad)" className="animate-chart-area" />}
+                            {areaPath && <path d={areaPath} fill="url(#chartGradV2)" className="animate-chart-area-v2" />}
 
-                            {/* Line Path */}
-                            {pathD && <path d={pathD} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" className="animate-chart-line" />}
+                            {/* Line Path — smooth bezier with gradient stroke */}
+                            {smoothPath && (
+                              <path
+                                d={smoothPath}
+                                fill="none"
+                                stroke="url(#lineGradV2)"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="animate-chart-line-v2"
+                              />
+                            )}
 
-                            {/* Data Points */}
+                            {/* Data Points with glow */}
                             {points.map((p, idx) => (
                               <g
                                 key={idx}
-                                className="group/dot cursor-pointer animate-chart-point"
+                                className="group/dot cursor-pointer animate-chart-point-v2"
                                 style={{
                                   transformOrigin: `${p.x}px ${p.y}px`,
-                                  animationDelay: `${idx * 0.05 + 0.6}s`
+                                  animationDelay: `${idx * 0.06 + 0.8}s`
                                 }}
                               >
-                                <circle cx={p.x} cy={p.y} r="4" className="fill-indigo-500 stroke-slate-950 stroke-2" />
-                                <circle cx={p.x} cy={p.y} r="8" className="fill-indigo-500/20 opacity-0 group-hover/dot:opacity-100 transition-opacity" />
-                                <text x={p.x} y={p.y - 12} textAnchor="middle" className="fill-slate-100 dark:fill-slate-100 text-[10px] font-bold opacity-0 group-hover/dot:opacity-100 transition-opacity bg-slate-950 px-1.5 py-0.5 rounded shadow-lg border border-slate-850">
-                                  {chartDataType === 'spending' ? formatPrice(p.rawVal) : `${p.rawVal} order`}
-                                </text>
+                                {/* Outer glow ring */}
+                                <circle cx={p.x} cy={p.y} r="10" className="fill-indigo-500/0 group-hover/dot:fill-indigo-500/15 transition-all duration-300" />
+                                {/* Glow effect */}
+                                <circle cx={p.x} cy={p.y} r="6" className="fill-indigo-400/0 group-hover/dot:fill-indigo-400/25 transition-all duration-300" filter="url(#dotGlow)" />
+                                {/* Dot */}
+                                <circle cx={p.x} cy={p.y} r="3.5" className="fill-indigo-500 stroke-slate-900 stroke-[2.5]" />
+                                {/* Inner white dot */}
+                                <circle cx={p.x} cy={p.y} r="1.5" className="fill-white opacity-0 group-hover/dot:opacity-100 transition-opacity duration-200" />
+
+                                {/* Tooltip */}
+                                <g className="opacity-0 group-hover/dot:opacity-100 transition-opacity duration-200">
+                                  <rect x={p.x - 40} y={p.y - 30} width="80" height="22" rx="8" className="fill-slate-800" stroke="#334155" strokeWidth="0.5" />
+                                  <text x={p.x} y={p.y - 15} textAnchor="middle" className="fill-white text-[9px] font-bold">
+                                    {chartDataType === 'spending' ? formatPrice(p.rawVal) : `${p.rawVal} order`}
+                                  </text>
+                                </g>
                               </g>
                             ))}
 
@@ -2405,7 +2487,7 @@ export default function UserDashboard() {
                             {points.map((p, idx) => {
                               if (!p.showLabel) return null;
                               return (
-                                <text key={idx} x={p.x} y={height - 12} textAnchor="middle" className="fill-slate-400 text-[10px] font-bold">
+                                <text key={idx} x={p.x} y={height - 8} textAnchor="middle" className="fill-slate-500 text-[9px] font-semibold" style={{ fontFamily: 'ui-monospace, monospace' }}>
                                   {p.label}
                                 </text>
                               );
@@ -2418,19 +2500,21 @@ export default function UserDashboard() {
                 </div>
 
                 {/* Grid 2-Column: Left (Info) & Right (Recommendations) */}
-                <div className="grid lg:grid-cols-2 gap-8 items-start">
+                <div className="grid lg:grid-cols-2 gap-6 items-start">
                   {/* Left Column: Info & Pengumuman Penting */}
                   {announcements.length > 0 ? (
-                    <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl backdrop-blur-md space-y-4 min-w-0 w-full">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-850">
-                        <div className="flex items-center gap-2">
-                          <Megaphone className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-                          <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Info & Pengumuman Penting</span>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 shadow-sm p-4 sm:p-6 rounded-3xl backdrop-blur-md space-y-4 min-w-0 w-full">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-850">
+                        <div className="flex items-center gap-2.5">
+                          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-1.5 rounded-lg shadow-sm shadow-indigo-500/20">
+                            <Megaphone className="w-3.5 h-3.5 text-white" />
+                          </div>
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Info & Pengumuman Penting</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => setShowNewsModal(true)}
-                          className="text-[10px] text-indigo-500 dark:text-indigo-400 hover:text-indigo-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
+                          className="text-[10px] text-indigo-500 dark:text-indigo-400 hover:text-indigo-650 dark:hover:text-indigo-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
                         >
                           <span>Buka Popup Berita</span>
                           <span className="animate-pulse">🔔</span>
@@ -2445,9 +2529,11 @@ export default function UserDashboard() {
                           return (
                             <>
                               {paginatedAnnouncements.map(ann => (
-                                <div key={ann.id} className="p-4 rounded-2xl bg-slate-950/40 border border-slate-850 flex items-start justify-between gap-3.5 hover:border-slate-800 transition-all">
-                                  <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                                    <div className="bg-indigo-600 p-2 rounded-xl text-white shrink-0 mt-0.5">
+                                <div key={ann.id} className="relative p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-850 flex items-start justify-between gap-3.5 hover:border-indigo-500/20 dark:hover:border-indigo-500/20 transition-all group/ann overflow-hidden">
+                                  {/* Accent strip */}
+                                  <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${ann.badge === 'URGENT' || ann.badge === 'PENTING' ? 'bg-red-500' : ann.badge === 'UPDATE' ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
+                                  <div className="flex items-start gap-3.5 flex-1 min-w-0 pl-2">
+                                    <div className={`p-2 rounded-xl text-white shrink-0 mt-0.5 ${ann.badge === 'URGENT' || ann.badge === 'PENTING' ? 'bg-gradient-to-br from-red-500 to-rose-600' : ann.badge === 'UPDATE' ? 'bg-gradient-to-br from-emerald-500 to-teal-600' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}`}>
                                       <Award className="w-4 h-4" />
                                     </div>
                                     <div className="space-y-1 min-w-0 flex-1">
@@ -2457,18 +2543,18 @@ export default function UserDashboard() {
                                             {ann.badge}
                                           </span>
                                         )}
-                                        <h4 className="text-xs font-extrabold text-slate-200 truncate flex items-center gap-1.5">
+                                        <h4 className="text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate flex items-center gap-1.5">
                                           {ann.title}
                                           {ann.is_pinned && (
                                             <Pin className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0 transform rotate-45" />
                                           )}
                                         </h4>
                                       </div>
-                                      <p className="text-slate-400 text-xs leading-relaxed font-light line-clamp-2">{ann.content}</p>
+                                      <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed font-light line-clamp-2">{ann.content}</p>
                                       <button
                                         type="button"
                                         onClick={() => setSelectedAnnouncement(ann)}
-                                        className="text-[10px] text-indigo-500 dark:text-indigo-400 hover:text-indigo-300 font-bold mt-1.5 flex items-center gap-1 cursor-pointer transition-colors"
+                                        className="text-[10px] text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-bold mt-1.5 flex items-center gap-1 cursor-pointer transition-colors"
                                       >
                                         <span>Detail Selengkapnya</span>
                                         <span>&rarr;</span>
@@ -2479,7 +2565,7 @@ export default function UserDashboard() {
                                     <button
                                       type="button"
                                       onClick={() => setSelectedAnnouncement(ann)}
-                                      className="w-12 h-12 rounded-xl overflow-hidden border border-slate-800 shrink-0 bg-slate-950 hover:opacity-80 transition-opacity cursor-pointer"
+                                      className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shrink-0 bg-slate-100 dark:bg-slate-950 hover:opacity-80 transition-opacity cursor-pointer"
                                       title="Klik untuk memperbesar gambar"
                                     >
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2490,21 +2576,21 @@ export default function UserDashboard() {
                               ))}
 
                               {announcementsTotalPages > 1 && (
-                                <div className="flex justify-between items-center pt-4 border-t border-slate-850/60 mt-4 text-[10px]">
+                                <div className="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-slate-850/60 mt-4 text-[10px]">
                                   <button
                                     type="button"
                                     disabled={announcementsPage === 1}
                                     onClick={() => setAnnouncementsPage(prev => Math.max(1, prev - 1))}
-                                    className="px-2.5 py-1 bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 disabled:opacity-40 disabled:hover:border-slate-850 text-slate-300 hover:text-white rounded-lg font-bold transition-all cursor-pointer"
+                                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-800 disabled:opacity-40 disabled:hover:border-slate-200 disabled:dark:hover:border-slate-850 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg font-bold transition-all cursor-pointer"
                                   >
                                     &larr; Prev
                                   </button>
-                                  <span className="text-slate-500 font-medium">Page {announcementsPage} of {announcementsTotalPages}</span>
+                                  <span className="text-slate-500 dark:text-slate-500 font-medium">Page {announcementsPage} of {announcementsTotalPages}</span>
                                   <button
                                     type="button"
                                     disabled={announcementsPage >= announcementsTotalPages}
                                     onClick={() => setAnnouncementsPage(prev => Math.min(announcementsTotalPages, prev + 1))}
-                                    className="px-2.5 py-1 bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 disabled:opacity-40 disabled:hover:border-slate-850 text-slate-300 hover:text-white rounded-lg font-bold transition-all cursor-pointer"
+                                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-800 disabled:opacity-40 disabled:hover:border-slate-200 disabled:dark:hover:border-slate-850 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg font-bold transition-all cursor-pointer"
                                   >
                                     Next &rarr;
                                   </button>
@@ -2516,21 +2602,23 @@ export default function UserDashboard() {
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md flex flex-col items-center justify-center py-12 text-center text-slate-500 text-xs min-w-0 w-full">
-                      <Megaphone className="w-8 h-8 text-slate-650 mb-2" />
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md flex flex-col items-center justify-center py-12 text-center text-slate-500 text-xs min-w-0 w-full">
+                      <Megaphone className="w-8 h-8 text-slate-400 dark:text-slate-650 mb-2" />
                       <span>Belum ada pengumuman terbaru.</span>
                     </div>
                   )}
 
                   {/* Right Column: Layanan Rekomendasi */}
-                  <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl overflow-hidden backdrop-blur-md min-w-0 w-full">
+                  <div className="relative overflow-hidden bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl backdrop-blur-md min-w-0 w-full">
                     <button
                       type="button"
                       onClick={() => setIsRecomExpanded(!isRecomExpanded)}
                       className="w-full flex items-center justify-between p-6 sm:p-7 hover:bg-slate-900/10 dark:hover:bg-slate-900/30 transition-all text-left cursor-pointer"
                     >
-                      <div className="flex items-center gap-3">
-                        <ThumbsUp className="w-5 h-5 text-indigo-500 dark:text-indigo-400 dark:text-indigo-500 dark:text-indigo-400 shrink-0" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-1.5 rounded-lg shadow-sm shadow-indigo-500/20">
+                          <ThumbsUp className="w-3.5 h-3.5 text-white" />
+                        </div>
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Layanan Rekomendasi</span>
                       </div>
                       {isRecomExpanded ? (
@@ -2566,21 +2654,21 @@ export default function UserDashboard() {
                                   return (
                                     <div
                                       key={service.id}
-                                      className="p-4 rounded-2xl bg-slate-950/40 border border-slate-850 flex items-center justify-between gap-4 hover:border-indigo-500/30 transition-all group min-w-0 w-full"
+                                      className="relative p-4 rounded-2xl bg-slate-950/40 border border-slate-800/60 flex items-center justify-between gap-4 hover:border-indigo-500/30 hover:bg-slate-950/60 transition-all group min-w-0 w-full hover:shadow-lg hover:shadow-indigo-500/5"
                                     >
                                       <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                          <span className="text-[9px] font-extrabold text-white uppercase bg-indigo-600 dark:bg-indigo-700 px-2 py-0.5 rounded shadow-sm">
+                                          <span className="text-[9px] font-extrabold text-white uppercase bg-gradient-to-r from-indigo-600 to-purple-600 px-2 py-0.5 rounded-md shadow-sm">
                                             #{actualIndex + 1}
                                           </span>
-                                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider bg-slate-800/50 px-1.5 py-0.5 rounded">
                                             {service.category}
                                           </span>
                                         </div>
-                                        <h4 className="text-xs font-bold text-slate-355 dark:text-slate-350 whitespace-normal break-words leading-relaxed group-hover:text-indigo-500 dark:text-indigo-400 transition-colors" title={service.name}>
+                                        <h4 className="text-xs font-bold text-slate-355 dark:text-slate-350 whitespace-normal break-words leading-relaxed group-hover:text-indigo-400 transition-colors" title={service.name}>
                                           {service.name}
                                         </h4>
-                                        <p className="text-[11px] text-indigo-500 dark:text-indigo-400 font-extrabold mt-1">
+                                        <p className="text-[11px] text-indigo-500 dark:text-indigo-400 font-extrabold mt-1 tabular-nums">
                                           {formatPrice(service.price_per_k)} <span className="text-[9px] text-slate-500 font-normal">/ 1K</span>
                                         </p>
                                       </div>
@@ -2593,7 +2681,7 @@ export default function UserDashboard() {
                                           setActiveTab('order');
                                           showToast(`Layanan '${service.name}' dipilih.`, 'success');
                                         }}
-                                        className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all active:scale-95 cursor-pointer shrink-0"
+                                        className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white transition-all active:scale-95 cursor-pointer shrink-0 shadow-md shadow-indigo-600/20"
                                         title="Pesan Sekarang"
                                       >
                                         <ShoppingBag className="w-4 h-4" />
@@ -3484,7 +3572,7 @@ export default function UserDashboard() {
                                             navigator.clipboard.writeText(idToCopy);
                                             showToast('ID Pesanan berhasil disalin!', 'success');
                                           }}
-                                          className="bg-slate-800 hover:bg-slate-700 text-slate-400 p-1 transition-colors cursor-pointer flex items-center justify-center border-l border-slate-750 w-7 h-7"
+                                          className="bg-slate-100 hover:bg-indigo-50 dark:bg-slate-800 dark:hover:bg-indigo-950/20 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 p-1 transition-all cursor-pointer flex items-center justify-center border-l border-slate-200 dark:border-slate-800 w-7 h-7 active:scale-95"
                                           title="Salin ID Pesanan"
                                         >
                                           <Copy className="w-3.5 h-3.5" />
@@ -3552,7 +3640,7 @@ export default function UserDashboard() {
                                                 description: `Pembelian Layanan: ${order.service_name}`,
                                                 status: order.status
                                               })}
-                                              className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-slate-200 shadow-sm"
+                                              className="p-2 rounded-xl bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-600 dark:hover:bg-sky-600 text-sky-600 dark:text-sky-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-sky-100/50 dark:border-sky-500/10 shadow-sm"
                                               title="Cetak Invoice"
                                             >
                                               <Printer className="w-3.5 h-3.5" />
@@ -4487,7 +4575,7 @@ export default function UserDashboard() {
                                               description: 'Top Up Saldo Akun',
                                               status: tx.status
                                             })}
-                                            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-350 transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-750 shadow-sm"
+                                            className="p-2 rounded-xl bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-600 text-sky-600 dark:text-sky-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer flex items-center justify-center shrink-0 border border-sky-100/50 dark:border-sky-500/20 shadow-sm"
                                             title="Cetak Invoice"
                                           >
                                             <Printer className="w-3.5 h-3.5" />
@@ -5577,41 +5665,43 @@ export default function UserDashboard() {
       </div>
 
       {/* Floating Bottom Navigation Bar - Mobile only */}
-      <div className="lg:hidden fixed bottom-4 left-4 right-4 z-40 px-1 print:hidden">
-        <nav className="bg-slate-900/80 dark:bg-slate-950/80 border border-slate-205 dark:border-slate-850 backdrop-blur-xl px-2.5 py-2.5 rounded-2xl flex justify-around items-center shadow-xl shadow-indigo-500/5">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
-            { id: 'order', label: 'Pesan', icon: ShoppingBag },
-            { id: 'services', label: 'Layanan', icon: List },
-            { id: 'history', label: 'Pesanan', icon: History, action: () => fetchOrders(user?.id) },
-            { id: 'deposits', label: 'Deposit', icon: Wallet, action: () => fetchProfileAndTransactions(user?.id) },
-            { id: 'tickets', label: 'Tiket', icon: MessageSquare, action: () => fetchTickets() },
-            { id: 'leaderboard', label: 'Peringkat', icon: Crown, action: () => fetchLeaderboard(leaderboardPeriod) },
-          ].map(item => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  if (item.id === 'order') {
-                    clearOrderForm();
-                  }
-                  setActiveTab(item.id as any);
-                  if (item.action && user?.id) item.action();
-                }}
-                className={`flex flex-col items-center gap-0.5 py-0.5 px-0.5 sm:px-3 rounded-xl transition-all cursor-pointer ${isActive
-                  ? 'text-indigo-600 dark:text-indigo-500 dark:text-indigo-400 font-bold'
-                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                  }`}
-              >
-                <Icon className="w-4.5 h-4.5 shrink-0" />
-                <span className="text-[8px] sm:text-[9px] tracking-tight">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+      {siteSettings.show_mobile_nav !== 'false' && (
+        <div className="lg:hidden fixed bottom-4 left-4 right-4 z-40 px-1 print:hidden">
+          <nav className="bg-slate-900/80 dark:bg-slate-950/80 border border-slate-205 dark:border-slate-850 backdrop-blur-xl px-2.5 py-2.5 rounded-2xl flex justify-around items-center shadow-xl shadow-indigo-500/5">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
+              { id: 'order', label: 'Pesan', icon: ShoppingBag },
+              { id: 'services', label: 'Layanan', icon: List },
+              { id: 'history', label: 'Pesanan', icon: History, action: () => fetchOrders(user?.id) },
+              { id: 'deposits', label: 'Deposit', icon: Wallet, action: () => fetchProfileAndTransactions(user?.id) },
+              { id: 'tickets', label: 'Tiket', icon: MessageSquare, action: () => fetchTickets() },
+              { id: 'leaderboard', label: 'Peringkat', icon: Crown, action: () => fetchLeaderboard(leaderboardPeriod) },
+            ].map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    if (item.id === 'order') {
+                      clearOrderForm();
+                    }
+                    setActiveTab(item.id as any);
+                    if (item.action && user?.id) item.action();
+                  }}
+                  className={`flex flex-col items-center gap-0.5 py-0.5 px-0.5 sm:px-3 rounded-xl transition-all cursor-pointer ${isActive
+                    ? 'text-indigo-600 dark:text-indigo-500 dark:text-indigo-400 font-bold'
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                    }`}
+                >
+                  <Icon className="w-4.5 h-4.5 shrink-0" />
+                  <span className="text-[8px] sm:text-[9px] tracking-tight">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      )}
 
       {/* Top Up Modal */}
       {showTopupModal && (() => {
@@ -6775,6 +6865,79 @@ export default function UserDashboard() {
                 Tiket ini telah ditutup. Anda tidak dapat mengirim balasan pesan.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Premium Dribbble-style Order Confirmation Modal */}
+      {showOrderConfirmModal && selectedService && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/45 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setShowOrderConfirmModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors p-1 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-650 dark:text-indigo-400 mb-3 shadow-md shadow-indigo-500/5">
+                <ShoppingBag className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100">
+                Konfirmasi Detail Pesanan
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-450 mt-1 font-medium leading-relaxed max-w-[320px]">
+                Mohon periksa kembali detail pesanan Anda sebelum saldo terpotong untuk pembayaran.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-150 dark:border-slate-850/80 rounded-2xl p-4.5 space-y-3.5 mb-6 text-xs text-slate-650 dark:text-slate-350">
+              <div className="flex justify-between items-start gap-4">
+                <span className="text-slate-400 dark:text-slate-500 font-semibold shrink-0">Layanan:</span>
+                <span className="font-extrabold text-slate-850 dark:text-slate-100 text-right break-words max-w-[240px]">
+                  [#{selectedService.id}] {selectedService.name}
+                </span>
+              </div>
+              <div className="h-px bg-slate-200/60 dark:bg-slate-800/60" />
+              <div className="flex justify-between items-start gap-4">
+                <span className="text-slate-400 dark:text-slate-500 font-semibold shrink-0">Target URL:</span>
+                <span className="font-mono font-bold text-slate-750 dark:text-slate-200 text-right break-all">
+                  {targetUrl}
+                </span>
+              </div>
+              <div className="h-px bg-slate-200/60 dark:bg-slate-800/60" />
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400 dark:text-slate-500 font-semibold">Jumlah:</span>
+                <span className="font-black text-slate-850 dark:text-slate-100">
+                  {quantity.toLocaleString()}
+                </span>
+              </div>
+              <div className="h-px bg-slate-200/60 dark:bg-slate-800/60" />
+              <div className="flex justify-between items-center bg-indigo-500/5 dark:bg-indigo-500/10 -mx-4.5 -mb-4.5 p-4.5 rounded-b-2xl border-t border-indigo-500/10">
+                <span className="text-indigo-650 dark:text-indigo-400 font-black">Total Pembayaran:</span>
+                <span className="font-black text-base text-indigo-650 dark:text-indigo-400">
+                  Rp {totalPrice.toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowOrderConfirmModal(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-350 py-3.5 rounded-2xl text-xs font-bold transition-all active:scale-[0.97] cursor-pointer text-center"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={executePlaceOrder}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-2xl text-xs font-black transition-all active:scale-[0.97] cursor-pointer text-center shadow-lg shadow-indigo-600/15"
+              >
+                Konfirmasi & Bayar
+              </button>
+            </div>
           </div>
         </div>
       )}

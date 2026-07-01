@@ -44,9 +44,13 @@ import {
 } from 'lucide-react';
 
 const formatNumberWithDots = (num: number | string | null | undefined): string => {
-  if (num === null || num === undefined || num === 0 || num === '0' || num === '') return '';
-  const clean = String(num).replace(/\D/g, '');
+  if (num === null || num === undefined || num === '') return '';
+  let clean = String(num).replace(/\D/g, '');
   if (!clean) return '';
+  // Prevent leading zeros unless it's just "0"
+  if (clean.startsWith('0') && clean.length > 1) {
+    clean = String(parseInt(clean, 10));
+  }
   return new Intl.NumberFormat('id-ID').format(parseInt(clean, 10));
 };
 
@@ -94,6 +98,17 @@ const getOrderStatusBadgeClass = (status: string): string => {
   return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white dark:!text-black font-extrabold shadow-sm shadow-amber-500/30';
 };
 
+const getAdminDisplayStatus = (order: Order): string => {
+  const pStatus = order.provider_status ? order.provider_status.toLowerCase() : '';
+  if (pStatus === 'failed' || pStatus === 'canceled' || pStatus === 'error') {
+    return 'failed';
+  }
+  if (pStatus === 'partial') {
+    return 'partial';
+  }
+  return order.status;
+};
+
 const getPaymentStatusBadgeClass = (paymentStatus: string): string => {
   const ps = paymentStatus ? paymentStatus.toLowerCase() : '';
   if (ps === 'paid') return 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white dark:!text-black font-extrabold shadow-sm shadow-emerald-500/30';
@@ -112,7 +127,11 @@ const getTicketStatusBadgeClass = (status: string): string => {
 export default function AdminDashboard() {
   const router = useRouter();
   const { logoUrl, brandName } = useBrand();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<any[]>([]);
+  const [selectedTicketIds, setSelectedTicketIds] = useState<any[]>([]);
+
+
 
   // Admin user status
   const [adminUser, setAdminUser] = useState<any>(null);
@@ -158,7 +177,7 @@ export default function AdminDashboard() {
   // User Balance Modification Modal State
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [selectedUserForBalance, setSelectedUserForBalance] = useState<any>(null);
-  const [adjustmentAmount, setAdjustmentAmount] = useState<number>(0);
+  const [adjustmentAmount, setAdjustmentAmount] = useState<string>('');
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract' | 'set'>('add');
   const [adjustmentReason, setAdjustmentReason] = useState('');
   const [submittingBalance, setSubmittingBalance] = useState(false);
@@ -169,17 +188,24 @@ export default function AdminDashboard() {
   const [selectedEditUser, setSelectedEditUser] = useState<any>(null);
   const [editFullName, setEditFullName] = useState('');
   const [editUsername, setEditUsername] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editWhatsapp, setEditWhatsapp] = useState('');
+  const [editPassword, setEditPassword] = useState('');
   const [editRole, setEditRole] = useState<'user' | 'admin'>('user');
   const [submittingEditUser, setSubmittingEditUser] = useState(false);
   const [editUserError, setEditUserError] = useState<string | null>(null);
 
-  // Navigation tab
   const [activeTab, setActiveTab] = useState<'orders' | 'services' | 'announcements' | 'transactions' | 'landing' | 'tickets' | 'users'>('orders');
+
+  useEffect(() => {
+    setSelectedOrderIds([]);
+    setSelectedTicketIds([]);
+  }, [activeTab]);
 
   // Service Form State
   const [serviceCategory, setServiceCategory] = useState('Instagram');
   const [serviceName, setServiceName] = useState('');
-  const [servicePrice, setServicePrice] = useState<number>(0);
+  const [servicePrice, setServicePrice] = useState<number | string>('');
   const [serviceMin, setServiceMin] = useState<number>(100);
   const [serviceMax, setServiceMax] = useState<number>(10000);
   const [serviceDescription, setServiceDescription] = useState('');
@@ -362,7 +388,10 @@ export default function AdminDashboard() {
     warning_image_url_instagram: '/instagram_instruction.jpg',
     warning_video_url_instagram: '',
     deposit_bonus_min: '10000',
-    deposit_bonus_percent: '11'
+    deposit_bonus_percent: '11',
+    show_live_chat: 'true',
+    show_live_chat_mobile: 'true',
+    show_mobile_nav: 'true'
   };
 
   const [landingSettings, setLandingSettings] = useState<Record<string, string>>(defaultLandingSettings);
@@ -378,6 +407,29 @@ export default function AdminDashboard() {
     message: '',
     onConfirm: () => { }
   });
+
+  const [alertModal, setAlertModal] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  } | null>(null);
+
+  const alert = (message: string) => {
+    let detectedType: 'success' | 'error' | 'info' = 'info';
+    const msgLower = message.toLowerCase();
+    if (msgLower.includes('berhasil') || msgLower.includes('sukses') || msgLower.includes('success')) {
+      detectedType = 'success';
+    } else if (msgLower.includes('gagal') || msgLower.includes('kesalahan') || msgLower.includes('error') || msgLower.includes('berakhir') || msgLower.includes('tidak')) {
+      detectedType = 'error';
+    }
+    setAlertModal({
+      show: true,
+      type: detectedType,
+      title: detectedType === 'success' ? 'Berhasil' : detectedType === 'error' ? 'Gagal' : 'Pemberitahuan',
+      message
+    });
+  };
 
   const fetchLandingSettings = async () => {
     setLoadingLandingSettings(true);
@@ -673,6 +725,75 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteTicket = async (ticketId: number) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus tiket ini secara permanen?')) return;
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Tiket berhasil dihapus!');
+        if (selectedTicket?.id === ticketId) {
+          setSelectedTicket(null);
+        }
+        setSelectedTicketIds(prev => prev.filter(id => id !== ticketId));
+        fetchTickets();
+      } else {
+        alert(data.error || 'Gagal menghapus tiket');
+      }
+    } catch (err) {
+      console.error('Error deleting ticket:', err);
+      alert('Terjadi kesalahan jaringan');
+    }
+  };
+
+  const handleBulkDeleteTickets = async () => {
+    if (selectedTicketIds.length === 0) return;
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedTicketIds.length} tiket terpilih secara permanen?`)) return;
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketIds: selectedTicketIds })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Tiket terpilih berhasil dihapus!');
+        setSelectedTicketIds([]);
+        fetchTickets();
+      } else {
+        alert(data.error || 'Gagal menghapus tiket secara massal');
+      }
+    } catch (err) {
+      console.error('Error deleting tickets in bulk:', err);
+      alert('Terjadi kesalahan jaringan');
+    }
+  };
+
+  const handleBulkCloseTickets = async () => {
+    if (selectedTicketIds.length === 0) return;
+    if (!confirm(`Apakah Anda yakin ingin menutup ${selectedTicketIds.length} tiket terpilih?`)) return;
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketIds: selectedTicketIds, status: 'Closed' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Tiket terpilih berhasil ditutup!');
+        setSelectedTicketIds([]);
+        fetchTickets();
+      } else {
+        alert(data.error || 'Gagal menutup tiket secara massal');
+      }
+    } catch (err) {
+      console.error('Error closing tickets in bulk:', err);
+      alert('Terjadi kesalahan jaringan');
+    }
+  };
+
   const fetchServices = async () => {
     try {
       const { data, error } = await supabase
@@ -724,14 +845,14 @@ export default function AdminDashboard() {
   // Create or Update Service
   const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!serviceName.trim() || servicePrice <= 0) return;
+    if (!serviceName.trim() || Number(servicePrice) <= 0) return;
 
     setSubmittingService(true);
     const payload = {
       category: serviceCategory,
       name: serviceName,
       description: serviceDescription,
-      price_per_k: servicePrice,
+      price_per_k: Number(servicePrice) || 0,
       min_order: serviceMin,
       max_order: serviceMax,
       is_active: true,
@@ -1109,8 +1230,13 @@ export default function AdminDashboard() {
   const handleUpdateBalance = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserForBalance) return;
-    if (adjustmentAmount <= 0) {
+    const numericAmount = parseInt(String(adjustmentAmount).replace(/\D/g, ''), 10) || 0;
+    if (adjustmentType !== 'set' && numericAmount <= 0) {
       setBalanceError('Nominal saldo harus lebih besar dari 0');
+      return;
+    }
+    if (adjustmentType === 'set' && numericAmount < 0) {
+      setBalanceError('Nominal saldo tidak boleh kurang dari 0');
       return;
     }
     if (!adjustmentReason.trim()) {
@@ -1137,7 +1263,7 @@ export default function AdminDashboard() {
           action: 'update_user_balance',
           targetUserId: selectedUserForBalance.id,
           adjustmentType,
-          amount: adjustmentAmount,
+          amount: numericAmount,
           reason: adjustmentReason
         })
       });
@@ -1149,7 +1275,7 @@ export default function AdminDashboard() {
 
       setShowBalanceModal(false);
       setSelectedUserForBalance(null);
-      setAdjustmentAmount(0);
+      setAdjustmentAmount('');
       setAdjustmentReason('');
       await fetchAdminData();
     } catch (err: any) {
@@ -1295,7 +1421,7 @@ export default function AdminDashboard() {
       <div className="flex min-h-screen">
 
         {/* Left Sidebar */}
-        <aside className={`fixed top-0 left-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col transition-transform duration-300 ease-in-out shrink-0 md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        <aside className={`fixed top-0 left-0 z-50 w-68 h-screen bg-slate-900 border-r border-slate-800/80 p-6 flex flex-col transition-transform duration-300 ease-in-out shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}>
           <div className="space-y-6 overflow-y-auto flex-1 pr-1 scrollbar-thin">
             {/* Logo/Brand */}
@@ -1465,7 +1591,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 font-sans md:pl-68">
+        <div className={`flex-1 flex flex-col min-w-0 font-sans transition-all duration-300 ${isSidebarOpen ? 'lg:pl-68' : 'lg:pl-0'}`}>
 
           {/* Top Navbar */}
           <header className="h-16 bg-slate-900 border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
@@ -1473,7 +1599,8 @@ export default function AdminDashboard() {
               {/* Mobile Burger Toggle */}
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-450 transition-colors"
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-450 transition-colors cursor-pointer"
+                title={isSidebarOpen ? "Sembunyikan Menu" : "Tampilkan Menu"}
               >
                 <Zap className="w-5 h-5 text-indigo-500" />
               </button>
@@ -1507,7 +1634,7 @@ export default function AdminDashboard() {
               <button
                 onClick={handleLogout}
                 title="Keluar Akun"
-                className="h-9 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/20 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer flex items-center gap-1.5 shadow-sm text-xs font-semibold"
+                className="h-9 px-3 rounded-xl bg-rose-500/5 hover:bg-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-650 text-rose-600 dark:text-rose-450 hover:text-white dark:hover:text-white border border-rose-200/40 dark:border-rose-500/20 hover:border-rose-600 dark:hover:border-rose-650 transition-all duration-200 cursor-pointer flex items-center gap-1.5 shadow-sm text-xs font-bold"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Keluar</span>
@@ -1531,11 +1658,11 @@ export default function AdminDashboard() {
                     <div className="min-w-0">
                       <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider block mb-1">Total Omset (Sales)</span>
                       <span className="text-2xl font-extrabold text-slate-100 tracking-tight block">{formatPrice(totalSales)}</span>
-                      <span className="text-[10px] text-slate-400 font-bold block mt-1.5 bg-slate-800 px-2 py-0.5 rounded-lg w-fit border border-slate-800/80">
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block mt-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-lg w-fit border border-emerald-500/20">
                         💸 {paidOrders.length} Pesanan Lunas
                       </span>
                     </div>
-                    <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
+                    <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20 text-emerald-650 dark:text-emerald-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
                       <Wallet className="w-5 h-5" />
                     </div>
                   </div>
@@ -1555,7 +1682,7 @@ export default function AdminDashboard() {
                         </span>
                       </div>
                     </div>
-                    <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
+                    <div className="bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/20 text-indigo-650 dark:text-indigo-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
                       <ArrowUpRight className="w-5 h-5" />
                     </div>
                   </div>
@@ -1578,7 +1705,7 @@ export default function AdminDashboard() {
                         </span>
                       </div>
                     </div>
-                    <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
+                    <div className="bg-blue-500/10 p-3 rounded-2xl border border-blue-500/20 text-blue-650 dark:text-blue-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
                       <ShoppingBag className="w-5 h-5" />
                     </div>
                   </div>
@@ -1599,7 +1726,7 @@ export default function AdminDashboard() {
                         <span className="text-[10px] text-slate-500 font-light block mt-1.5">Belum ada orderan</span>
                       )}
                     </div>
-                    <div className="bg-slate-800 p-3 rounded-2xl border border-slate-800/80 text-slate-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
+                    <div className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/20 text-amber-650 dark:text-amber-400 shrink-0 self-start group-hover:scale-110 transition-transform duration-300">
                       <Award className="w-5 h-5" />
                     </div>
                   </div>
@@ -1634,6 +1761,35 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Bulk Action copy bar */}
+                {selectedOrderIds.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between bg-indigo-500/10 border border-indigo-500/20 px-6 py-4 rounded-3xl mb-4 gap-3 animate-in slide-in-from-top-2 duration-200">
+                    <div className="text-xs text-indigo-650 dark:text-indigo-400 font-extrabold flex items-center gap-2">
+                      <Check className="w-4 h-4" />
+                      <span>{selectedOrderIds.length} Order Terpilih</span>
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={() => {
+                          const textToCopy = selectedOrderIds.join(', ');
+                          navigator.clipboard.writeText(textToCopy);
+                          alert(`Berhasil menyalin ${selectedOrderIds.length} Order ID ke clipboard!`);
+                        }}
+                        className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-500/10 cursor-pointer transition-all active:scale-95"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        Salin Semua ID
+                      </button>
+                      <button
+                        onClick={() => setSelectedOrderIds([])}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-755 text-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-all active:scale-95"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Orders Table */}
                 <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl overflow-hidden backdrop-blur-md">
                   {filteredOrders.length === 0 ? (
@@ -1644,6 +1800,26 @@ export default function AdminDashboard() {
                         <table className="w-full text-left border-collapse text-xs">
                           <thead>
                             <tr className="border-b border-slate-850 text-slate-400 font-bold uppercase tracking-wider bg-slate-50 dark:bg-slate-950/50">
+                              <th className="py-3.5 px-4 w-10">
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    filteredOrders.slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage).length > 0 &&
+                                    filteredOrders.slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage).every(o => selectedOrderIds.includes(o.order_id || o.id))
+                                  }
+                                  onChange={(e) => {
+                                    const currentPageOrders = filteredOrders.slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage);
+                                    if (e.target.checked) {
+                                      const newIds = currentPageOrders.map(o => o.order_id || o.id);
+                                      setSelectedOrderIds(prev => Array.from(new Set([...prev, ...newIds])));
+                                    } else {
+                                      const currentPageIds = currentPageOrders.map(o => o.order_id || o.id);
+                                      setSelectedOrderIds(prev => prev.filter(id => !currentPageIds.includes(id)));
+                                    }
+                                  }}
+                                  className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                                />
+                              </th>
                               <th className="py-3.5 px-4">
                                 <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" /> User</span>
                               </th>
@@ -1668,6 +1844,21 @@ export default function AdminDashboard() {
                           <tbody className="divide-y divide-slate-850/40">
                             {filteredOrders.slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage).map(order => (
                               <tr key={order.id} className="hover:bg-slate-900/30 transition-colors">
+                                <td className="py-4 px-4 w-10">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedOrderIds.includes(order.order_id || order.id)}
+                                    onChange={(e) => {
+                                      const id = order.order_id || order.id;
+                                      if (e.target.checked) {
+                                        setSelectedOrderIds(prev => [...prev, id]);
+                                      } else {
+                                        setSelectedOrderIds(prev => prev.filter(x => x !== id));
+                                      }
+                                    }}
+                                    className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                                  />
+                                </td>
                                 <td className="py-4 px-4">
                                   <div className="flex items-center gap-2">
                                     <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-[9px] font-bold text-white shadow-md shrink-0">
@@ -1695,15 +1886,15 @@ export default function AdminDashboard() {
                                       {order.payment_status}
                                     </span>
                                     {/* Process Status badge */}
-                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${getOrderStatusBadgeClass(order.status)}`}>
-                                      {order.status === 'failed' ? 'error' : order.status}
+                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${getOrderStatusBadgeClass(getAdminDisplayStatus(order))}`}>
+                                      {getAdminDisplayStatus(order) === 'failed' ? 'error' : getAdminDisplayStatus(order)}
                                     </span>
                                   </div>
                                   {order.payment_status === 'pending_refund' && (
-                                    <div className="mt-2 text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl p-2.5 max-w-[170px] space-y-0.5 shadow-sm">
-                                      <p className="font-extrabold text-amber-550 dark:text-amber-300">Gagal di Pusat</p>
-                                      <p className="font-medium">Provider: <strong className="font-bold text-amber-500 capitalize">{order.provider_id || 'manual'}</strong></p>
-                                      <p className="font-medium">Refund: <strong className="font-bold text-amber-500">Rp {formatNumberWithDots(order.provider_refund_amount)}</strong></p>
+                                    <div className="mt-2.5 text-[10px] bg-red-500/5 dark:bg-red-500/10 border border-red-500/20 rounded-xl p-3 max-w-[170px] space-y-1 shadow-sm">
+                                      <p className="font-extrabold text-red-700 dark:text-red-400">Gagal di Pusat</p>
+                                      <p className="text-slate-600 dark:text-slate-400 font-medium">Provider: <strong className="font-extrabold text-red-650 dark:text-red-300 capitalize">{order.provider_id || 'manual'}</strong></p>
+                                      <p className="text-slate-600 dark:text-slate-400 font-medium">Refund: <strong className="font-extrabold text-red-650 dark:text-red-300">Rp {formatNumberWithDots(order.provider_refund_amount)}</strong></p>
                                     </div>
                                   )}
                                 </td>
@@ -1901,15 +2092,30 @@ export default function AdminDashboard() {
                         {filteredOrders.slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage).map(order => (
                           <div key={order.id} className="p-4 space-y-3.5 bg-slate-900/10 hover:bg-slate-900/30 transition-colors">
                             <div className="flex items-center justify-between">
-                              <button
-                                onClick={() => {
-                                  const idToCopy = order.order_id ? String(order.order_id) : order.id;
-                                  navigator.clipboard.writeText(idToCopy);
-                                }}
-                                className="font-mono text-slate-350 font-bold bg-slate-950 border border-slate-850 px-2 py-0.5 rounded-lg text-[9px] w-fit flex items-center gap-1 transition-colors"
-                              >
-                                #{order.order_id ? String(order.order_id) : order.id.slice(0, 8)}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedOrderIds.includes(order.order_id || order.id)}
+                                  onChange={(e) => {
+                                    const id = order.order_id || order.id;
+                                    if (e.target.checked) {
+                                      setSelectedOrderIds(prev => [...prev, id]);
+                                    } else {
+                                      setSelectedOrderIds(prev => prev.filter(x => x !== id));
+                                    }
+                                  }}
+                                  className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                                />
+                                <button
+                                  onClick={() => {
+                                    const idToCopy = order.order_id ? String(order.order_id) : order.id;
+                                    navigator.clipboard.writeText(idToCopy);
+                                  }}
+                                  className="font-mono text-slate-355 font-bold bg-slate-950 border border-slate-850 px-2 py-0.5 rounded-lg text-[9px] w-fit flex items-center gap-1 transition-colors"
+                                >
+                                  #{order.order_id ? String(order.order_id) : order.id.slice(0, 8)}
+                                </button>
+                              </div>
                               <span className="text-[10px] text-slate-400">
                                 {new Date(order.created_at).toLocaleString('id-ID', {
                                   day: '2-digit',
@@ -1970,8 +2176,8 @@ export default function AdminDashboard() {
                                   <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${getPaymentStatusBadgeClass(order.payment_status)}`}>
                                     {order.payment_status}
                                   </span>
-                                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${getOrderStatusBadgeClass(order.status)}`}>
-                                    {order.status === 'failed' ? 'error' : order.status}
+                                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${getOrderStatusBadgeClass(getAdminDisplayStatus(order))}`}>
+                                    {getAdminDisplayStatus(order) === 'failed' ? 'error' : getAdminDisplayStatus(order)}
                                   </span>
                                 </div>
                               </div>
@@ -2202,30 +2408,30 @@ export default function AdminDashboard() {
                                     <span className={`px-2 py-0.5 rounded-lg font-extrabold text-[9px] uppercase tracking-wider ${getCategoryBadgeClass(service.category)}`}>
                                       {service.category}
                                     </span>
-                                    <span className="font-extrabold text-zinc-900 dark:text-zinc-100 text-sm group-hover:text-rose-600 dark:text-indigo-400 dark:group-hover:text-white transition-colors">
+                                    <span className="font-extrabold text-slate-100 dark:text-slate-100 text-sm group-hover:text-rose-600 dark:text-indigo-400 dark:group-hover:text-white transition-colors">
                                       {service.name}
                                     </span>
                                     {/* Provider badge in SMM list */}
                                     {service.provider_id && service.provider_id !== 'manual' && (
-                                      <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-800 text-slate-350 border border-slate-700/60 w-fit flex items-center gap-0.5">
+                                      <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-850 text-slate-450 border border-slate-700/60 w-fit flex items-center gap-0.5">
                                         🔌 {service.provider_id}
                                       </span>
                                     )}
                                   </div>
 
-                                  <div className="text-zinc-500 dark:text-zinc-400 font-medium flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                                  <div className="text-slate-400 dark:text-slate-400 font-medium flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
                                     <span className="flex items-center gap-1">
-                                      <span className="text-zinc-600 dark:text-zinc-400">Min:</span> <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{service.min_order.toLocaleString()}</strong>
+                                      <span className="text-slate-500 dark:text-slate-500">Min:</span> <strong className="text-slate-200 dark:text-slate-250 font-extrabold">{service.min_order.toLocaleString()}</strong>
                                     </span>
-                                    <span className="text-slate-400 dark:text-slate-600">•</span>
+                                    <span className="text-slate-400 dark:text-slate-650">•</span>
                                     <span className="flex items-center gap-1">
-                                      <span className="text-zinc-600 dark:text-zinc-400">Max:</span> <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{service.max_order.toLocaleString()}</strong>
+                                      <span className="text-slate-500 dark:text-slate-500">Max:</span> <strong className="text-slate-200 dark:text-slate-250 font-extrabold">{service.max_order.toLocaleString()}</strong>
                                     </span>
                                     {service.created_at && (
                                       <>
-                                        <span className="text-slate-400 dark:text-slate-600">•</span>
-                                        <span className="text-zinc-600 dark:text-zinc-400">
-                                          Dibuat: <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{new Date(service.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
+                                        <span className="text-slate-400 dark:text-slate-650">•</span>
+                                        <span className="text-slate-500 dark:text-slate-500">
+                                          Dibuat: <strong className="text-slate-200 dark:text-slate-250 font-extrabold">{new Date(service.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
                                         </span>
                                       </>
                                     )}
@@ -2243,9 +2449,9 @@ export default function AdminDashboard() {
                                   )}
 
                                   {service.description && expandedServices[service.id] && (
-                                    <div className="text-[11px] text-zinc-650 dark:text-zinc-300 mt-2.5 bg-slate-100/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-250 dark:border-slate-850/60 max-w-xl font-medium leading-relaxed whitespace-pre-wrap select-text animate-in fade-in slide-in-from-top-2 duration-250">
+                                    <div className="text-[11px] text-slate-350 dark:text-slate-300 mt-2.5 bg-slate-850/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-300 dark:border-slate-850/60 max-w-xl font-medium leading-relaxed whitespace-pre-wrap select-text animate-in fade-in slide-in-from-top-2 duration-250">
                                       <span className="block font-bold text-[9px] text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Deskripsi Detail:</span>
-                                      <div className="text-zinc-800 dark:text-zinc-200">{service.description}</div>
+                                      <div className="text-slate-200 dark:text-slate-200">{service.description}</div>
                                     </div>
                                   )}
                                 </div>
@@ -2463,7 +2669,7 @@ export default function AdminDashboard() {
                                 inputMode="numeric"
                                 required
                                 value={formatNumberWithDots(servicePrice)}
-                                onChange={(e) => setServicePrice(parseNumberFromDots(e.target.value))}
+                                onChange={(e) => setServicePrice(e.target.value.replace(/\D/g, ''))}
                                 className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs font-semibold"
                               />
                             </div>
@@ -2585,15 +2791,17 @@ export default function AdminDashboard() {
 
                                 {providerServicesList.length > 0 && (() => {
                                   const uniqueProviderCategories = Array.from(new Set(providerServicesList.map(s => s?.category).filter(Boolean))) as string[];
-                                  const filteredProviderServices = providerServicesList.filter(s => {
-                                    if (!s) return false;
-                                    const isNumericSearch = /^\d+$/.test(providerSearch.trim());
-                                    if (isNumericSearch && String(s.id).includes(providerSearch.trim())) return true;
-                                    const nameMatch = (s.name || '').toLowerCase().includes(providerSearch.toLowerCase());
-                                    const idMatch = String(s.id).includes(providerSearch);
-                                    const catMatch = (s.category || '').toLowerCase().includes(providerSearch.toLowerCase());
-                                    return (nameMatch || idMatch || catMatch) && (providerCategoryFilter === 'all' || s.category === providerCategoryFilter);
-                                  });
+                                  const filteredProviderServices = providerServicesList
+                                    .filter(s => {
+                                      if (!s) return false;
+                                      const isNumericSearch = /^\d+$/.test(providerSearch.trim());
+                                      if (isNumericSearch && String(s.id).includes(providerSearch.trim())) return true;
+                                      const nameMatch = (s.name || '').toLowerCase().includes(providerSearch.toLowerCase());
+                                      const idMatch = String(s.id).includes(providerSearch);
+                                      const catMatch = (s.category || '').toLowerCase().includes(providerSearch.toLowerCase());
+                                      return (nameMatch || idMatch || catMatch) && (providerCategoryFilter === 'all' || s.category === providerCategoryFilter);
+                                    })
+                                    .sort((a, b) => parseFloat(a.price || '0') - parseFloat(b.price || '0'));
 
                                   return (
                                     <div className="space-y-4">
@@ -2755,7 +2963,7 @@ export default function AdminDashboard() {
                                                         setProviderServiceId(String(ps.id));
                                                         setProviderPrice(parseFloat(ps.price));
                                                         setServiceName(ps.name);
-                                                        setServicePrice(Math.round(parseFloat(ps.price) * 1.5));
+                                                        setServicePrice(String(Math.round(parseFloat(ps.price) * 1.5)));
                                                         setServiceMin(ps.min);
                                                         setServiceMax(ps.max);
                                                         let rawDesc = ps.note || ps.description || '';
@@ -2842,7 +3050,7 @@ export default function AdminDashboard() {
                             setEditingServiceId(null);
                             setServiceName('');
                             setServiceDescription('');
-                            setServicePrice(0);
+                            setServicePrice('');
                           }}
                           className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-slate-100 rounded-2xl text-xs font-bold transition-all cursor-pointer"
                         >
@@ -3145,7 +3353,7 @@ export default function AdminDashboard() {
                                 setAnnContent(ann.content);
                                 setAnnImageUrl(ann.image_url || '');
                               }}
-                              className="p-2 bg-rose-50/80 dark:bg-rose-950/20 text-rose-600 dark:text-indigo-400 border border-rose-200/40 dark:border-rose-900/25 rounded-xl cursor-pointer"
+                              className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 hover:bg-indigo-600 hover:text-white dark:hover:text-white rounded-xl cursor-pointer transition-all duration-200 active:scale-95 shadow-sm"
                               title="Edit Info"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -3481,6 +3689,40 @@ export default function AdminDashboard() {
                           )}
                         </div>
                       </div>
+
+                      {/* Live Chat Toggle */}
+                      <div className="pt-4 border-t border-slate-900 flex items-center justify-between">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Integrasi Live Chat (Crisp)</label>
+                          <span className="text-[10px] text-slate-500 font-medium block mt-0.5">Tampilkan balon obrolan Crisp di pojok kanan bawah landing page untuk melayani pelanggan.</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={landingSettings.show_live_chat === 'true'}
+                            onChange={(e) => setLandingSettings(prev => ({ ...prev, show_live_chat: e.target.checked ? 'true' : 'false' }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                        </label>
+                      </div>
+
+                      {/* Mobile Bottom Navigation Toggle */}
+                      <div className="pt-4 border-t border-slate-900 flex items-center justify-between">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Navbar Bawah Mobile</label>
+                          <span className="text-[10px] text-slate-500 font-medium block mt-0.5">Tampilkan menu navigasi bawah (bottom bar) di tampilan HP. Matikan jika ingin menyembunyikan menu bawah.</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={landingSettings.show_mobile_nav !== 'false'}
+                            onChange={(e) => setLandingSettings(prev => ({ ...prev, show_mobile_nav: e.target.checked ? 'true' : 'false' }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                        </label>
+                      </div>
                     </div>
 
                     {/* Hero Section settings */}
@@ -3698,7 +3940,7 @@ export default function AdminDashboard() {
                             type="text"
                             inputMode="numeric"
                             value={formatNumberWithDots(landingSettings.deposit_bonus_min)}
-                            onChange={(e) => setLandingSettings(prev => ({ ...prev, deposit_bonus_min: String(parseNumberFromDots(e.target.value)) }))}
+                            onChange={(e) => setLandingSettings(prev => ({ ...prev, deposit_bonus_min: e.target.value.replace(/\D/g, '') }))}
                             className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs font-semibold"
                             placeholder="Contoh: 10.000"
                           />
@@ -3745,247 +3987,313 @@ export default function AdminDashboard() {
                 )}
               </div>
             )}
-
             {/* Tab: Tickets Bantuan Management */}
-            {activeTab === 'tickets' && (
-              <div className="space-y-6 animate-in fade-in duration-300">
-                {/* Filter controls */}
-                <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md">
-                  <h3 className="font-bold text-sm text-slate-200 mb-4 uppercase tracking-wider">Kelola Tiket Bantuan</h3>
+            {activeTab === 'tickets' && (() => {
+              const filteredTickets = tickets.filter(t => {
+                if (ticketStatusFilter !== 'all' && t.status !== ticketStatusFilter) return false;
+                const q = ticketSearchQuery.toLowerCase().trim();
+                if (!q) return true;
+                if (ticketSearchType === 'id') {
+                  return String(t.id).includes(q);
+                } else if (ticketSearchType === 'subject') {
+                  return String(t.subject).toLowerCase().includes(q);
+                } else {
+                  return String(t.username || '').toLowerCase().includes(q) || String(t.full_name || '').toLowerCase().includes(q);
+                }
+              });
 
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    {/* Search query */}
-                    <div className="flex gap-2 w-full md:w-auto">
-                      <select
-                        value={ticketSearchType}
-                        onChange={(e) => setTicketSearchType(e.target.value)}
-                        className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
-                      >
-                        <option value="id">ID</option>
-                        <option value="subject">Subjek</option>
-                        <option value="username">Username</option>
-                      </select>
-                      <div className="relative flex-1 md:w-64">
-                        <input
-                          type="text"
-                          placeholder="Cari..."
-                          value={ticketSearchQuery}
-                          onChange={(e) => setTicketSearchQuery(e.target.value)}
-                          className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none text-xs"
-                        />
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              return (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  {/* Filter controls */}
+                  <div className="bg-slate-900 border border-slate-800/80 shadow-sm p-6 rounded-3xl backdrop-blur-md">
+                    <h3 className="font-bold text-sm text-slate-200 mb-4 uppercase tracking-wider">Kelola Tiket Bantuan</h3>
+
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      {/* Search query */}
+                      <div className="flex gap-2 w-full md:w-auto">
+                        <select
+                          value={ticketSearchType}
+                          onChange={(e) => setTicketSearchType(e.target.value)}
+                          className="bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-3 py-2 rounded-xl outline-none text-xs"
+                        >
+                          <option value="id">ID</option>
+                          <option value="subject">Subjek</option>
+                          <option value="username">Username</option>
+                        </select>
+                        <div className="relative flex-1 md:w-64">
+                          <input
+                            type="text"
+                            placeholder="Cari..."
+                            value={ticketSearchQuery}
+                            onChange={(e) => setTicketSearchQuery(e.target.value)}
+                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-4 pr-10 py-2.5 rounded-xl outline-none text-xs"
+                          />
+                          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        </div>
+                      </div>
+
+                      {/* Status filter pills */}
+                      <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+                        {['all', 'Pending', 'Answered', 'Closed'].map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => setTicketStatusFilter(status)}
+                            className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all ${ticketStatusFilter === status
+                              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/15'
+                              : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                              }`}
+                          >
+                            {status === 'all' ? 'Semua' : status}
+                          </button>
+                        ))}
                       </div>
                     </div>
-
-                    {/* Status filter pills */}
-                    <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
-                      {['all', 'Pending', 'Answered', 'Closed'].map((status) => (
-                        <button
-                          key={status}
-                          onClick={() => setTicketStatusFilter(status)}
-                          className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all ${ticketStatusFilter === status
-                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/15'
-                            : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
-                            }`}
-                        >
-                          {status === 'all' ? 'Semua' : status}
-                        </button>
-                      ))}
-                    </div>
                   </div>
-                </div>
 
-                {/* Tickets table list */}
-                <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6">
-                  <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-850">
-                    <table className="w-full border-collapse text-left">
-                      <thead>
-                        <tr className="bg-slate-950 border-b border-slate-850 text-slate-400 text-[10px] font-black uppercase tracking-wider">
-                          <th className="py-4 px-6">ID</th>
-                          <th className="py-4 px-6">User</th>
-                          <th className="py-4 px-6">Subjek</th>
-                          <th className="py-4 px-6">Status</th>
-                          <th className="py-4 px-6">Pembaruan</th>
-                          <th className="py-4 px-6 text-center">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-850">
-                        {(() => {
-                          const filtered = tickets.filter(t => {
-                            // status check
-                            if (ticketStatusFilter !== 'all' && t.status !== ticketStatusFilter) return false;
+                  {/* Bulk Action Bar for Tickets */}
+                  {selectedTicketIds.length > 0 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between bg-indigo-500/10 border border-indigo-500/20 px-6 py-4 rounded-3xl mb-4 gap-3 animate-in slide-in-from-top-2 duration-200">
+                      <div className="text-xs text-indigo-650 dark:text-indigo-400 font-extrabold flex items-center gap-2">
+                        <Check className="w-4 h-4" />
+                        <span>{selectedTicketIds.length} Tiket Terpilih</span>
+                      </div>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <button
+                          onClick={handleBulkCloseTickets}
+                          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold cursor-pointer transition-all active:scale-95"
+                        >
+                          Tutup Tiket
+                        </button>
+                        <button
+                          onClick={handleBulkDeleteTickets}
+                          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-md shadow-red-500/10 cursor-pointer transition-all active:scale-95"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Hapus Permanen
+                        </button>
+                        <button
+                          onClick={() => setSelectedTicketIds([])}
+                          className="px-4 py-2 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-350 rounded-xl text-xs font-bold cursor-pointer transition-all active:scale-95"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-                            // search check
-                            const q = ticketSearchQuery.toLowerCase().trim();
-                            if (!q) return true;
-                            if (ticketSearchType === 'id') {
-                              return String(t.id).includes(q);
-                            } else if (ticketSearchType === 'subject') {
-                              return String(t.subject).toLowerCase().includes(q);
-                            } else {
-                              return String(t.username || '').toLowerCase().includes(q) || String(t.full_name || '').toLowerCase().includes(q);
-                            }
-                          });
-
-                          if (filtered.length === 0) {
-                            return (
-                              <tr>
-                                <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
-                                  Tidak ada tiket bantuan yang ditemukan.
-                                </td>
-                              </tr>
-                            );
-                          }
-
-                          return filtered.map(t => (
-                            <tr key={t.id} className="hover:bg-slate-900/20 text-xs text-slate-300">
-                              <td className="py-4 px-6 font-mono font-bold text-slate-500">#{t.id}</td>
-                              <td className="py-4 px-6">
-                                <div className="font-bold text-slate-200">{t.full_name || 'User'}</div>
-                                <div className="text-[10px] text-slate-500">@{t.username || 'username'}</div>
-                              </td>
-                              <td className="py-4 px-6 font-semibold text-indigo-500 dark:text-indigo-400">
-                                {t.subject}
-                                {t.status === 'Pending' && (
-                                  <span className="ml-2 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-widest">NEW</span>
-                                )}
-                              </td>
-                              <td className="py-4 px-6">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${getTicketStatusBadgeClass(t.status)}`}>
-                                  {t.status}
-                                </span>
-                              </td>
-                              <td className="py-4 px-6 font-medium text-slate-500">
-                                {new Date(t.updated_at).toLocaleString('id-ID', {
-                                  dateStyle: 'medium',
-                                  timeStyle: 'short'
-                                })}
-                              </td>
-                              <td className="py-4 px-6 text-center">
-                                <div className="flex items-center justify-center gap-2">
-                                  <button
-                                    onClick={() => fetchTicketDetails(t.id)}
-                                    className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold transition-all cursor-pointer"
-                                  >
-                                    Balas
-                                  </button>
-                                  {t.status !== 'Closed' && (
-                                    <button
-                                      onClick={() => handleCloseTicket(t.id)}
-                                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-705 text-slate-350 text-[10px] font-bold transition-all cursor-pointer"
-                                    >
-                                      Tutup Tiket
-                                    </button>
-                                  )}
-                                </div>
+                  {/* Tickets table list */}
+                  <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6">
+                    <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-850">
+                      <table className="w-full border-collapse text-left">
+                        <thead>
+                          <tr className="bg-slate-950 border-b border-slate-850 text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                            <th className="py-4 px-6 w-10">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  filteredTickets.length > 0 &&
+                                  filteredTickets.every(t => selectedTicketIds.includes(t.id))
+                                }
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const newIds = filteredTickets.map(t => t.id);
+                                    setSelectedTicketIds(prev => Array.from(new Set([...prev, ...newIds])));
+                                  } else {
+                                    const pageIds = filteredTickets.map(t => t.id);
+                                    setSelectedTicketIds(prev => prev.filter(id => !pageIds.includes(id)));
+                                  }
+                                }}
+                                className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                              />
+                            </th>
+                            <th className="py-4 px-6">ID</th>
+                            <th className="py-4 px-6">User</th>
+                            <th className="py-4 px-6">Subjek</th>
+                            <th className="py-4 px-6">Status</th>
+                            <th className="py-4 px-6">Pembaruan</th>
+                            <th className="py-4 px-6 text-center">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-850">
+                          {filteredTickets.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} className="py-8 text-center text-slate-500 text-xs">
+                                Tidak ada tiket bantuan yang ditemukan.
                               </td>
                             </tr>
-                          ));
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
+                          ) : (
+                            filteredTickets.map(t => (
+                              <tr key={t.id} className="hover:bg-slate-900/20 text-xs text-slate-300">
+                                <td className="py-4 px-6 w-10">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedTicketIds.includes(t.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedTicketIds(prev => [...prev, t.id]);
+                                      } else {
+                                        setSelectedTicketIds(prev => prev.filter(id => id !== t.id));
+                                      }
+                                    }}
+                                    className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                                  />
+                                </td>
+                                <td className="py-4 px-6 font-mono font-bold text-slate-500">#{t.id}</td>
+                                <td className="py-4 px-6">
+                                  <div className="font-bold text-slate-200">{t.full_name || 'User'}</div>
+                                  <div className="text-[10px] text-slate-500">@{t.username || 'username'}</div>
+                                </td>
+                                <td className="py-4 px-6 font-semibold text-indigo-500 dark:text-indigo-400">
+                                  {t.subject}
+                                  {t.status === 'Pending' && (
+                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-widest">NEW</span>
+                                  )}
+                                </td>
+                                <td className="py-4 px-6">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${getTicketStatusBadgeClass(t.status)}`}>
+                                    {t.status}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-6 font-medium text-slate-500">
+                                  {new Date(t.updated_at).toLocaleString('id-ID', {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'short'
+                                  })}
+                                </td>
+                                <td className="py-4 px-6 text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => fetchTicketDetails(t.id)}
+                                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold transition-all cursor-pointer"
+                                    >
+                                      Balas
+                                    </button>
+                                    {t.status !== 'Closed' && (
+                                      <button
+                                        onClick={() => handleCloseTicket(t.id)}
+                                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-705 text-slate-350 text-[10px] font-bold transition-all cursor-pointer"
+                                      >
+                                        Tutup Tiket
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => handleDeleteTicket(t.id)}
+                                      className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-650 text-red-500 hover:text-white transition-all cursor-pointer"
+                                      title="Hapus Tiket"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
 
-                  {/* Mobile View (Responsive Card List) */}
-                  <div className="block md:hidden space-y-4">
-                    {(() => {
-                      const filtered = tickets.filter(t => {
-                        // status check
-                        if (ticketStatusFilter !== 'all' && t.status !== ticketStatusFilter) return false;
+                    {/* Mobile View (Responsive Card List) */}
+                    <div className="block md:hidden space-y-4">
+                      {filteredTickets.length === 0 ? (
+                        <div className="py-12 text-center text-slate-500 text-xs bg-slate-950/20 rounded-2xl border border-slate-850">
+                          Tidak ada tiket bantuan yang ditemukan.
+                        </div>
+                      ) : (
+                        filteredTickets.map(t => (
+                          <div
+                            key={t.id}
+                            className="p-5 rounded-[24px] border border-slate-800 bg-slate-950/40 space-y-3.5 transition-all"
+                          >
+                            {/* Row 1: ID & Date */}
+                            <div className="flex justify-between items-center text-[10px] gap-2">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTicketIds.includes(t.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTicketIds(prev => [...prev, t.id]);
+                                    } else {
+                                      setSelectedTicketIds(prev => prev.filter(id => id !== t.id));
+                                    }
+                                  }}
+                                  className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                                />
+                                <span className="px-2.5 py-1 font-mono text-[9px] text-slate-350 bg-slate-900/50 border border-slate-800 rounded-xl font-bold">
+                                  ID: #{t.id}
+                                </span>
+                              </div>
+                              <span className="text-slate-500 font-medium">
+                                {new Date(t.updated_at).toLocaleString('id-ID', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
 
-                        // search check
-                        const q = ticketSearchQuery.toLowerCase().trim();
-                        if (!q) return true;
-                        if (ticketSearchType === 'id') {
-                          return String(t.id).includes(q);
-                        } else if (ticketSearchType === 'subject') {
-                          return String(t.subject).toLowerCase().includes(q);
-                        } else {
-                          return String(t.username || '').toLowerCase().includes(q) || String(t.full_name || '').toLowerCase().includes(q);
-                        }
-                      });
+                            {/* Row 2: User Info */}
+                            <div className="pt-1">
+                              <span className="text-slate-500 block text-[8px] uppercase tracking-widest font-black mb-1">Pengirim</span>
+                              <div className="font-extrabold text-slate-200 text-xs">{t.full_name || 'User'}</div>
+                              <div className="text-[10px] text-slate-400">@{t.username || 'username'}</div>
+                            </div>
 
-                      if (filtered.length === 0) {
-                        return (
-                          <div className="py-12 text-center text-slate-500 text-xs bg-slate-950/20 rounded-2xl border border-slate-850">
-                            Tidak ada tiket bantuan yang ditemukan.
-                          </div>
-                        );
-                      }
+                            {/* Row 3: Subject & Status */}
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="space-y-1">
+                                <span className="text-slate-500 block text-[8px] uppercase tracking-widest font-black">Subjek</span>
+                                <div className="font-bold text-indigo-400 text-sm">
+                                  {t.subject}
+                                  {t.status === 'Pending' && (
+                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-widest">NEW</span>
+                                  )}
+                                </div>
+                              </div>
 
-                      return filtered.map(t => (
-                        <div
-                          key={t.id}
-                          className="p-5 rounded-[24px] border border-slate-800 bg-slate-950/40 space-y-3.5 transition-all"
-                        >
-                          {/* Row 1: ID & Date */}
-                          <div className="flex justify-between items-center text-[10px] gap-2">
-                            <span className="px-2.5 py-1 font-mono text-[9px] text-slate-350 bg-slate-900/50 border border-slate-800 rounded-xl font-bold">
-                              ID: #{t.id}
-                            </span>
-                            <span className="text-slate-500 font-medium">
-                              {new Date(t.updated_at).toLocaleString('id-ID', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-
-                          {/* Row 2: User Info */}
-                          <div className="pt-1">
-                            <span className="text-slate-500 block text-[8px] uppercase tracking-widest font-black mb-1">Pengirim</span>
-                            <div className="font-extrabold text-slate-200 text-xs">{t.full_name || 'User'}</div>
-                            <div className="text-[10px] text-slate-400">@{t.username || 'username'}</div>
-                          </div>
-
-                          {/* Row 3: Subject & Status */}
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="space-y-1">
-                              <span className="text-slate-500 block text-[8px] uppercase tracking-widest font-black">Subjek</span>
-                              <div className="font-bold text-indigo-400 text-sm">
-                                {t.subject}
-                                {t.status === 'Pending' && (
-                                  <span className="ml-2 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-widest">NEW</span>
-                                )}
+                              <div className="text-right space-y-1 shrink-0">
+                                <span className="text-slate-500 block text-[8px] uppercase tracking-widest font-black">Status</span>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-xl text-[9px] font-black uppercase tracking-widest ${getTicketStatusBadgeClass(t.status)}`}>
+                                  {t.status}
+                                </span>
                               </div>
                             </div>
 
-                            <div className="text-right space-y-1 shrink-0">
-                              <span className="text-slate-500 block text-[8px] uppercase tracking-widest font-black">Status</span>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-xl text-[9px] font-black uppercase tracking-widest ${getTicketStatusBadgeClass(t.status)}`}>
-                                {t.status}
-                              </span>
+                            {/* Row 4: Action Buttons */}
+                            <div className="pt-3 border-t border-slate-800 flex gap-2 justify-end items-center">
+                              <button
+                                onClick={() => handleDeleteTicket(t.id)}
+                                className="p-2 rounded-2xl bg-red-500/10 hover:bg-red-650 hover:text-white text-red-500 transition-all cursor-pointer shrink-0"
+                                title="Hapus Tiket"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                              {t.status !== 'Closed' && (
+                                <button
+                                  onClick={() => handleCloseTicket(t.id)}
+                                  className="px-3.5 py-2 rounded-2xl bg-slate-800 hover:bg-slate-705 text-slate-350 text-[10px] font-bold transition-all cursor-pointer"
+                                >
+                                  Tutup Tiket
+                                </button>
+                              )}
+                              <button
+                                onClick={() => fetchTicketDetails(t.id)}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-600/15"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>Balas</span>
+                              </button>
                             </div>
                           </div>
-
-                          {/* Row 4: Action Buttons */}
-                          <div className="pt-3 border-t border-slate-800 flex gap-2 justify-end">
-                            {t.status !== 'Closed' && (
-                              <button
-                                onClick={() => handleCloseTicket(t.id)}
-                                className="px-3.5 py-2 rounded-2xl bg-slate-800 hover:bg-slate-705 text-slate-350 text-[10px] font-bold transition-all cursor-pointer"
-                              >
-                                Tutup Tiket
-                              </button>
-                            )}
-                            <button
-                              onClick={() => fetchTicketDetails(t.id)}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-600/15"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                              <span>Balas</span>
-                            </button>
-                          </div>
-                        </div>
-                      ));
-                    })()}
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Tab: Kelola User */}
             {activeTab === 'users' && (() => {
@@ -4086,34 +4394,39 @@ export default function AdminDashboard() {
                                     {u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                                   </td>
                                   <td className="py-3.5 px-4 text-right">
-                                    <button
-                                      onClick={() => {
-                                        setSelectedEditUser(u);
-                                        setEditFullName(u.full_name || '');
-                                        setEditUsername(u.username || '');
-                                        setEditRole(u.role === 'admin' ? 'admin' : 'user');
-                                        setEditUserError(null);
-                                        setShowEditUserModal(true);
-                                      }}
-                                      title="Edit User"
-                                      className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-500/10 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-all cursor-pointer border border-slate-300 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500/30 active:scale-95"
-                                    >
-                                      <Edit2 className="w-3 h-3" />
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setSelectedUserForBalance(u);
-                                        setAdjustmentAmount(0);
-                                        setAdjustmentType('add');
-                                        setAdjustmentReason('');
-                                        setBalanceError(null);
-                                        setShowBalanceModal(true);
-                                      }}
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white text-[10px] font-bold transition-all cursor-pointer border border-indigo-200 dark:border-indigo-500/20 hover:border-indigo-600 active:scale-95"
-                                    >
-                                      <Wallet className="w-3 h-3" />
-
-                                    </button>
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        onClick={() => {
+                                          setSelectedEditUser(u);
+                                          setEditFullName(u.full_name || '');
+                                          setEditUsername(u.username || '');
+                                          setEditEmail(u.email || '');
+                                          setEditWhatsapp(u.whatsapp || '');
+                                          setEditPassword('');
+                                          setEditRole(u.role === 'admin' ? 'admin' : 'user');
+                                          setEditUserError(null);
+                                          setShowEditUserModal(true);
+                                        }}
+                                        title="Edit User"
+                                        className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white transition-all cursor-pointer border border-indigo-200 dark:border-indigo-500/20 active:scale-95 shadow-sm"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedUserForBalance(u);
+                                          setAdjustmentAmount('');
+                                          setAdjustmentType('add');
+                                          setAdjustmentReason('');
+                                          setBalanceError(null);
+                                          setShowBalanceModal(true);
+                                        }}
+                                        title="Kelola Saldo"
+                                        className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-600 text-emerald-600 dark:text-emerald-450 hover:text-white transition-all cursor-pointer border border-emerald-200 dark:border-emerald-500/20 active:scale-95 shadow-sm"
+                                      >
+                                        <Wallet className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -4147,7 +4460,9 @@ export default function AdminDashboard() {
                                     setSelectedEditUser(u);
                                     setEditFullName(u.full_name || '');
                                     setEditUsername(u.username || '');
-                                    setEditRole(u.role === 'admin' ? 'admin' : 'user');
+                                    setEditEmail(u.email || '');
+                                    setEditWhatsapp(u.whatsapp || '');
+                                    setEditPassword('');
                                     setEditUserError(null);
                                     setShowEditUserModal(true);
                                   }}
@@ -4159,7 +4474,7 @@ export default function AdminDashboard() {
                                 <button
                                   onClick={() => {
                                     setSelectedUserForBalance(u);
-                                    setAdjustmentAmount(0);
+                                    setAdjustmentAmount('');
                                     setAdjustmentType('add');
                                     setAdjustmentReason('');
                                     setBalanceError(null);
@@ -4364,68 +4679,89 @@ export default function AdminDashboard() {
             {/* Edit User Modal */}
             {showEditUserModal && selectedEditUser && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+                <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
                   <button
                     onClick={() => { setShowEditUserModal(false); setSelectedEditUser(null); }}
-                    className="absolute right-4 top-4 p-1.5 rounded-lg bg-slate-950/50 border border-slate-800 hover:bg-slate-900 text-slate-400 transition-colors cursor-pointer"
+                    className="absolute right-4 top-4 p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
 
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <div className="flex items-center gap-3 mb-5 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-650 dark:text-indigo-400">
                       <Edit2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-100">Edit User</h3>
-                      <p className="text-[10px] text-slate-400 font-mono">{selectedEditUser.email}</p>
+                      <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">Edit User</h3>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Lakukan perubahan informasi akun user</p>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3.5 max-h-[60vh] overflow-y-auto pr-1">
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Nama Lengkap</label>
+                      <label className="block text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-1.5">Nama Lengkap</label>
                       <input
                         type="text"
                         value={editFullName}
                         onChange={e => setEditFullName(e.target.value)}
                         placeholder="Nama lengkap user"
-                        className="w-full bg-slate-950/50 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none text-xs font-medium"
+                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-slate-800 dark:text-slate-200 px-4 py-2.5 rounded-xl outline-none text-xs font-semibold transition-all"
                       />
                     </div>
+
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Username</label>
+                      <label className="block text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-1.5">Username</label>
                       <input
                         type="text"
                         value={editUsername}
                         onChange={e => setEditUsername(e.target.value)}
                         placeholder="Username"
-                        className="w-full bg-slate-950/50 border border-slate-800 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none text-xs font-medium"
+                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-slate-800 dark:text-slate-200 px-4 py-2.5 rounded-xl outline-none text-xs font-semibold transition-all"
                       />
                     </div>
+
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Role</label>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditRole('user')}
-                          className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${editRole === 'user' ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-400' : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'}`}
-                        >User</button>
-                        <button
-                          onClick={() => setEditRole('admin')}
-                          className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${editRole === 'admin' ? 'bg-rose-500/15 border-rose-500/30 text-rose-400' : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'}`}
-                        >Admin</button>
-                      </div>
+                      <label className="block text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-1.5">Email</label>
+                      <input
+                        type="email"
+                        value={editEmail}
+                        onChange={e => setEditEmail(e.target.value)}
+                        placeholder="Alamat email user"
+                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-slate-800 dark:text-slate-200 px-4 py-2.5 rounded-xl outline-none text-xs font-semibold transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-1.5">No. WhatsApp</label>
+                      <input
+                        type="text"
+                        value={editWhatsapp}
+                        onChange={e => setEditWhatsapp(e.target.value)}
+                        placeholder="Contoh: 628123456789"
+                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-slate-800 dark:text-slate-200 px-4 py-2.5 rounded-xl outline-none text-xs font-semibold transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-1.5">Password Baru</label>
+                      <input
+                        type="password"
+                        value={editPassword}
+                        onChange={e => setEditPassword(e.target.value)}
+                        placeholder="Kosongkan jika tidak ingin diubah"
+                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-slate-800 dark:text-slate-200 px-4 py-2.5 rounded-xl outline-none text-xs font-semibold transition-all"
+                      />
                     </div>
 
                     {editUserError && (
-                      <p className="text-xs text-rose-400 font-medium bg-rose-500/10 px-3 py-2 rounded-xl border border-rose-500/20">{editUserError}</p>
+                      <p className="text-xs text-rose-650 dark:text-rose-450 font-semibold bg-rose-500/5 px-3.5 py-2.5 rounded-xl border border-rose-500/15">{editUserError}</p>
                     )}
                   </div>
 
                   <div className="flex gap-3 mt-6">
                     <button
                       onClick={() => { setShowEditUserModal(false); setSelectedEditUser(null); }}
-                      className="flex-1 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 py-3 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-950 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-350 border border-slate-200 dark:border-slate-800 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer"
                     >Batal</button>
                     <button
                       disabled={submittingEditUser}
@@ -4433,12 +4769,44 @@ export default function AdminDashboard() {
                         setSubmittingEditUser(true);
                         setEditUserError(null);
                         try {
-                          const { error } = await supabase
-                            .from('profiles')
-                            .update({ full_name: editFullName, username: editUsername, role: editRole })
-                            .eq('id', selectedEditUser.id);
-                          if (error) throw error;
-                          setUserProfiles(prev => prev.map(p => p.id === selectedEditUser.id ? { ...p, full_name: editFullName, username: editUsername, role: editRole } : p));
+                          const { data: { session } } = await supabase.auth.getSession();
+                          if (!session) {
+                            alert('Sesi login telah berakhir. Silakan login kembali.');
+                            return;
+                          }
+
+                          const res = await fetch('/api/admin', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${session.access_token}`
+                            },
+                            body: JSON.stringify({
+                              action: 'update_user_details',
+                              editUserId: selectedEditUser.id,
+                              fullName: editFullName,
+                              username: editUsername,
+                              email: editEmail,
+                              whatsapp: editWhatsapp,
+                              role: selectedEditUser.role || 'user',
+                              password: editPassword
+                            })
+                          });
+
+                          const data = await res.json();
+                          if (!res.ok) {
+                            throw new Error(data.error || 'Gagal menyimpan perubahan');
+                          }
+
+                          setUserProfiles(prev => prev.map(p => p.id === selectedEditUser.id ? {
+                            ...p,
+                            full_name: editFullName,
+                            username: editUsername,
+                            email: editEmail,
+                            whatsapp: editWhatsapp
+                          } : p));
+
+                          alert(data.message || 'Data user berhasil diperbarui!');
                           setShowEditUserModal(false);
                           setSelectedEditUser(null);
                         } catch (err: any) {
@@ -4447,7 +4815,7 @@ export default function AdminDashboard() {
                           setSubmittingEditUser(false);
                         }
                       }}
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white py-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20"
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white py-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-indigo-500/10"
                     >
                       {submittingEditUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                       Simpan
@@ -4471,7 +4839,7 @@ export default function AdminDashboard() {
                     <X className="w-4 h-4" />
                   </button>
 
-                  <div className="w-12 h-12 rounded-2xl bg-rose-50/80 dark:bg-rose-950/15 border border-indigo-500/20 flex items-center justify-center text-indigo-500 dark:text-indigo-400 mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-450 mb-4">
                     <Wallet className="w-6 h-6" />
                   </div>
 
@@ -4516,7 +4884,7 @@ export default function AdminDashboard() {
                         inputMode="numeric"
                         required
                         value={formatNumberWithDots(adjustmentAmount)}
-                        onChange={(e) => setAdjustmentAmount(parseNumberFromDots(e.target.value))}
+                        onChange={(e) => setAdjustmentAmount(e.target.value.replace(/\D/g, ''))}
                         placeholder="Contoh: 50.000"
                         className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-2.5 rounded-xl outline-none transition-colors text-xs font-mono font-semibold"
                       />
@@ -4589,6 +4957,43 @@ export default function AdminDashboard() {
                       className="flex-1 bg-indigo-600 hover:bg-indigo-600 text-white shadow-md shadow-rose-500/10 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-500/10 active:scale-98 cursor-pointer"
                     >
                       Ya, Lanjutkan
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Premium Dribbble-style Alert Modal */}
+            {alertModal && alertModal.show && (
+              <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
+                <div className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-6 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+                  <div className="flex flex-col items-center text-center">
+                    {alertModal.type === 'success' ? (
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 shadow-lg shadow-emerald-500/5">
+                        <Check className="w-7 h-7" />
+                      </div>
+                    ) : alertModal.type === 'error' ? (
+                      <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400 mb-4 shadow-lg shadow-rose-500/5">
+                        <X className="w-7 h-7" />
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 shadow-lg shadow-blue-500/5">
+                        <AlertCircle className="w-7 h-7" />
+                      </div>
+                    )}
+
+                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 mb-2">
+                      {alertModal.title}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium leading-relaxed max-w-[280px]">
+                      {alertModal.message}
+                    </p>
+
+                    <button
+                      onClick={() => setAlertModal(null)}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 px-6 rounded-xl text-xs transition-all active:scale-95 shadow-md shadow-indigo-500/10 cursor-pointer"
+                    >
+                      Mengerti
                     </button>
                   </div>
                 </div>

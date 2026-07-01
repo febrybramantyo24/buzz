@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { query } from '@/lib/db';
 import { placeProviderOrder } from '@/lib/buzzerpanel';
 import { placeMedanPediaOrder } from '@/lib/medanpedia';
+import bcrypt from 'bcrypt';
 
 export async function GET(request: Request) {
   try {
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
       await query("ALTER TABLE announcements ADD COLUMN IF NOT EXISTS image_url TEXT;");
       await query("ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;");
       await query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS description TEXT;");
+      await query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS provider_status VARCHAR(50);");
     } catch (e) {
       console.error('Migration failed:', e);
     }
@@ -172,7 +174,7 @@ export async function POST(request: Request) {
         // Update order status to failed and payment_status to refunded
         await query(
           `UPDATE orders 
-           SET payment_status = 'refunded', status = 'failed', provider_refund_amount = $1 
+           SET payment_status = 'refunded', status = 'failed', provider_status = 'failed', provider_refund_amount = $1 
            WHERE id = $2`,
           [actualRefund, orderId]
         );
@@ -243,6 +245,41 @@ export async function POST(request: Request) {
       });
     }
 
+    if (action === 'update_user_details') {
+      const { editUserId, fullName, username, email, whatsapp, role, password } = body;
+      if (!editUserId || !fullName || !username || !email || !role) {
+        return NextResponse.json({ error: 'Data edit user tidak lengkap' }, { status: 400 });
+      }
+
+      // Check username collision
+      const usernameCheck = await query('SELECT id FROM profiles WHERE username = $1 AND id != $2', [username, editUserId]);
+      if (usernameCheck.rows.length > 0) {
+        return NextResponse.json({ error: 'Username sudah digunakan oleh orang lain' }, { status: 400 });
+      }
+
+      // Check email collision
+      const emailCheck = await query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, editUserId]);
+      if (emailCheck.rows.length > 0) {
+        return NextResponse.json({ error: 'Email sudah terdaftar oleh pengguna lain' }, { status: 400 });
+      }
+
+      // Update users table (email and optionally password_hash)
+      if (password && password.trim() !== '') {
+        const passwordHash = await bcrypt.hash(password, 10);
+        await query('UPDATE users SET email = $1, password_hash = $2 WHERE id = $3', [email, passwordHash, editUserId]);
+      } else {
+        await query('UPDATE users SET email = $1 WHERE id = $2', [email, editUserId]);
+      }
+
+      // Update profiles table
+      await query(
+        'UPDATE profiles SET email = $1, full_name = $2, username = $3, whatsapp = $4, role = $5 WHERE id = $6',
+        [email, fullName, username, whatsapp || '', role, editUserId]
+      );
+
+      return NextResponse.json({ success: true, message: 'Data user berhasil diperbarui' });
+    }
+
     if (action === 'retry_provider') {
       if (!orderId) {
         return NextResponse.json({ error: 'Missing orderId' }, { status: 400 });
@@ -295,11 +332,19 @@ export async function POST(request: Request) {
 
       const providerOrderId = String(providerRes.data?.id || '');
 
-      // Update order status to processing and set provider_order_id
-      await query(
-        'UPDATE orders SET status = $1, provider_order_id = $2 WHERE id = $3',
-        ['processing', providerOrderId, orderId]
-      );
+      // Update order status to processing, set provider_order_id, and match local order_id with provider order ID
+      const numericProviderOrderId = parseInt(providerOrderId, 10);
+      if (!isNaN(numericProviderOrderId)) {
+        await query(
+          'UPDATE orders SET status = $1, provider_order_id = $2, order_id = $3 WHERE id = $4',
+          ['processing', providerOrderId, numericProviderOrderId, orderId]
+        );
+      } else {
+        await query(
+          'UPDATE orders SET status = $1, provider_order_id = $2 WHERE id = $3',
+          ['processing', providerOrderId, orderId]
+        );
+      }
 
       return NextResponse.json({ 
         success: true, 
@@ -323,12 +368,13 @@ export async function POST(request: Request) {
     // Update order status
     const isRefundedStatus = status === 'failed' || status === 'partial';
     await query(
-  'UPDATE orders SET status = $1, start_count = $2, remains = $3, payment_status = $4 WHERE id = $5',
+  'UPDATE orders SET status = $1, start_count = $2, remains = $3, payment_status = $4, provider_status = $5 WHERE id = $6',
   [
     status,
     startCount || 0,
     remains !== undefined && remains !== null ? parseInt(remains) : (order.remains ?? 0),
     isRefundedStatus ? 'refunded' : 'paid',
+    status,
     orderId
   ]
 );
