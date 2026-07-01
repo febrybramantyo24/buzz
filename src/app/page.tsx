@@ -27,6 +27,35 @@ import {
   Smartphone
 } from 'lucide-react';
 
+// Clean description for display: strip HTML, normalize ALL CAPS
+const cleanDescription = (raw: string): string => {
+  if (!raw) return '';
+  let text = raw.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<\/div>/gi, '\n');
+  text = text.replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, (_, href, label) => {
+    const cleanLabel = label.replace(/<[^>]*>/g, '').trim();
+    return cleanLabel && cleanLabel !== href ? `${cleanLabel} (${href})` : href;
+  });
+  text = text.replace(/<[^>]*>/g, '');
+  text = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
+  const lines = text.split('\n');
+  const processed = lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+    const letters = trimmed.replace(/[^a-zA-Z]/g, '');
+    const upperCount = letters.replace(/[^A-Z]/g, '').length;
+    if (letters.length > 3 && upperCount / letters.length > 0.7) {
+      return trimmed.split(/(?<=[.!?]\s+)/).map(sentence => {
+        const s = sentence.trim();
+        if (!s) return '';
+        if (s.startsWith('http')) return s;
+        return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+      }).join(' ');
+    }
+    return trimmed;
+  });
+  return processed.filter((line, i, arr) => !(line === '' && arr[i - 1] === '')).join('\n').trim();
+};
+
 export default function LandingPage() {
   const { logoUrl, brandName } = useBrand();
   const [services, setServices] = useState<Service[]>([]);
@@ -643,7 +672,7 @@ export default function LandingPage() {
                           {service.description && (
                             <div className="space-y-1.5">
                               <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black block">Deskripsi Layanan</span>
-                              <p className="text-[11px] text-zinc-550 dark:text-slate-450 leading-relaxed font-normal border-t border-zinc-150/80 dark:border-slate-850/40 pt-2.5">{service.description}</p>
+                              <p className="text-[11px] text-zinc-550 dark:text-slate-450 leading-relaxed font-normal border-t border-zinc-150/80 dark:border-slate-850/40 pt-2.5 whitespace-pre-wrap">{cleanDescription(service.description)}</p>
                             </div>
                           )}
 

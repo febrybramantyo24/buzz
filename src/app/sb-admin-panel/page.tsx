@@ -45,18 +45,50 @@ import {
 
 const formatNumberWithDots = (num: number | string | null | undefined): string => {
   if (num === null || num === undefined || num === '') return '';
-  let clean = String(num).replace(/\D/g, '');
-  if (!clean) return '';
-  // Prevent leading zeros unless it's just "0"
-  if (clean.startsWith('0') && clean.length > 1) {
-    clean = String(parseInt(clean, 10));
-  }
-  return new Intl.NumberFormat('id-ID').format(parseInt(clean, 10));
+  // Parse as float first to handle "80000.00" correctly, then round
+  const parsed = typeof num === 'number' ? num : parseFloat(String(num));
+  if (isNaN(parsed) || parsed === 0) return '';
+  const rounded = Math.round(parsed);
+  return new Intl.NumberFormat('id-ID').format(rounded);
 };
 
 const parseNumberFromDots = (str: string): number => {
   const clean = str.replace(/\D/g, '');
   return parseInt(clean, 10) || 0;
+};
+
+// Clean raw provider descriptions: strip HTML, normalize caps, decode entities
+const cleanProviderDescription = (raw: string): string => {
+  if (!raw) return '';
+  // Replace HTML line breaks with newlines
+  let text = raw.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<\/div>/gi, '\n');
+  // Preserve links as "label (url)"
+  text = text.replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, (_, href, label) => {
+    const cleanLabel = label.replace(/<[^>]*>/g, '').trim();
+    return cleanLabel && cleanLabel !== href ? `${cleanLabel} (${href})` : href;
+  });
+  // Strip remaining tags
+  text = text.replace(/<[^>]*>/g, '');
+  // Decode basic HTML entities
+  text = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
+  // Normalize all-caps lines to sentence case
+  const lines = text.split('\n');
+  const processed = lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+    const letters = trimmed.replace(/[^a-zA-Z]/g, '');
+    const upperCount = letters.replace(/[^A-Z]/g, '').length;
+    if (letters.length > 3 && upperCount / letters.length > 0.7) {
+      return trimmed.split(/(?<=[.!?]\s+)/).map(sentence => {
+        const s = sentence.trim();
+        if (!s) return '';
+        if (s.startsWith('http')) return s;
+        return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+      }).join(' ');
+    }
+    return trimmed;
+  });
+  return processed.filter((line, i, arr) => !(line === '' && arr[i - 1] === '')).join('\n').trim();
 };
 
 const getCategoryBadgeClass = (category: string): string => {
@@ -921,7 +953,7 @@ export default function AdminDashboard() {
     setEditingServiceId(service.id);
     setServiceCategory(service.category);
     setServiceName(service.name);
-    setServiceDescription(service.description || '');
+    setServiceDescription(cleanProviderDescription(service.description || ''));
     setServicePrice(service.price_per_k);
     setServiceMin(service.min_order);
     setServiceMax(service.max_order);
@@ -2408,7 +2440,7 @@ export default function AdminDashboard() {
                                     <span className={`px-2 py-0.5 rounded-lg font-extrabold text-[9px] uppercase tracking-wider ${getCategoryBadgeClass(service.category)}`}>
                                       {service.category}
                                     </span>
-                                    <span className="font-extrabold text-slate-100 dark:text-slate-100 text-sm group-hover:text-rose-600 dark:text-indigo-400 dark:group-hover:text-white transition-colors">
+                                    <span className="font-extrabold text-slate-800 dark:text-slate-100 text-sm transition-colors">
                                       {service.name}
                                     </span>
                                     {/* Provider badge in SMM list */}
@@ -2563,74 +2595,89 @@ export default function AdminDashboard() {
 
                           {/* Main Info Row */}
                           <div className="grid md:grid-cols-2 gap-5">
-                            {/* Category */}
                             <div>
                               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Kategori</label>
-                              <div className="relative">
-                                <button
-                                  type="button"
-                                  onClick={() => setIsAdminCategoryDropdownOpen(!isAdminCategoryDropdownOpen)}
-                                  className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs text-left cursor-pointer focus:border-indigo-500"
-                                >
-                                  <span className="truncate">
-                                    {serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X'
-                                      ? serviceCategory
-                                      : serviceCategory === ''
-                                        ? 'Pilih Kategori / Tulis Kustom'
-                                        : `${serviceCategory} (Kustom)`
-                                    }
-                                  </span>
-                                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isAdminCategoryDropdownOpen ? 'rotate-180' : ''}`} />
-                                </button>
+                              {(() => {
+                                const defaultCategories = ['Instagram', 'TikTok', 'YouTube', 'Twitter/X'];
+                                const existingCustomCategories = [...new Set(services.map(s => s.category))].filter(c => !defaultCategories.includes(c));
+                                const allKnownCategories = [...defaultCategories, ...existingCustomCategories];
+                                const isKnownCategory = allKnownCategories.includes(serviceCategory);
 
-                                {isAdminCategoryDropdownOpen && (
-                                  <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden max-h-[220px] flex flex-col">
-                                    <div className="p-2.5 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                                return (
+                                  <>
+                                    <div className="relative">
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsAdminCategoryDropdownOpen(!isAdminCategoryDropdownOpen)}
+                                        className="w-full flex items-center justify-between bg-slate-950 border border-slate-800 text-slate-200 px-4 py-3 rounded-2xl outline-none text-xs text-left cursor-pointer focus:border-indigo-500"
+                                      >
+                                        <span className="truncate">
+                                          {isKnownCategory
+                                            ? serviceCategory
+                                            : serviceCategory === ''
+                                              ? 'Pilih Kategori / Tulis Kustom'
+                                              : `${serviceCategory} (Kustom)`
+                                          }
+                                        </span>
+                                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isAdminCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                                      </button>
+
+                                      {isAdminCategoryDropdownOpen && (
+                                        <div className="absolute left-0 right-0 mt-1.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden max-h-[220px] flex flex-col">
+                                          <div className="p-2.5 border-b border-slate-900 bg-slate-950/80 sticky top-0 backdrop-blur-md">
+                                            <input
+                                              type="text"
+                                              placeholder="Cari Kategori..."
+                                              value={isAdminCategorySearch}
+                                              onChange={(e) => setIsAdminCategorySearch(e.target.value)}
+                                              className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-1.5 rounded-xl outline-none text-[11px]"
+                                              autoFocus
+                                            />
+                                          </div>
+                                          <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
+                                            {[...allKnownCategories, 'Kustom']
+                                              .filter(cat => cat.toLowerCase().includes(isAdminCategorySearch.toLowerCase()))
+                                              .map(cat => (
+                                                <button
+                                                  key={cat}
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (cat === 'Kustom') {
+                                                      setServiceCategory('');
+                                                    } else {
+                                                      setServiceCategory(cat);
+                                                    }
+                                                    setIsAdminCategoryDropdownOpen(false);
+                                                    setIsAdminCategorySearch('');
+                                                  }}
+                                                  className={`w-full text-left px-4 py-2 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors ${
+                                                    serviceCategory === cat ? 'text-indigo-400 bg-indigo-600/5 font-bold' : 'text-slate-355'
+                                                  } ${!defaultCategories.includes(cat) && cat !== 'Kustom' ? 'italic' : ''}`}
+                                                >
+                                                  {cat === 'Kustom' ? '✏️ Kategori Baru (Kustom)...' : cat}
+                                                  {!defaultCategories.includes(cat) && cat !== 'Kustom' && (
+                                                    <span className="text-[9px] text-slate-500 ml-1.5">(kustom)</span>
+                                                  )}
+                                                </button>
+                                              ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {!isKnownCategory && (
                                       <input
                                         type="text"
-                                        placeholder="Cari Kategori..."
-                                        value={isAdminCategorySearch}
-                                        onChange={(e) => setIsAdminCategorySearch(e.target.value)}
-                                        className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 text-slate-200 px-3 py-1.5 rounded-xl outline-none text-[11px]"
-                                        autoFocus
+                                        required
+                                        placeholder="Masukkan nama kategori baru..."
+                                        value={serviceCategory}
+                                        onChange={(e) => setServiceCategory(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs mt-2"
                                       />
-                                    </div>
-                                    <div className="overflow-y-auto scrollbar-thin flex-1 py-1">
-                                      {['Instagram', 'TikTok', 'YouTube', 'Twitter/X', 'Kustom']
-                                        .filter(cat => cat.toLowerCase().includes(isAdminCategorySearch.toLowerCase()))
-                                        .map(cat => (
-                                          <button
-                                            key={cat}
-                                            type="button"
-                                            onClick={() => {
-                                              if (cat === 'Kustom') {
-                                                setServiceCategory('');
-                                              } else {
-                                                setServiceCategory(cat);
-                                              }
-                                              setIsAdminCategoryDropdownOpen(false);
-                                              setIsAdminCategorySearch('');
-                                            }}
-                                            className="w-full text-left px-4 py-2 text-xs text-slate-355 hover:bg-indigo-600/10 hover:text-indigo-400 transition-colors"
-                                          >
-                                            {cat === 'Kustom' ? 'Kategori Baru (Kustom)...' : cat}
-                                          </button>
-                                        ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {!(serviceCategory === 'Instagram' || serviceCategory === 'TikTok' || serviceCategory === 'YouTube' || serviceCategory === 'Twitter/X') && (
-                                <input
-                                  type="text"
-                                  required
-                                  placeholder="Masukkan nama kategori baru..."
-                                  value={serviceCategory}
-                                  onChange={(e) => setServiceCategory(e.target.value)}
-                                  className="w-full bg-slate-950 border border-slate-800 text-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl outline-none text-xs mt-2"
-                                />
-                              )}
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
 
                             {/* Service Name */}
@@ -2967,7 +3014,7 @@ export default function AdminDashboard() {
                                                         setServiceMin(ps.min);
                                                         setServiceMax(ps.max);
                                                         let rawDesc = ps.note || ps.description || '';
-                                                        setServiceDescription(rawDesc);
+                                                        setServiceDescription(cleanProviderDescription(rawDesc));
                                                         setAverageDuration(ps.average_time || '15 Menit');
                                                         if (ps.category) {
                                                           const cat = ps.category.toLowerCase();

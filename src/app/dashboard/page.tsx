@@ -102,6 +102,63 @@ const parseNumberFromDots = (str: string): number => {
   return parseInt(clean, 10) || 0;
 };
 
+// Clean description for user display: strip HTML, normalize ALL CAPS
+const cleanDescription = (raw: string): string => {
+  if (!raw) return '';
+  let text = raw.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<\/div>/gi, '\n');
+  text = text.replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, (_, href, label) => {
+    const cleanLabel = label.replace(/<[^>]*>/g, '').trim();
+    return cleanLabel && cleanLabel !== href ? `${cleanLabel} (${href})` : href;
+  });
+  text = text.replace(/<[^>]*>/g, '');
+  text = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
+  const lines = text.split('\n');
+  const processed = lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+    const letters = trimmed.replace(/[^a-zA-Z]/g, '');
+    const upperCount = letters.replace(/[^A-Z]/g, '').length;
+    if (letters.length > 3 && upperCount / letters.length > 0.7) {
+      return trimmed.split(/(?<=[.!?]\s+)/).map(sentence => {
+        const s = sentence.trim();
+        if (!s) return '';
+        if (s.startsWith('http')) return s;
+        return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+      }).join(' ');
+    }
+    return trimmed;
+  });
+  return processed.filter((line, i, arr) => !(line === '' && arr[i - 1] === '')).join('\n').trim();
+};
+
+// Render description text with clickable URLs
+const renderDescriptionWithLinks = (raw: string) => {
+  const cleaned = cleanDescription(raw);
+  // Split by URL pattern, keeping the URLs as separate parts
+  const urlRegex = /(https?:\/\/[^\s)]+)/g;
+  const parts = cleaned.split(urlRegex);
+  return parts.map((part, i) => {
+    if (urlRegex.test(part)) {
+      // Reset lastIndex since .test() moves it
+      urlRegex.lastIndex = 0;
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-500 dark:text-indigo-400 underline hover:text-indigo-600 dark:hover:text-indigo-300 break-all"
+        >
+          {part}
+        </a>
+      );
+    }
+    // Reset lastIndex for next iteration
+    urlRegex.lastIndex = 0;
+    return <span key={i}>{part}</span>;
+  });
+};
+
 const getTargetGuide = (category: string) => {
   const cat = (category || '').toLowerCase();
 
@@ -1845,7 +1902,7 @@ export default function UserDashboard() {
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-slate-950/40 z-40 lg:hidden animate-in fade-in duration-200"
         />
       )}
 
@@ -2905,9 +2962,10 @@ export default function UserDashboard() {
                           <span className="font-extrabold text-[10px] text-indigo-500 dark:text-indigo-400 uppercase tracking-wider">Deskripsi Layanan</span>
                         </div>
                         <div
-                          className="text-slate-700 dark:text-slate-350 leading-relaxed font-semibold text-xs pl-0.5 whitespace-pre-wrap select-text [&_a]:text-indigo-500 dark:text-slate-400 [&_a]:underline [&_a]:hover:text-indigo-300 tracking-wide font-sans break-words"
-                          dangerouslySetInnerHTML={{ __html: selectedService.description }}
-                        />
+                          className="text-slate-900 dark:text-slate-100 leading-relaxed font-medium text-[11px] pl-0.5 whitespace-pre-wrap select-text tracking-wide font-sans break-words"
+                        >
+                          {renderDescriptionWithLinks(selectedService.description)}
+                        </div>
                       </div>
                     )}
 
@@ -5297,7 +5355,7 @@ export default function UserDashboard() {
                                       </div>
                                     </td>
                                     <td className="py-3.5 px-4">
-                                      <span className="px-2 py-0.5 rounded-full bg-slate-950/40 border border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                                      <span className="inline-block max-w-[130px] truncate px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-[9px] font-bold text-slate-900 dark:text-slate-100 capitalize tracking-wide" title={srv.category}>
                                         {srv.category}
                                       </span>
                                     </td>
@@ -5328,7 +5386,7 @@ export default function UserDashboard() {
                               <div key={srv.id} className="p-4 space-y-3">
                                 <div className="flex justify-between items-start gap-2">
                                   <span className="font-mono font-bold text-indigo-500 dark:text-indigo-400 text-xs">#{displayId}</span>
-                                  <span className="px-2 py-0.5 rounded-full bg-slate-950/40 border border-slate-800 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                                  <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-[9px] font-bold text-slate-900 dark:text-slate-100 capitalize tracking-wide max-w-[120px] truncate inline-block">
                                     {srv.category}
                                   </span>
                                 </div>
