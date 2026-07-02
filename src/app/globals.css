@@ -5,19 +5,31 @@
   --foreground: #0f172a;
 
   /* Inverted slate colors for light mode */
-  --color-slate-50: #000000;  /* Inverted for light mode */
-  --color-slate-950: #f8fafc; /* Standard clean slate-50/100 light background */
-  --color-slate-900: #ffffff; /* White for cards */
-  --color-slate-850: #f1f5f9; /* Subtle borders/secondary backgrounds */
-  --color-slate-800: #cbd5e1; /* Bolder border/divider line color */
+  --color-slate-50: #000000;
+  /* Inverted for light mode */
+  --color-slate-950: #f8fafc;
+  /* Standard clean slate-50/100 light background */
+  --color-slate-900: #ffffff;
+  /* White for cards */
+  --color-slate-850: #f1f5f9;
+  /* Subtle borders/secondary backgrounds */
+  --color-slate-800: #cbd5e1;
+  /* Bolder border/divider line color */
   --color-slate-700: #94a3b8;
-  --color-slate-600: #64748b; /* Stronger grey for helper text */
-  --color-slate-500: #475569; /* Stronger grey for secondary labels */
-  --color-slate-400: #334155; /* Bolder slate for muted text */
-  --color-slate-300: #1e293b; /* Very dark slate for secondary text */
-  --color-slate-200: #0f172a; /* Almost black for body/headers */
-  --color-slate-100: #000000; /* Pure black for primary headings */
-  --color-selected-row: rgba(99, 102, 241, 0.08); /* 8% Indigo tint for selected rows */
+  --color-slate-600: #64748b;
+  /* Stronger grey for helper text */
+  --color-slate-500: #475569;
+  /* Stronger grey for secondary labels */
+  --color-slate-400: #334155;
+  /* Bolder slate for muted text */
+  --color-slate-300: #1e293b;
+  /* Very dark slate for secondary text */
+  --color-slate-200: #0f172a;
+  /* Almost black for body/headers */
+  --color-slate-100: #000000;
+  /* Pure black for primary headings */
+  --color-selected-row: rgba(99, 102, 241, 0.08);
+  /* 8% Indigo tint for selected rows */
 }
 
 .dark {
@@ -37,7 +49,8 @@
   --color-slate-850: #151e2e;
   --color-slate-900: #0f172a;
   --color-slate-950: #020617;
-  --color-selected-row: rgba(99, 102, 241, 0.15); /* 15% Indigo tint for selected rows */
+  --color-selected-row: rgba(99, 102, 241, 0.15);
+  /* 15% Indigo tint for selected rows */
 }
 
 @theme inline {
@@ -80,11 +93,11 @@ html.theme-transitioning *,
 html.theme-transitioning ::before,
 html.theme-transitioning ::after {
   transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              fill 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              stroke 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    fill 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* Hide number input spinners (arrows) for premium clean look */
@@ -93,6 +106,7 @@ input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type="number"] {
   -moz-appearance: textfield;
 }
@@ -124,6 +138,7 @@ input[type="number"] {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -131,19 +146,25 @@ input[type="number"] {
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-8px);
   }
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.15;
     transform: translate(-50%, -50%) scale(1);
   }
+
   50% {
     opacity: 0.25;
     transform: translate(-50%, -50%) scale(1.1);
@@ -171,19 +192,25 @@ input[type="number"] {
 
 /* Premium Dashboard Card Animations */
 @keyframes gradientShift {
-  0%, 100% {
+
+  0%,
+  100% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
 }
 
 @keyframes glowPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.4;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.7;
     transform: scale(1.15);
@@ -191,9 +218,12 @@ input[type="number"] {
 }
 
 @keyframes borderGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     border-color: rgba(99, 102, 241, 0.15);
   }
+
   50% {
     border-color: rgba(99, 102, 241, 0.35);
   }
@@ -216,12 +246,15 @@ input[type="number"] {
 .animation-delay-100 {
   animation-delay: 100ms;
 }
+
 .animation-delay-200 {
   animation-delay: 200ms;
 }
+
 .animation-delay-300 {
   animation-delay: 300ms;
 }
+
 .animation-delay-400 {
   animation-delay: 400ms;
 }
@@ -268,13 +301,11 @@ input[type="number"] {
   bottom: 0;
   left: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.15) 20%,
-    rgba(255, 255, 255, 0.3) 60%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.15) 20%,
+      rgba(255, 255, 255, 0.3) 60%,
+      rgba(255, 255, 255, 0) 100%);
   animation: shimmer 2.5s infinite;
 }
 
@@ -306,9 +337,38 @@ input[type="number"] {
 .announcement-content-text {
   color: #111827 !important;
 }
+
 .dark .announcement-content-text {
   color: #ffffff !important;
 }
 
+/* Prevent auto-zooming on focus in mobile browsers (e.g., iOS Safari) */
+@media (max-width: 1024px) {
 
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
 
+/* Mobile responsive padding and typography enhancements */
+@media (max-width: 640px) {
+  .p-6 {
+    padding: 1.25rem !important;
+    /* Scale down padding to fit mobile screens */
+  }
+
+  .p-8 {
+    padding: 1.5rem !important;
+  }
+
+  .rounded-3xl {
+    border-radius: 1.5rem !important;
+    /* Softer corners on mobile screens */
+  }
+
+  .text-3xl {
+    font-size: 1.75rem !important;
+  }
+}

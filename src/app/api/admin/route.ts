@@ -76,7 +76,7 @@ export async function GET(request: Request) {
       const prof = profilesList.find(p => p.id === tx.user_id);
       return {
         ...tx,
-        profiles: prof ? { email: prof.email } : null
+        profiles: prof ? { email: prof.email, username: prof.username } : null
       };
     });
 

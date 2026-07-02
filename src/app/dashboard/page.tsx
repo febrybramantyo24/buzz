@@ -53,7 +53,8 @@ import {
   ChevronLeft,
   List,
   Crown,
-  Trophy
+  Trophy,
+  Users
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -307,11 +308,14 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const [showOrderConfirmModal, setShowOrderConfirmModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services' | 'leaderboard'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services' | 'leaderboard' | 'referral'>('dashboard');
   const [leaderboardData, setLeaderboardData] = useState<any>(null);
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<'current' | 'last'>('current');
   const [leaderboardSubTab, setLeaderboardSubTab] = useState<'orders' | 'deposits' | 'services'>('orders');
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [referralData, setReferralData] = useState<any>(null);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [copiedReferralLink, setCopiedReferralLink] = useState(false);
   const [servicesSearchQuery, setServicesSearchQuery] = useState('');
   const [servicesCategoryFilter, setServicesCategoryFilter] = useState('all');
   const [servicesPage, setServicesPage] = useState(1);
@@ -452,7 +456,103 @@ export default function UserDashboard() {
     }
   };
 
-  const handleSidebarTabClick = (tab: 'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services' | 'leaderboard', callback?: () => void) => {
+  const fetchReferralData = async () => {
+    setReferralLoading(true);
+    try {
+      const res = await fetch('/api/referral');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setReferralData(data);
+    } catch (err) {
+      console.error('Failed to fetch referral data:', err);
+    } finally {
+      setReferralLoading(false);
+    }
+  };
+
+  const renderFormattedContent = (content: string) => {
+    if (!content) return null;
+    const lines = content.split('\n');
+    let listItems: React.ReactNode[] = [];
+    const elements: React.ReactNode[] = [];
+
+    const flushList = (keyPrefix: string) => {
+      if (listItems.length > 0) {
+        elements.push(
+          <ul key={`list-${keyPrefix}`} className="my-2 space-y-1.5 pl-1 list-none">
+            {...listItems}
+          </ul>
+        );
+        listItems = [];
+      }
+    };
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      
+      // Empty line check
+      if (trimmed === '') {
+        flushList(`empty-${index}`);
+        elements.push(<div key={`space-${index}`} className="h-2" />);
+        return;
+      }
+
+      // Check if starts with bullet point: -, *, •, or similar
+      const bulletMatch = line.match(/^(\s*)[-\*•]\s+(.*)/);
+      if (bulletMatch) {
+        const textContent = bulletMatch[2];
+        listItems.push(
+          <li key={`li-${index}`} className="flex items-start gap-2.5 text-slate-700 dark:text-slate-350 text-xs sm:text-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2"></span>
+            <span className="flex-1 leading-relaxed">{textContent}</span>
+          </li>
+        );
+        return;
+      }
+
+      // Check if starts with a number list: 1., 2. etc
+      const numMatch = line.match(/^(\s*)\d+[\.\)]\s+(.*)/);
+      if (numMatch) {
+        const textContent = numMatch[2];
+        listItems.push(
+          <li key={`li-${index}`} className="flex items-start gap-2.5 text-slate-700 dark:text-slate-350 text-xs sm:text-sm">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500/10 text-indigo-500 font-black text-[9px] shrink-0 mt-0.5 border border-indigo-500/20">
+              {listItems.length + 1}
+            </span>
+            <span className="flex-1 leading-relaxed">{textContent}</span>
+          </li>
+        );
+        return;
+      }
+
+      // If it's a normal line, flush any active list first
+      flushList(`text-${index}`);
+
+      // Check if it's a heading (e.g. starts with emoji, or starts/ends with bold)
+      const isEmojiHeading = /^[^\w\s]{1,2}\s+[A-Z\u00C0-\u00DD]/.test(trimmed) || /^[^\w\s]{1,2}\s+[\u0041-\u005A\u0061-\u007A\u00C0-\u00DD]/.test(trimmed);
+      const isBoldHeading = trimmed.startsWith('**') && trimmed.endsWith('**');
+      
+      if (isEmojiHeading || isBoldHeading) {
+        const text = trimmed.replace(/\*\*/g, '');
+        elements.push(
+          <h4 key={`heading-${index}`} className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 tracking-tight mt-4 mb-2 flex items-center gap-1.5">
+            {text}
+          </h4>
+        );
+      } else {
+        elements.push(
+          <p key={`p-${index}`} className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm leading-relaxed font-light mb-1">
+            {trimmed}
+          </p>
+        );
+      }
+    });
+
+    flushList('final');
+    return <div className="space-y-1">{elements}</div>;
+  };
+
+  const handleSidebarTabClick = (tab: 'dashboard' | 'order' | 'history' | 'transactions' | 'deposits' | 'tickets' | 'services' | 'leaderboard' | 'referral', callback?: () => void) => {
     if (callback) callback();
     setActiveTab(tab);
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -2009,12 +2109,25 @@ export default function UserDashboard() {
                     onClick={() => handleSidebarTabClick('leaderboard', () => fetchLeaderboard(leaderboardPeriod))}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'leaderboard'
                       ? 'bg-amber-500/10 dark:bg-amber-500/15 text-amber-500 dark:text-amber-400'
-                      : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-950/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-900/40 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
                     <Crown className="w-4 h-4" />
                     <span>Peringkat</span>
                   </button>
+
+                  {siteSettings.referral_enabled === 'true' && (
+                    <button
+                      onClick={() => handleSidebarTabClick('referral', fetchReferralData)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'referral'
+                        ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
+                        : 'text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-900/40 hover:text-slate-200 dark:hover:text-slate-200'
+                        }`}
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>Referral & Komisi</span>
+                    </button>
+                  )}
                 </nav>
               </div>
             </div>
@@ -2059,6 +2172,7 @@ export default function UserDashboard() {
                 {activeTab === 'deposits' && 'Riwayat Deposit & Top Up'}
                 {activeTab === 'tickets' && 'Tiket Bantuan Pelanggan'}
                 {activeTab === 'leaderboard' && '🏆 Peringkat Pengguna'}
+                {activeTab === 'referral' && '👥 Program Referral & Komisi'}
               </h1>
             </div>
 
@@ -3953,11 +4067,12 @@ export default function UserDashboard() {
                   if (month !== txMonthFilter) return false;
                 }
 
-                // Type filter (pesanan, deposit, refund)
+                // Type filter (pesanan, deposit, refund, referral)
                 if (txTypeFilter !== 'all') {
                   if (txTypeFilter === 'order_payment' && tx.type !== 'order_payment') return false;
                   if (txTypeFilter === 'topup' && tx.type !== 'topup') return false;
                   if (txTypeFilter === 'refund' && tx.type !== 'refund') return false;
+                  if (txTypeFilter === 'referral' && !(tx.type === 'referral' || (tx.type === 'refund' && tx.payment_method === 'REFERRAL'))) return false;
                 }
 
                 // Search query filter
@@ -4027,6 +4142,7 @@ export default function UserDashboard() {
                         <option value="order_payment">Pesanan</option>
                         <option value="topup">Deposit</option>
                         <option value="refund">Refund</option>
+                        <option value="referral">Komisi Referral</option>
                       </select>
                     </div>
 
@@ -4091,7 +4207,7 @@ export default function UserDashboard() {
                               second: '2-digit'
                             });
 
-                            const isAddition = tx.type === 'topup' || tx.type === 'refund';
+                            const isAddition = tx.type === 'topup' || tx.type === 'refund' || tx.type === 'referral';
 
                             let creditedAmount = Number(tx.amount);
                             let baseAmount = Number(tx.amount);
@@ -4132,6 +4248,8 @@ export default function UserDashboard() {
                             if (!formattedDescription) {
                               if (tx.type === 'order_payment') {
                                 formattedDescription = `Membuat Pesanan. ID Pesanan: ${getOrderDisplayId(tx.reference_id)}.`;
+                              } else if (tx.type === 'referral' || (tx.type === 'refund' && tx.payment_method === 'REFERRAL')) {
+                                formattedDescription = `Komisi Referral masuk ke saldo Anda.`;
                               } else if (tx.type === 'refund') {
                                 formattedDescription = `Pengembalian dana (Refund). ID Pesanan: ${getOrderDisplayId(tx.reference_id)}.`;
                               } else if (tx.type === 'topup') {
@@ -4198,7 +4316,7 @@ export default function UserDashboard() {
                               minute: '2-digit'
                             });
 
-                            const isAddition = tx.type === 'topup' || tx.type === 'refund';
+                            const isAddition = tx.type === 'topup' || tx.type === 'refund' || tx.type === 'referral';
 
                             let creditedAmount = Number(tx.amount);
                             let baseAmount = Number(tx.amount);
@@ -4567,7 +4685,7 @@ export default function UserDashboard() {
                                   second: '2-digit'
                                 });
 
-                                const isAddition = tx.type === 'topup' || tx.type === 'refund';
+                                const isAddition = tx.type === 'topup' || tx.type === 'refund' || tx.type === 'referral';
 
                                 let creditedAmount = Number(tx.amount);
                                 let baseAmount = Number(tx.amount);
@@ -4661,7 +4779,7 @@ export default function UserDashboard() {
                               minute: '2-digit'
                             });
 
-                            const isAddition = tx.type === 'topup' || tx.type === 'refund';
+                            const isAddition = tx.type === 'topup' || tx.type === 'refund' || tx.type === 'referral';
 
                             let creditedAmount = Number(tx.amount);
                             let baseAmount = Number(tx.amount);
@@ -5718,6 +5836,184 @@ export default function UserDashboard() {
                 })()}
               </div>
             )}
+
+            {/* Tab 8: Referral & Komisi */}
+            {activeTab === 'referral' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                {/* Referral Overview Card */}
+                <div className="bg-slate-900 border border-slate-800/80 p-6 sm:p-8 rounded-3xl backdrop-blur-md relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 pointer-events-none opacity-5 blur-[80px] bg-indigo-500 rounded-full"></div>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div className="space-y-2">
+                      <h2 className="text-xl font-bold flex items-center gap-2 text-slate-100">
+                        <Users className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                        <span>Program Referral & Komisi</span>
+                      </h2>
+                      <p className="text-xs text-slate-400 font-light max-w-xl">
+                        Ajak teman Anda bergabung di Buzzify dan dapatkan komisi saldo otomatis sebesar 
+                        {" "}<span className="text-indigo-400 font-extrabold">{referralData?.referralEnabled ? '5%' : '0%'}</span>{" "} 
+                        dari setiap nominal deposit sukses yang mereka lakukan! Komisi masuk langsung ke Saldo Utama Anda.
+                      </p>
+                    </div>
+                    {referralData?.referralEnabled ? (
+                      <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-extrabold tracking-wide">
+                        Program Aktif
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-extrabold tracking-wide">
+                        Program Nonaktif
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {referralData && (
+                  <>
+                    {/* Stats Dashboard */}
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {/* Link Referral Card */}
+                      <div className="sm:col-span-2 lg:col-span-1 bg-slate-900 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md flex flex-col justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-455 uppercase tracking-widest block mb-2">Tautan Referral Anda</span>
+                          <span className="text-[11px] text-slate-500 font-medium leading-relaxed block mb-4">
+                            Bagikan link di bawah untuk mengajak pengguna baru bergabung di bawah jaringan Anda.
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            readOnly
+                            value={typeof window !== 'undefined' ? `${window.location.origin}/register?ref=${referralData.referralCode || ''}` : ''}
+                            className="w-full bg-slate-950 border border-slate-850 text-slate-200 pl-4 pr-12 py-3 rounded-2xl outline-none text-xs font-mono font-medium truncate"
+                          />
+                          <button
+                            onClick={() => {
+                              const link = typeof window !== 'undefined' ? `${window.location.origin}/register?ref=${referralData.referralCode || ''}` : '';
+                              navigator.clipboard.writeText(link);
+                              setCopiedReferralLink(true);
+                              setTimeout(() => setCopiedReferralLink(false), 2000);
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-500/15 border border-indigo-500/20 text-indigo-400 hover:text-white dark:hover:text-white rounded-xl cursor-pointer hover:bg-indigo-600 transition-all active:scale-90"
+                            title="Salin Link"
+                          >
+                            {copiedReferralLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Total Invites Card */}
+                      <div className="bg-slate-900 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md flex flex-col justify-between group">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-455 uppercase tracking-widest block">Teman Diajak</span>
+                            <div className="text-3xl font-black text-slate-100 mt-2 tabular-nums">{referralData.stats?.totalInvited || 0}</div>
+                          </div>
+                          <div className="bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/15 shrink-0 text-indigo-400">
+                            <Users className="w-5.5 h-5.5" />
+                          </div>
+                        </div>
+                        <span className="text-[10.5px] text-slate-500 font-medium mt-4 block">Jumlah pengguna yang mendaftar via link Anda</span>
+                      </div>
+
+                      {/* Total Earnings Card */}
+                      <div className="bg-slate-900 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-md flex flex-col justify-between group">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-455 uppercase tracking-widest block">Komisi Didapat</span>
+                            <div className="text-3xl font-black text-emerald-500 dark:text-emerald-400 mt-2 tabular-nums">{formatPrice(referralData.stats?.totalEarnings || 0)}</div>
+                          </div>
+                          <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/15 shrink-0 text-emerald-400">
+                            <Wallet className="w-5.5 h-5.5" />
+                          </div>
+                        </div>
+                        <span className="text-[10.5px] text-slate-500 font-medium mt-4 block">Akumulasi bonus saldo dari deposit referral</span>
+                      </div>
+                    </div>
+
+                    <div className="grid lg:grid-cols-2 gap-6 items-start">
+                      {/* Friends List Card */}
+                      <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 backdrop-blur-md">
+                        <h3 className="font-bold text-xs text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+                          <Users className="w-4 h-4 text-indigo-400" />
+                          <span>Daftar Pengguna Diajak ({referralData.friends?.length || 0})</span>
+                        </h3>
+                        <div className="overflow-x-auto">
+                          {referralData.friends?.length === 0 ? (
+                            <div className="py-12 text-center text-slate-500 text-xs">Belum ada pengguna yang mendaftar via referral Anda.</div>
+                          ) : (
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="border-b border-slate-850 text-slate-455 font-bold uppercase tracking-wider">
+                                  <th className="py-3 px-3">Username</th>
+                                  <th className="py-3 px-3">Tanggal Gabung</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-850/30">
+                                {referralData.friends.map((friend: any, index: number) => (
+                                  <tr key={index} className="hover:bg-slate-850/15 transition-colors">
+                                    <td className="py-3.5 px-3">
+                                      <span className="font-extrabold text-slate-200 block truncate">{friend.username || 'Pengguna'}</span>
+                                      <span className="text-[10px] text-slate-500 block mt-0.5">{friend.email.replace(/(.{3})(.*)(@.*)/, '$1***$3')}</span>
+                                    </td>
+                                    <td className="py-3.5 px-3 text-slate-500 font-medium">
+                                      {new Date(friend.created_at).toLocaleDateString('id-ID', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric'
+                                      })}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Commission History Logs Card */}
+                      <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 backdrop-blur-md">
+                        <h3 className="font-bold text-xs text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-emerald-400" />
+                          <span>Riwayat Komisi Referral ({referralData.logs?.length || 0})</span>
+                        </h3>
+                        <div className="overflow-x-auto">
+                          {referralData.logs?.length === 0 ? (
+                            <div className="py-12 text-center text-slate-500 text-xs">Belum ada riwayat penerimaan komisi referral.</div>
+                          ) : (
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="border-b border-slate-850 text-slate-455 font-bold uppercase tracking-wider">
+                                  <th className="py-3 px-3">Teman</th>
+                                  <th className="py-3 px-3">Deposit</th>
+                                  <th className="py-3 px-3 text-right">Komisi</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-850/30">
+                                {referralData.logs.map((log: any, index: number) => (
+                                  <tr key={index} className="hover:bg-slate-850/15 transition-colors">
+                                    <td className="py-3.5 px-3">
+                                      <span className="font-extrabold text-slate-200 block truncate">@{log.referred_username || 'user'}</span>
+                                      <span className="text-[10px] text-slate-550 block mt-0.5">
+                                        {new Date(log.created_at).toLocaleDateString('id-ID', {
+                                          day: '2-digit',
+                                          month: 'short'
+                                        })}
+                                      </span>
+                                    </td>
+                                    <td className="py-3.5 px-3 text-slate-400 font-semibold">{formatPrice(log.deposit_amount)}</td>
+                                    <td className="py-3.5 px-3 text-right text-emerald-500 dark:text-emerald-400 font-extrabold">+{formatPrice(log.commission_amount)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </main>
         </div>
       </div>
@@ -5976,8 +6272,8 @@ export default function UserDashboard() {
               )}
 
               {/* Body Content Text */}
-              <div className="announcement-content-text text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap">
-                {selectedAnnouncement.content}
+              <div className="announcement-content-text text-xs sm:text-sm font-normal leading-relaxed">
+                {renderFormattedContent(selectedAnnouncement.content)}
               </div>
             </div>
 

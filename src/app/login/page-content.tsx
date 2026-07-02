@@ -31,6 +31,7 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
   const { logoUrl, brandName } = useBrand();
 
   const [isRegister, setIsRegister] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(false);
   const [resetToken, setResetToken] = useState('');
@@ -93,6 +94,10 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
       };
       setMessage({ type: 'error', text: errMsgs[error] || 'Gagal memproses verifikasi.' });
     }
+
+    // Read referral code from URL
+    const ref = searchParams.get('ref');
+    if (ref) setReferralCode(ref);
 
     if (tab === 'register') {
       setIsRegister(true);
@@ -186,20 +191,27 @@ export default function LoginPage({ isAdminFlow = false }: { isAdminFlow?: boole
           return;
         }
 
-        // Sign Up
-        const { error } = await supabase.auth.signUp({
-
-
-          email,
-          password,
-          username,
-          fullName,
-          whatsapp,
+        // Register via our API (supports referral tracking)
+        const registerRes = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password,
+            username,
+            fullName,
+            whatsapp,
+            referrer: referralCode || undefined,
+          }),
         });
 
-        if (error) throw error;
+        const registerData = await registerRes.json();
+        if (!registerRes.ok) {
+          throw new Error(registerData.error || 'Registrasi gagal, silakan coba lagi.');
+        }
 
         setShowSuccessModal(true);
+        setReferralCode('');
         // Clear registration fields
         setFullName('');
         setUsername('');

@@ -46,6 +46,7 @@ export interface Order {
   provider_refund_amount?: number | string;
   profiles?: {
     email: string;
+    username?: string;
   };
 }
 
@@ -53,7 +54,8 @@ export interface Transaction {
   id: string;
   user_id: string;
   amount: number;
-  type: 'topup' | 'order_payment' | 'refund';
+  type: 'topup' | 'order_payment' | 'refund' | 'referral';
+
   status: 'pending' | 'success' | 'failed';
   reference_id?: string;
   payment_method?: string;
@@ -62,6 +64,7 @@ export interface Transaction {
   tx_id?: number;
   profiles?: {
     email: string;
+    username?: string;
   };
 }
 

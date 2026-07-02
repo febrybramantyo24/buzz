@@ -78,27 +78,75 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Saldo Anda tidak mencukupi untuk melakukan pemesanan ini' }, { status: 400 });
     }
 
-    let providerOrderId: string | null = null;
-    let initialStatus = 'pending';
+    // Start Database Transaction to reserve balance & record initial 'pending' order
+    await query('BEGIN');
+    let createdOrder;
+    let newBalance;
+    try {
+      // 1. Deduct user balance atomically
+      const deductRes = await query(
+        'UPDATE profiles SET balance = balance - $1 WHERE id = $2 RETURNING balance',
+        [totalPrice, userId]
+      );
+      newBalance = parseFloat(deductRes.rows[0]?.balance || '0');
 
-    // 7. If linked to SMM Provider (BuzzerPanel or MedanPedia), forward the order
+      // 2. Insert initial Order record as 'pending'
+      const orderInsertRes = await query(
+        `INSERT INTO orders (user_id, service_id, category, service_name, target_url, quantity, price_per_k, total_price, status, start_count, payment_status, payment_method, provider_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', 0, 'paid', 'wallet', $9)
+         RETURNING *`,
+        [
+          userId,
+          service.id,
+          service.category,
+          service.name,
+          target_url,
+          quantity,
+          pricePerK,
+          totalPrice,
+          service.provider_id || 'manual'
+        ]
+      );
+      createdOrder = orderInsertRes.rows[0];
+
+      // 3. Record Transaction Log
+      await query(
+        `INSERT INTO transactions (user_id, amount, type, status, reference_id, payment_method)
+         VALUES ($1, $2, 'order_payment', 'success', $3, 'wallet')`,
+        [userId, -totalPrice, createdOrder.id]
+      );
+
+      // Commit transaction
+      await query('COMMIT');
+    } catch (transactionError) {
+      await query('ROLLBACK');
+      console.error('Initial DB reservation transaction failed:', transactionError);
+      return NextResponse.json({ error: 'Gagal memproses transaksi database lokal' }, { status: 500 });
+    }
+
+    // 4. Now, if linked to SMM Provider, forward the order
     if (service.provider_id && service.provider_id !== 'manual' && service.provider_service_id) {
       let providerRes;
-      
-      if (service.provider_id === 'medanpedia') {
-        providerRes = await placeMedanPediaOrder(
-          service.provider_service_id,
-          target_url,
-          quantity,
-          additionalParams || {}
-        );
-      } else {
-        providerRes = await placeProviderOrder(
-          service.provider_service_id,
-          target_url,
-          quantity,
-          additionalParams || {}
-        );
+      try {
+        if (service.provider_id === 'medanpedia') {
+          providerRes = await placeMedanPediaOrder(
+            service.provider_service_id,
+            target_url,
+            quantity,
+            additionalParams || {}
+          );
+        } else {
+          providerRes = await placeProviderOrder(
+            service.provider_service_id,
+            target_url,
+            quantity,
+            additionalParams || {}
+          );
+        }
+      } catch (networkErr: any) {
+        // If API call throws (network timeout/crash), treat as connection/admin error. Keep as pending.
+        console.error('SMM Provider connection exception:', networkErr);
+        providerRes = { status: false, data: { msg: 'timeout/connection error' } };
       }
 
       if (!providerRes.status) {
@@ -106,7 +154,6 @@ export async function POST(request: Request) {
         console.error(`${service.provider_id} placement failed: ${providerError}`);
         
         const errLower = providerError.toLowerCase();
-        
         const isAdminError = 
           errLower.includes('saldo') || 
           errLower.includes('balance') || 
@@ -123,83 +170,66 @@ export async function POST(request: Request) {
           errLower.includes('internal connection error');
 
         if (isAdminError) {
-          // Save the order to DB as 'pending' (with NULL provider_order_id)
-          // The user's balance will be deducted, and the admin can retry it later after top-up
-          providerOrderId = null;
-          initialStatus = 'pending';
+          // Keep the order as 'pending' with NULL provider_order_id. User's balance remains deducted.
+          // Admin can retry this manually later.
         } else {
-          // If it's a client input error, reject immediately so the user can fix it
+          // Client input error -> Refund the user automatically & set status to failed
+          await query('BEGIN');
+          try {
+            // Refund balance
+            await query(
+              'UPDATE profiles SET balance = balance + $1 WHERE id = $2',
+              [totalPrice, userId]
+            );
+            // Update order status to failed
+            await query(
+              "UPDATE orders SET status = 'failed' WHERE id = $1",
+              [createdOrder.id]
+            );
+            // Record refund transaction log
+            await query(
+              `INSERT INTO transactions (user_id, amount, type, status, reference_id, description, payment_method)
+               VALUES ($1, $2, 'refund', 'success', $3, $4, 'wallet')`,
+              [userId, totalPrice, createdOrder.id, `Pengembalian dana pemesanan gagal: ${providerError}`, 'wallet']
+            );
+            await query('COMMIT');
+          } catch (refundErr) {
+            await query('ROLLBACK');
+            console.error('Auto-refund transaction failed:', refundErr);
+          }
           return NextResponse.json({ error: `Gagal memproses pesanan: ${providerError}` }, { status: 400 });
         }
       } else {
-        providerOrderId = String(providerRes.data?.id || '');
-        initialStatus = 'processing'; // Change status to processing as it has been sent to provider
+        // Success: update status to processing and store provider order IDs
+        const providerOrderId = String(providerRes.data?.id || '');
+        const numericProviderOrderId = parseInt(providerOrderId, 10);
+
+        try {
+          if (!isNaN(numericProviderOrderId)) {
+            // Update status, provider_order_id, and match local order_id with provider ID
+            const updateRes = await query(
+              'UPDATE orders SET status = $1, provider_order_id = $2, order_id = $3 WHERE id = $4 RETURNING *',
+              ['processing', providerOrderId, numericProviderOrderId, createdOrder.id]
+            );
+            if (updateRes.rows.length > 0) {
+              createdOrder = updateRes.rows[0];
+            }
+          } else {
+            const updateRes = await query(
+              'UPDATE orders SET status = $1, provider_order_id = $2 WHERE id = $3 RETURNING *',
+              ['processing', providerOrderId, createdOrder.id]
+            );
+            if (updateRes.rows.length > 0) {
+              createdOrder = updateRes.rows[0];
+            }
+          }
+        } catch (dbUpdateErr) {
+          // Even if updating provider ID fails in DB, SMM provider accepted the order.
+          // Don't refund the user, as the order is running at the provider. Let the admin handle.
+          console.error('Failed to update provider ID in DB:', dbUpdateErr);
+        }
       }
     }
-
-    // 8. Deduct user balance
-    const newBalance = currentBalance - totalPrice;
-    await query('UPDATE profiles SET balance = $1 WHERE id = $2', [newBalance, userId]);
-
-    // 9. Create Order record in DB
-    let createdOrder;
-    const numericProviderOrderId = providerOrderId ? parseInt(providerOrderId, 10) : NaN;
-
-    if (!isNaN(numericProviderOrderId)) {
-      const orderInsertRes = await query(
-        `INSERT INTO orders (order_id, user_id, service_id, category, service_name, target_url, quantity, price_per_k, total_price, status, start_count, payment_status, payment_method, provider_order_id, provider_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-         RETURNING *`,
-        [
-          numericProviderOrderId,
-          userId,
-          service.id,
-          service.category,
-          service.name,
-          target_url,
-          quantity,
-          pricePerK,
-          totalPrice,
-          initialStatus,
-          0,
-          'paid',
-          'wallet',
-          providerOrderId,
-          service.provider_id || 'manual'
-        ]
-      );
-      createdOrder = orderInsertRes.rows[0];
-    } else {
-      const orderInsertRes = await query(
-        `INSERT INTO orders (user_id, service_id, category, service_name, target_url, quantity, price_per_k, total_price, status, start_count, payment_status, payment_method, provider_order_id, provider_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-         RETURNING *`,
-        [
-          userId,
-          service.id,
-          service.category,
-          service.name,
-          target_url,
-          quantity,
-          pricePerK,
-          totalPrice,
-          initialStatus,
-          0,
-          'paid',
-          'wallet',
-          providerOrderId,
-          service.provider_id || 'manual'
-        ]
-      );
-      createdOrder = orderInsertRes.rows[0];
-    }
-
-    // 10. Record Transaction Log
-    await query(
-      `INSERT INTO transactions (user_id, amount, type, status, reference_id, payment_method)
-       VALUES ($1, $2, 'order_payment', 'success', $3, 'wallet')`,
-      [userId, -totalPrice, createdOrder.id]
-    );
 
     return NextResponse.json({
       success: true,

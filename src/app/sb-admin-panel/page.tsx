@@ -40,7 +40,9 @@ import {
   MessageSquare,
   Send,
   Upload,
-  Pin
+  Pin,
+  TrendingUp,
+  Download
 } from 'lucide-react';
 
 const formatNumberWithDots = (num: number | string | null | undefined): string => {
@@ -175,11 +177,17 @@ export default function AdminDashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [userProfiles, setUserProfiles] = useState<any[]>([]);
 
+
   // Search & Filter state
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [searchTermTransactions, setSearchTermTransactions] = useState('');
+  const [statusFilterTransactions, setStatusFilterTransactions] = useState('all');
+  const [typeFilterTransactions, setTypeFilterTransactions] = useState('all');
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [serviceCategoryFilter, setServiceCategoryFilter] = useState('all');
+  const [serviceProviderFilter, setServiceProviderFilter] = useState('all');
 
   // Pagination states
   const [ordersPage, setOrdersPage] = useState(1);
@@ -187,7 +195,7 @@ export default function AdminDashboard() {
   const [servicesPage, setServicesPage] = useState(1);
   const [usersPage, setUsersPage] = useState(1);
   const itemsPerPage = 10;
-  const servicesPerPage = 5;
+  const servicesPerPage = 10;
 
   useEffect(() => {
     setOrdersPage(1);
@@ -195,11 +203,33 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     setTransactionsPage(1);
-  }, [searchTermTransactions]);
+  }, [searchTermTransactions, statusFilterTransactions, typeFilterTransactions]);
 
   useEffect(() => {
     setUsersPage(1);
   }, [userSearchTerm]);
+
+  useEffect(() => {
+    setServicesPage(1);
+  }, [serviceSearch, serviceCategoryFilter, serviceProviderFilter]);
+
+  // Derived filtered services states
+  const filteredServicesList = services.filter(service => {
+    const matchesSearch = service.name.toLowerCase().includes(serviceSearch.toLowerCase()) || 
+                          String(service.id).includes(serviceSearch) ||
+                          (service.provider_service_id && String(service.provider_service_id).includes(serviceSearch));
+    
+    const matchesCategory = serviceCategoryFilter === 'all' || service.category === serviceCategoryFilter;
+    
+    const matchesProvider = serviceProviderFilter === 'all' || 
+                            (serviceProviderFilter === 'manual' && (!service.provider_id || service.provider_id === 'manual')) ||
+                            (service.provider_id === serviceProviderFilter);
+                            
+    return matchesSearch && matchesCategory && matchesProvider;
+  });
+
+  const totalServicesPages = Math.ceil(filteredServicesList.length / servicesPerPage);
+  const paginatedServices = filteredServicesList.slice((servicesPage - 1) * servicesPerPage, servicesPage * servicesPerPage);
 
   // Loading & Submitting status
   const [loading, setLoading] = useState(true);
@@ -227,11 +257,93 @@ export default function AdminDashboard() {
   const [submittingEditUser, setSubmittingEditUser] = useState(false);
   const [editUserError, setEditUserError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'services' | 'announcements' | 'transactions' | 'landing' | 'tickets' | 'users'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'services' | 'announcements' | 'transactions' | 'landing' | 'tickets' | 'users' | 'midtrans'>('orders');
+
+  // Midtrans stats & transactions state
+  const [midtransStats, setMidtransStats] = useState<any>({
+    totalVolume: 0,
+    pendingVolume: 0,
+    failedVolume: 0,
+    successCount: 0,
+    pendingCount: 0,
+    failedCount: 0,
+    totalCount: 0,
+    todayVolume: 0,
+    todayCount: 0,
+    monthVolume: 0,
+    monthCount: 0
+  });
+  const [midtransTransactions, setMidtransTransactions] = useState<any[]>([]);
+  const [loadingMidtrans, setLoadingMidtrans] = useState(false);
+  const [syncingMidtrans, setSyncingMidtrans] = useState(false);
+  const [searchTermMidtrans, setSearchTermMidtrans] = useState('');
+  const [statusFilterMidtrans, setStatusFilterMidtrans] = useState('all');
+  const [midtransPage, setMidtransPage] = useState(1);
+
+  const fetchMidtransData = async () => {
+    setLoadingMidtrans(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/admin/midtrans', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setMidtransStats(data.stats);
+        setMidtransTransactions(data.transactions || []);
+      }
+    } catch (e) {
+      console.error('Error fetching Midtrans data:', e);
+    } finally {
+      setLoadingMidtrans(false);
+    }
+  };
+
+  const handleSyncMidtrans = async () => {
+    setSyncingMidtrans(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/admin/midtrans', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        alert(`Sinkronisasi selesai! ${data.syncedCount} transaksi berhasil disinkronkan.`);
+        fetchMidtransData();
+        fetchAdminData();
+      } else {
+        alert(data.error || 'Gagal mensinkronisasikan transaksi');
+      }
+    } catch (e: any) {
+      console.error('Sync error:', e);
+      alert('Terjadi kesalahan saat sinkronisasi: ' + e.message);
+    } finally {
+      setSyncingMidtrans(false);
+    }
+  };
+
+  const changeTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  };
 
   useEffect(() => {
     setSelectedOrderIds([]);
     setSelectedTicketIds([]);
+    if (activeTab === 'midtrans') {
+      fetchMidtransData();
+    }
   }, [activeTab]);
 
   // Service Form State
@@ -423,7 +535,9 @@ export default function AdminDashboard() {
     deposit_bonus_percent: '11',
     show_live_chat: 'true',
     show_live_chat_mobile: 'true',
-    show_mobile_nav: 'true'
+    show_mobile_nav: 'true',
+    referral_enabled: 'true',
+    referral_commission_percent: '5'
   };
 
   const [landingSettings, setLandingSettings] = useState<Record<string, string>>(defaultLandingSettings);
@@ -582,7 +696,7 @@ export default function AdminDashboard() {
         const profile = mergedProfiles.find(p => p && p.id === tx.user_id);
         return {
           ...tx,
-          profiles: profile ? { email: profile.email } : (tx.profiles || undefined)
+          profiles: profile ? { email: profile.email, username: profile.username } : (tx.profiles || undefined)
         };
       }).filter(Boolean);
       setTransactions(finalTxs as Transaction[]);
@@ -592,7 +706,7 @@ export default function AdminDashboard() {
         const profile = mergedProfiles.find(p => p && p.id === order.user_id);
         return {
           ...order,
-          profiles: profile ? { email: profile.email } : (order.profiles || undefined)
+          profiles: profile ? { email: profile.email, username: profile.username } : (order.profiles || undefined)
         };
       }).filter(Boolean);
       setOrders(finalOrders as Order[]);
@@ -1379,12 +1493,19 @@ export default function AdminDashboard() {
 
   const totalOrdersPages = Math.ceil(filteredOrders.length / itemsPerPage);
 
-  const filteredTransactions = transactions.filter(t =>
-    t.id.toLowerCase().includes(searchTermTransactions.toLowerCase()) ||
-    (t.tx_id ? String(t.tx_id).includes(searchTermTransactions.toLowerCase().replace('trx-', '').trim()) : false) ||
-    (t.profiles?.email || '').toLowerCase().includes(searchTermTransactions.toLowerCase()) ||
-    t.user_id.toLowerCase().includes(searchTermTransactions.toLowerCase())
-  );
+  const filteredTransactions = transactions.filter(t => {
+    const matchesSearch = 
+      t.id.toLowerCase().includes(searchTermTransactions.toLowerCase()) ||
+      (t.tx_id ? String(t.tx_id).includes(searchTermTransactions.toLowerCase().replace('trx-', '').trim()) : false) ||
+      (t.profiles?.email || '').toLowerCase().includes(searchTermTransactions.toLowerCase()) ||
+      (t.profiles?.username || '').toLowerCase().includes(searchTermTransactions.toLowerCase()) ||
+      t.user_id.toLowerCase().includes(searchTermTransactions.toLowerCase());
+
+    const matchesStatus = statusFilterTransactions === 'all' || t.status === statusFilterTransactions;
+    const matchesType = typeFilterTransactions === 'all' || t.type === typeFilterTransactions;
+
+    return matchesSearch && matchesStatus && matchesType;
+  });
 
   const totalTxPages = Math.ceil(filteredTransactions.length / itemsPerPage);
 
@@ -1482,10 +1603,7 @@ export default function AdminDashboard() {
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block px-3 mb-2.5">Ringkasan & Log</span>
                 <nav className="space-y-1">
                   <button
-                    onClick={() => {
-                      setActiveTab('orders');
-                      setIsSidebarOpen(false);
-                    }}
+                    onClick={() => changeTab('orders')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'orders'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
                       : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
@@ -1499,10 +1617,7 @@ export default function AdminDashboard() {
                       }`}>{orders.length}</span>
                   </button>
                   <button
-                    onClick={() => {
-                      setActiveTab('users');
-                      setIsSidebarOpen(false);
-                    }}
+                    onClick={() => changeTab('users')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'users'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
                       : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
@@ -1518,9 +1633,8 @@ export default function AdminDashboard() {
 
                   <button
                     onClick={() => {
-                      setActiveTab('transactions');
+                      changeTab('transactions');
                       fetchAdminData();
-                      setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'transactions'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
@@ -1536,10 +1650,25 @@ export default function AdminDashboard() {
                   </button>
 
                   <button
+                    onClick={() => changeTab('midtrans')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'midtrans'
+                      ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
+                      }`}
+                  >
+                    <Wallet className="w-4 h-4" />
+                    <span>Laporan Midtrans</span>
+                    {midtransStats?.pendingCount > 0 && (
+                      <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-extrabold bg-amber-500/20 text-amber-400">
+                        {midtransStats.pendingCount}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
                     onClick={() => {
-                      setActiveTab('tickets');
+                      changeTab('tickets');
                       fetchTickets();
-                      setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'tickets'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
@@ -1560,10 +1689,7 @@ export default function AdminDashboard() {
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block px-3 mb-2.5">Pengaturan Sistem</span>
                 <nav className="space-y-1">
                   <button
-                    onClick={() => {
-                      setActiveTab('services');
-                      setIsSidebarOpen(false);
-                    }}
+                    onClick={() => changeTab('services')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'services'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
                       : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-800/40 hover:text-slate-200 dark:hover:text-slate-200'
@@ -1578,10 +1704,7 @@ export default function AdminDashboard() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      setActiveTab('announcements');
-                      setIsSidebarOpen(false);
-                    }}
+                    onClick={() => changeTab('announcements')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'announcements'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
                       : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-850/45 hover:text-slate-200 dark:hover:text-slate-200'
@@ -1593,13 +1716,12 @@ export default function AdminDashboard() {
 
                   <button
                     onClick={() => {
-                      setActiveTab('landing');
+                      changeTab('landing');
                       fetchLandingSettings();
-                      setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'landing'
                       ? 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-500 dark:text-rose-450'
-                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-800 dark:hover:bg-slate-850/45 hover:text-slate-200 dark:hover:text-slate-200'
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-850 dark:hover:bg-slate-850/45 hover:text-slate-200 dark:hover:text-slate-200'
                       }`}
                   >
                     <Award className="w-4 h-4" />
@@ -1645,6 +1767,7 @@ export default function AdminDashboard() {
                 {activeTab === 'landing' && 'Konfigurasi Landing Page'}
                 {activeTab === 'tickets' && 'Tiket Bantuan Pelanggan'}
                 {activeTab === 'users' && 'Kelola User'}
+                {activeTab === 'midtrans' && 'Laporan Transaksi & Saldo Midtrans'}
               </h1>
             </div>
 
@@ -1894,10 +2017,10 @@ export default function AdminDashboard() {
                                 <td className="py-4 px-4">
                                   <div className="flex items-center gap-2">
                                     <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-[9px] font-bold text-white shadow-md shrink-0">
-                                      {(order.profiles?.email || 'U')[0].toUpperCase()}
+                                      {(order.profiles?.username || order.profiles?.email || 'U')[0].toUpperCase()}
                                     </div>
-                                    <span className="font-semibold text-slate-250 tracking-tight text-xs truncate max-w-[120px]" title={order.profiles?.email || 'User/Simulated'}>
-                                      {order.profiles?.email || 'User/Simulated'}
+                                    <span className="font-semibold text-slate-250 tracking-tight text-xs truncate max-w-[120px]" title={order.profiles?.username || order.profiles?.email || 'User'}>
+                                      {order.profiles?.username || order.profiles?.email || 'User'}
                                     </span>
                                   </div>
                                 </td>
@@ -2161,7 +2284,7 @@ export default function AdminDashboard() {
                             <div className="space-y-1.5">
                               <div className="flex justify-between items-center text-xs">
                                 <span className="text-slate-400 font-medium">User:</span>
-                                <span className="font-semibold text-slate-200 truncate max-w-[180px]">{order.profiles?.email || 'User/Simulated'}</span>
+                                <span className="font-semibold text-slate-200 truncate max-w-[180px]">{order.profiles?.username || order.profiles?.email || 'User'}</span>
                               </div>
                               <div className="flex justify-between items-center text-xs">
                                 <span className="text-slate-400 font-medium">Layanan:</span>
@@ -2367,203 +2490,246 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Tab 2: Service Management */}
-            {activeTab === 'services' && (
-              <div className="space-y-6">
+                    {/* Tab 2: Service Management */}
+                    {activeTab === 'services' && (
+                      <div className="space-y-6">
 
-                {/* Clean Header Panel with Action Button */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900 border border-slate-800/80 p-6 sm:p-8 rounded-3xl shadow-sm">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                      <Settings className="w-5 h-5 text-indigo-500" />
-                      Pengaturan Layanan
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1 font-light">
-                      Kelola kategori, harga jual, limit pemesanan, dan sinkronisasi otomatis dengan API provider pusat.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setEditingServiceId(null);
-                      setServiceName('');
-                      setServiceDescription('');
-                      setServicePrice(0);
-                      setServiceMin(100);
-                      setServiceMax(10000);
-                      setServiceIcon('');
-                      setProviderId('manual');
-                      setProviderServiceId('');
-                      setProviderPrice(0);
-                      setAverageDuration('15 Menit');
-                      setShowServiceFormModal(true);
-                    }}
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-3 rounded-2xl text-xs font-black cursor-pointer shadow-lg shadow-indigo-600/20 active:scale-95 transition-all shrink-0"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Tambah Layanan Baru
-                  </button>
-                </div>
-
-                {/* Service Lists (Full Width for elegant display) */}
-                <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-bold text-sm text-slate-200 mb-4 uppercase tracking-wider">Daftar Layanan Tersedia</h3>
-                    <div className="space-y-4">
-                      {services.length === 0 ? (
-                        <div className="py-8 text-center text-slate-500 text-xs">Belum ada layanan di input.</div>
-                      ) : (
-                        services.slice((servicesPage - 1) * servicesPerPage, servicesPage * servicesPerPage).map(service => {
-                          const serviceIconUrl = categoryIconMap[service.category] || service.icon_url;
-
-                          return (
-                            <div
-                              key={service.id}
-                              className="bg-slate-900 dark:bg-slate-950/50 border border-slate-850 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-950/10 transition-all duration-300 p-5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs group"
+                          {/* Clean Header Panel with Action Button */}
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900 border border-slate-800/80 p-6 sm:p-8 rounded-3xl shadow-sm">
+                            <div>
+                              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <Settings className="w-5 h-5 text-indigo-500" />
+                                Pengaturan Layanan
+                              </h3>
+                              <p className="text-xs text-slate-400 mt-1 font-light">
+                                Kelola kategori, harga jual, limit pemesanan, dan sinkronisasi otomatis dengan API provider pusat.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setEditingServiceId(null);
+                                setServiceName('');
+                                setServiceDescription('');
+                                setServicePrice(0);
+                                setServiceMin(100);
+                                setServiceMax(10000);
+                                setServiceIcon('');
+                                setProviderId('manual');
+                                setProviderServiceId('');
+                                setProviderPrice(0);
+                                setAverageDuration('15 Menit');
+                                setShowServiceFormModal(true);
+                              }}
+                              className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-3 rounded-2xl text-xs font-black cursor-pointer shadow-lg shadow-indigo-600/20 active:scale-95 transition-all shrink-0"
                             >
-                              <div className="flex items-start sm:items-center gap-3.5 flex-1">
-                                {serviceIconUrl ? (
-                                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-850 flex items-center justify-center shrink-0">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={serviceIconUrl} alt="icon" className="w-full h-full object-cover" />
-                                  </div>
-                                ) : (
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/80 to-purple-600/80 flex items-center justify-center shrink-0 text-white font-extrabold text-xs shadow-md border border-indigo-500/20">
-                                    {service.category[0].toUpperCase()}
-                                  </div>
-                                )}
+                              <Plus className="w-4 h-4" />
+                              Tambah Layanan Baru
+                            </button>
+                          </div>
 
-                                <div className="space-y-1.5 flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="px-2 py-0.5 rounded-lg font-mono font-bold text-[9px] bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
-                                      #{getNumericId(service)}
-                                    </span>
-                                    <span className={`px-2 py-0.5 rounded-lg font-extrabold text-[9px] uppercase tracking-wider ${getCategoryBadgeClass(service.category)}`}>
-                                      {service.category}
-                                    </span>
-                                    <span className="font-extrabold text-slate-800 dark:text-slate-100 text-sm transition-colors">
-                                      {service.name}
-                                    </span>
-                                    {/* Provider badge in SMM list */}
-                                    {service.provider_id && service.provider_id !== 'manual' && (
-                                      <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-850 text-slate-450 border border-slate-700/60 w-fit flex items-center gap-0.5">
-                                        🔌 {service.provider_id}
-                                      </span>
-                                    )}
+                          {/* Service Lists (Full Width for elegant display) */}
+                          <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 flex flex-col justify-between">
+                            <div>
+                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                                <h3 className="font-bold text-sm text-slate-200 uppercase tracking-wider shrink-0">Daftar Layanan Tersedia</h3>
+                                
+                                {/* Search and Filters */}
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-3xl justify-end">
+                                  {/* Search */}
+                                  <div className="relative flex-1 max-w-xs">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                                    <input
+                                      type="text"
+                                      placeholder="Cari layanan, ID..."
+                                      value={serviceSearch}
+                                      onChange={(e) => setServiceSearch(e.target.value)}
+                                      className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-850 text-slate-100 text-xs focus:outline-none focus:border-indigo-500/50"
+                                    />
                                   </div>
 
-                                  <div className="text-slate-400 dark:text-slate-400 font-medium flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-                                    <span className="flex items-center gap-1">
-                                      <span className="text-slate-500 dark:text-slate-500">Min:</span> <strong className="text-slate-200 dark:text-slate-250 font-extrabold">{service.min_order.toLocaleString()}</strong>
-                                    </span>
-                                    <span className="text-slate-400 dark:text-slate-650">•</span>
-                                    <span className="flex items-center gap-1">
-                                      <span className="text-slate-500 dark:text-slate-500">Max:</span> <strong className="text-slate-200 dark:text-slate-250 font-extrabold">{service.max_order.toLocaleString()}</strong>
-                                    </span>
-                                    {service.created_at && (
-                                      <>
-                                        <span className="text-slate-400 dark:text-slate-650">•</span>
-                                        <span className="text-slate-500 dark:text-slate-500">
-                                          Dibuat: <strong className="text-slate-200 dark:text-slate-250 font-extrabold">{new Date(service.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
+                                  {/* Category Filter */}
+                                  <select
+                                    value={serviceCategoryFilter}
+                                    onChange={(e) => setServiceCategoryFilter(e.target.value)}
+                                    className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-850 text-slate-350 text-xs focus:outline-none focus:border-indigo-500/50 cursor-pointer w-full sm:w-auto"
+                                  >
+                                    <option value="all">Semua Kategori</option>
+                                    {Array.from(new Set(services.map(s => s.category))).map(cat => (
+                                      <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                  </select>
 
-                                  {service.description && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setExpandedServices(prev => ({ ...prev, [service.id]: !prev[service.id] }))}
-                                      className="text-[10px] text-indigo-500 dark:text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-bold mt-2.5 flex items-center gap-1 cursor-pointer transition-colors"
-                                    >
-                                      <span>{expandedServices[service.id] ? 'Sembunyikan Deskripsi' : 'Lihat Deskripsi'}</span>
-                                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedServices[service.id] ? 'rotate-180' : ''}`} />
-                                    </button>
-                                  )}
-
-                                  {service.description && expandedServices[service.id] && (
-                                    <div className="text-[11px] text-slate-350 dark:text-slate-300 mt-2.5 bg-slate-850/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-300 dark:border-slate-850/60 max-w-xl font-medium leading-relaxed whitespace-pre-wrap select-text animate-in fade-in slide-in-from-top-2 duration-250">
-                                      <span className="block font-bold text-[9px] text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Deskripsi Detail:</span>
-                                      <div className="text-slate-200 dark:text-slate-200">{service.description}</div>
-                                    </div>
-                                  )}
+                                  {/* Provider Filter */}
+                                  <select
+                                    value={serviceProviderFilter}
+                                    onChange={(e) => setServiceProviderFilter(e.target.value)}
+                                    className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-850 text-slate-350 text-xs focus:outline-none focus:border-indigo-500/50 cursor-pointer w-full sm:w-auto"
+                                  >
+                                    <option value="all">Semua Provider</option>
+                                    <option value="manual">Manual (Tanpa API)</option>
+                                    {Array.from(new Set(services.filter(s => s.provider_id && s.provider_id !== 'manual').map(s => s.provider_id))).map(prov => (
+                                      <option key={prov} value={prov}>{prov}</option>
+                                    ))}
+                                  </select>
                                 </div>
                               </div>
 
-                              <div className="flex sm:flex-row items-center gap-4 shrink-0 justify-end w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-850">
-                                <div className="text-right">
-                                  <div className="text-[10px] text-slate-600 dark:text-slate-500 font-medium">Harga / 1K</div>
-                                  <div className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                                    Rp {Number(service.price_per_k).toLocaleString('id-ID')}
-                                  </div>
-                                </div>
+                              <div className="space-y-4">
+                                {filteredServicesList.length === 0 ? (
+                                  <div className="py-8 text-center text-slate-500 text-xs">Belum ada layanan yang cocok dengan filter Anda.</div>
+                                ) : (
+                                  paginatedServices.map(service => {
+                                    const serviceIconUrl = categoryIconMap[service.category] || service.icon_url;
 
-                                <div className="flex items-center gap-2">
-                                  {/* Recomendation toggle */}
-                                  <button
-                                    onClick={async () => {
-                                      const { error } = await supabase
-                                        .from('services')
-                                        .update({ is_recommended: !service.is_recommended })
-                                        .eq('id', service.id);
-                                      if (!error) fetchServices();
-                                    }}
-                                    className={`p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${service.is_recommended
-                                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
-                                      : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                                      }`}
-                                    title={service.is_recommended ? 'Rekomendasi Aktif' : 'Atur Sebagai Rekomendasi'}
-                                  >
-                                    <Star className={`w-3.5 h-3.5 ${service.is_recommended ? 'fill-amber-500' : ''}`} />
-                                  </button>
+                                    return (
+                                      <div
+                                        key={service.id}
+                                        className="bg-slate-900 dark:bg-slate-950/50 border border-slate-850 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-950/10 transition-all duration-300 p-5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs group"
+                                      >
+                                        <div className="flex items-start sm:items-center gap-3.5 flex-1">
+                                          {serviceIconUrl ? (
+                                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-850 flex items-center justify-center shrink-0">
+                                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                                              <img src={serviceIconUrl} alt="icon" className="w-full h-full object-cover" />
+                                            </div>
+                                          ) : (
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/80 to-purple-600/80 flex items-center justify-center shrink-0 text-white font-extrabold text-xs shadow-md border border-indigo-500/20">
+                                              {service.category[0].toUpperCase()}
+                                            </div>
+                                          )}
 
-                                  <button
-                                    onClick={() => startEditService(service)}
-                                    className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-indigo-500 border border-slate-850 hover:border-slate-750 transition-all active:scale-95 cursor-pointer"
-                                    title="Edit Layanan"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteService(service.id)}
-                                    className="p-2.5 rounded-xl bg-slate-950 hover:bg-red-950/20 text-slate-400 hover:text-red-500 border border-slate-850 hover:border-red-900/30 transition-all active:scale-95 cursor-pointer"
-                                    title="Hapus Layanan"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
+                                          <div className="space-y-1.5 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <span className="px-2 py-0.5 rounded-lg font-mono font-bold text-[9px] bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                                                #{getNumericId(service)}
+                                              </span>
+                                              <span className={`px-2 py-0.5 rounded-lg font-extrabold text-[9px] uppercase tracking-wider ${getCategoryBadgeClass(service.category)}`}>
+                                                {service.category}
+                                              </span>
+                                              <span className="font-extrabold text-slate-850 dark:text-slate-100 text-sm transition-colors">
+                                                {service.name}
+                                              </span>
+                                              {/* Provider badge in SMM list */}
+                                              {service.provider_id && service.provider_id !== 'manual' && (
+                                                <span className="px-1.5 py-0.5 rounded-md font-black text-[7.5px] uppercase tracking-widest bg-slate-850 text-slate-455 border border-slate-700/60 w-fit flex items-center gap-0.5">
+                                                  🔌 {service.provider_id}
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <div className="text-slate-400 dark:text-slate-400 font-medium flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                                              <span className="flex items-center gap-1">
+                                                <span className="text-slate-500 dark:text-slate-500">Min:</span> <strong className="text-slate-200 dark:text-slate-250 font-extrabold">{service.min_order.toLocaleString()}</strong>
+                                              </span>
+                                              <span className="text-slate-400 dark:text-slate-650">•</span>
+                                              <span className="flex items-center gap-1">
+                                                <span className="text-slate-500 dark:text-slate-500">Max:</span> <strong className="text-slate-200 dark:text-slate-250 font-extrabold">{service.max_order.toLocaleString()}</strong>
+                                              </span>
+                                              {service.created_at && (
+                                                <>
+                                                  <span className="text-slate-400 dark:text-slate-650">•</span>
+                                                  <span className="text-slate-500 dark:text-slate-500">
+                                                    Dibuat: <strong className="text-slate-200 dark:text-slate-250 font-extrabold">{new Date(service.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
+                                                  </span>
+                                                </>
+                                              )}
+                                            </div>
+
+                                            {service.description && (
+                                              <button
+                                                type="button"
+                                                onClick={() => setExpandedServices(prev => ({ ...prev, [service.id]: !prev[service.id] }))}
+                                                className="text-[10px] text-indigo-500 dark:text-indigo-550 dark:text-indigo-400 hover:text-indigo-650 dark:hover:text-indigo-350 font-bold mt-2.5 flex items-center gap-1 cursor-pointer transition-colors"
+                                              >
+                                                <span>{expandedServices[service.id] ? 'Sembunyikan Deskripsi' : 'Lihat Deskripsi'}</span>
+                                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedServices[service.id] ? 'rotate-180' : ''}`} />
+                                              </button>
+                                            )}
+
+                                            {service.description && expandedServices[service.id] && (
+                                              <div className="text-[11px] text-slate-350 dark:text-slate-300 mt-2.5 bg-slate-850/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-300 dark:border-slate-850/60 max-w-xl font-medium leading-relaxed whitespace-pre-wrap select-text animate-in fade-in slide-in-from-top-2 duration-250">
+                                                <span className="block font-bold text-[9px] text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Deskripsi Detail:</span>
+                                                <div className="text-slate-200 dark:text-slate-200">{service.description}</div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        <div className="flex sm:flex-row items-center gap-4 shrink-0 justify-end w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-850">
+                                          <div className="text-right">
+                                            <div className="text-[10px] text-slate-600 dark:text-slate-500 font-medium">Harga / 1K</div>
+                                            <div className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                                              Rp {Number(service.price_per_k).toLocaleString('id-ID')}
+                                            </div>
+                                          </div>
+
+                                          <div className="flex items-center gap-2">
+                                            {/* Recomendation toggle */}
+                                            <button
+                                              onClick={async () => {
+                                                const { error } = await supabase
+                                                  .from('services')
+                                                  .update({ is_recommended: !service.is_recommended })
+                                                  .eq('id', service.id);
+                                                if (!error) fetchServices();
+                                              }}
+                                              className={`p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${service.is_recommended
+                                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                                                : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                                                }`}
+                                              title={service.is_recommended ? 'Rekomendasi Aktif' : 'Atur Sebagai Rekomendasi'}
+                                            >
+                                              <Star className={`w-3.5 h-3.5 ${service.is_recommended ? 'fill-amber-500' : ''}`} />
+                                            </button>
+
+                                            <button
+                                              onClick={() => startEditService(service)}
+                                              className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-indigo-500 border border-slate-850 hover:border-slate-750 transition-all active:scale-95 cursor-pointer"
+                                              title="Edit Layanan"
+                                            >
+                                              <Edit2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteService(service.id)}
+                                              className="p-2.5 rounded-xl bg-slate-950 hover:bg-red-950/20 text-slate-400 hover:text-red-500 border border-slate-850 hover:border-red-900/30 transition-all active:scale-95 cursor-pointer"
+                                              title="Hapus Layanan"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
                               </div>
                             </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Services Pagination */}
-                  {Math.ceil(services.length / servicesPerPage) > 1 && (
-                    <div className="flex items-center justify-between border-t border-slate-850/80 bg-slate-900/10 pt-4 mt-6">
-                      <div className="text-xs text-slate-400">
-                        Menampilkan <span className="font-semibold text-slate-350">{((servicesPage - 1) * servicesPerPage) + 1}</span> - <span className="font-semibold text-slate-350">{Math.min(servicesPage * servicesPerPage, services.length)}</span> dari <span className="font-semibold text-slate-350">{services.length}</span> layanan
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          disabled={servicesPage === 1}
-                          onClick={() => setServicesPage(p => Math.max(1, p - 1))}
-                          className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 disabled:opacity-40 text-slate-300 border border-slate-850 text-xs transition-all active:scale-95 disabled:pointer-events-none cursor-pointer"
-                        >
-                          Sebelumnya
-                        </button>
-                        <button
-                          disabled={servicesPage === Math.ceil(services.length / servicesPerPage)}
-                          onClick={() => setServicesPage(p => Math.min(Math.ceil(services.length / servicesPerPage), p + 1))}
-                          className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 disabled:opacity-40 text-slate-300 border border-slate-850 text-xs transition-all active:scale-95 disabled:pointer-events-none cursor-pointer"
-                        >
-                          Selanjutnya
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                            {/* Services Pagination */}
+                            {totalServicesPages > 1 && (
+                              <div className="flex items-center justify-between border-t border-slate-850/80 bg-slate-900/10 pt-4 mt-6">
+                                <div className="text-xs text-slate-400">
+                                  Menampilkan <span className="font-semibold text-slate-350">{((servicesPage - 1) * servicesPerPage) + 1}</span> - <span className="font-semibold text-slate-350">{Math.min(servicesPage * servicesPerPage, filteredServicesList.length)}</span> dari <span className="font-semibold text-slate-350">{filteredServicesList.length}</span> layanan
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    disabled={servicesPage === 1}
+                                    onClick={() => setServicesPage(p => Math.max(1, p - 1))}
+                                    className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 disabled:opacity-40 text-slate-300 border border-slate-850 text-xs transition-all active:scale-95 disabled:pointer-events-none cursor-pointer"
+                                  >
+                                    Sebelumnya
+                                  </button>
+                                  <button
+                                    disabled={servicesPage === totalServicesPages}
+                                    onClick={() => setServicesPage(p => Math.min(totalServicesPages, p + 1))}
+                                    className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 disabled:opacity-40 text-slate-300 border border-slate-850 text-xs transition-all active:scale-95 disabled:pointer-events-none cursor-pointer"
+                                  >
+                                    Selanjutnya
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+          </div>
 
                 {/* Modal Overlay Form Container (Centered, wide, clean) */}
                 {showServiceFormModal && (
@@ -3427,21 +3593,48 @@ export default function AdminDashboard() {
 
                 {/* Transaction Logs Table */}
                 <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 backdrop-blur-md">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                     <h3 className="font-bold text-base text-slate-200 flex items-center gap-2">
                       <CreditCard className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                       <span>Log Transaksi Sistem</span>
                     </h3>
 
-                    <div className="relative w-full sm:max-w-xs">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-550" />
-                      <input
-                        type="text"
-                        placeholder="Cari user email or ID..."
-                        value={searchTermTransactions}
-                        onChange={(e) => setSearchTermTransactions(e.target.value)}
-                        className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 pl-10 pr-4 py-2 rounded-xl outline-none transition-colors text-xs"
-                      />
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Search Input */}
+                      <div className="relative w-full sm:w-60">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-555" />
+                        <input
+                          type="text"
+                          placeholder="Cari user, email, atau ID..."
+                          value={searchTermTransactions}
+                          onChange={(e) => setSearchTermTransactions(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-indigo-500 pl-10 pr-4 py-2 rounded-2xl outline-none transition-all text-xs"
+                        />
+                      </div>
+
+                      {/* Type Filter */}
+                      <select
+                        value={typeFilterTransactions}
+                        onChange={(e) => setTypeFilterTransactions(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 text-slate-300 px-3.5 py-2 rounded-2xl outline-none text-xs font-bold transition-all cursor-pointer"
+                      >
+                        <option value="all">Semua Tipe</option>
+                        <option value="topup">Topup</option>
+                        <option value="order_payment">Order</option>
+                        <option value="refund">Refund</option>
+                      </select>
+
+                      {/* Status Filter */}
+                      <select
+                        value={statusFilterTransactions}
+                        onChange={(e) => setStatusFilterTransactions(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 text-slate-300 px-3.5 py-2 rounded-2xl outline-none text-xs font-bold transition-all cursor-pointer"
+                      >
+                        <option value="all">Semua Status</option>
+                        <option value="success">Sukses</option>
+                        <option value="pending">Pending</option>
+                        <option value="failed">Gagal / Batal</option>
+                      </select>
                     </div>
                   </div>
 
@@ -3453,27 +3646,28 @@ export default function AdminDashboard() {
                       <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left border-collapse text-xs">
                           <thead>
-                            <tr className="border-b border-slate-850 text-slate-450 font-semibold uppercase tracking-wider">
-                              <th className="py-3 px-3">User</th>
-                              <th className="py-3 px-3">Tipe</th>
-                              <th className="py-3 px-3">Jumlah</th>
-                              <th className="py-3 px-3">Metode</th>
-                              <th className="py-3 px-3 text-center">Status</th>
-                              <th className="py-3 px-3">Tanggal & Waktu</th>
+                            <tr className="border-b border-slate-850 text-slate-455 font-bold uppercase tracking-wider">
+                              <th className="py-4 px-4">User</th>
+                              <th className="py-4 px-4">Tipe</th>
+                              <th className="py-4 px-4">Jumlah</th>
+                              <th className="py-4 px-4">Metode</th>
+                              <th className="py-4 px-4 text-center">Status</th>
+                              <th className="py-4 px-4">Tanggal & Waktu</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-850/30">
                             {filteredTransactions
                               .slice((transactionsPage - 1) * itemsPerPage, transactionsPage * itemsPerPage)
                               .map(tx => (
-                                <tr key={tx.id} className="hover:bg-slate-900/20 transition-colors">
-                                  <td className="py-3 px-3">
-                                    <span className="font-semibold text-slate-250 block max-w-[150px] truncate">{tx.profiles?.email || 'User/Simulated'}</span>
-                                    <span className="text-[9px] text-slate-555 font-mono block mt-0.5">
+                                <tr key={tx.id} className="hover:bg-slate-850/15 transition-colors">
+                                  <td className="py-4 px-4">
+                                    <span className="font-extrabold text-slate-200 block max-w-[170px] truncate">{tx.profiles?.username || tx.profiles?.email || 'User'}</span>
+                                    <span className="text-[10px] text-slate-500 block mt-0.5">{tx.profiles?.email || '-'}</span>
+                                    <span className="text-[9px] text-slate-600 font-mono block mt-0.5">
                                       {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 8)}
                                     </span>
                                   </td>
-                                  <td className="py-3 px-3">
+                                  <td className="py-4 px-4">
                                     {tx.type === 'topup' ? (
                                       <span className="text-emerald-400 flex items-center gap-1 font-medium">
                                         <ArrowUpRight className="w-3.5 h-3.5" /> Topup
@@ -3488,21 +3682,22 @@ export default function AdminDashboard() {
                                       </span>
                                     )}
                                   </td>
-                                  <td className="py-3 px-3 font-bold">
+                                  <td className="py-4 px-4 font-bold">
                                     <span className={tx.amount > 0 ? 'text-emerald-400' : 'text-red-400'}>
                                       {tx.amount > 0 ? '+' : ''}{formatPrice(tx.amount)}
                                     </span>
                                   </td>
-                                  <td className="py-3 px-3 font-mono text-slate-455 uppercase">{tx.payment_method || '-'}</td>
-                                  <td className="py-3 px-3 text-center">
-                                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-wider inline-block ${tx.status === 'success' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-extrabold shadow-sm shadow-emerald-500/30' :
-                                      tx.status === 'failed' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white font-extrabold shadow-sm shadow-rose-500/30' :
-                                        'bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/30'
-                                      }`}>
-                                      {tx.status === 'success' ? 'Sukses' : tx.status === 'failed' ? 'Dibatalkan' : 'Belum Dibayar'}
+                                  <td className="py-4 px-4 font-mono text-[10px] uppercase text-indigo-400 font-extrabold">{tx.payment_method || '-'}</td>
+                                  <td className="py-4 px-4 text-center">
+                                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider inline-block ${
+                                      tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm' :
+                                      tx.status === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                      'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                    }`}>
+                                      {tx.status === 'success' ? 'Sukses' : tx.status === 'failed' ? 'Dibatalkan' : 'Pending'}
                                     </span>
                                   </td>
-                                  <td className="py-3 px-3 text-slate-500">
+                                  <td className="py-4 px-4 text-slate-500">
                                     {new Date(tx.created_at).toLocaleString('id-ID', {
                                       dateStyle: 'medium',
                                       timeStyle: 'short'
@@ -3537,7 +3732,7 @@ export default function AdminDashboard() {
                               <div className="space-y-1">
                                 <div className="flex justify-between items-center">
                                   <span className="text-slate-400 font-medium">User:</span>
-                                  <span className="font-semibold text-slate-200 truncate max-w-[180px]">{tx.profiles?.email || 'User/Simulated'}</span>
+                                  <span className="font-extrabold text-slate-200 truncate max-w-[180px]">{tx.profiles?.username || tx.profiles?.email || 'User'}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-slate-400 font-medium">Tipe / Metode:</span>
@@ -3549,7 +3744,7 @@ export default function AdminDashboard() {
                                     ) : (
                                       <span className="text-slate-350 font-bold">Order</span>
                                     )}{' '}
-                                    <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1 py-0.5 rounded uppercase">
+                                    <span className="text-[10px] font-mono text-indigo-400 font-extrabold bg-slate-950 px-2 py-0.5 rounded uppercase">
                                       {tx.payment_method || '-'}
                                     </span>
                                   </span>
@@ -4001,6 +4196,38 @@ export default function AdminDashboard() {
                             onChange={(e) => setLandingSettings(prev => ({ ...prev, deposit_bonus_percent: e.target.value }))}
                             className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
                             placeholder="Contoh: 11"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pengaturan Referral & Afiliasi */}
+                    <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-900 space-y-4">
+                      <h4 className="font-bold text-sm text-indigo-500 dark:text-indigo-400 border-b border-slate-900 pb-2">Pengaturan Referral & Afiliasi</h4>
+
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-450 uppercase tracking-wider mb-2">Status Sistem Referral</label>
+                          <select
+                            value={landingSettings.referral_enabled || 'false'}
+                            onChange={(e) => setLandingSettings(prev => ({ ...prev, referral_enabled: e.target.value }))}
+                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs font-bold transition-all cursor-pointer"
+                          >
+                            <option value="true">Aktif (Enabled)</option>
+                            <option value="false">Nonaktif (Disabled)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-450 uppercase tracking-wider mb-2">Persentase Komisi (%)</label>
+                          <input
+                            type="number"
+                            value={landingSettings.referral_commission_percent || '0'}
+                            onChange={(e) => setLandingSettings(prev => ({ ...prev, referral_commission_percent: e.target.value }))}
+                            className="w-full bg-slate-950 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-slate-200 px-4 py-3 rounded-xl outline-none text-xs"
+                            placeholder="Contoh: 5"
+                            min="0"
+                            max="100"
                           />
                         </div>
                       </div>
@@ -4553,6 +4780,366 @@ export default function AdminDashboard() {
                               onClick={() => setUsersPage(p => p + 1)}
                               className="bg-slate-950 hover:bg-slate-900 border border-slate-850 disabled:opacity-40 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
                             >Selanjutnya</button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Tab: Midtrans Report (Dribbble-inspired UI) */}
+            {activeTab === 'midtrans' && (() => {
+              const filtered = midtransTransactions.filter(tx => {
+                const searchLower = searchTermMidtrans.toLowerCase();
+                const matchesSearch = 
+                  (tx.email || '').toLowerCase().includes(searchLower) ||
+                  (tx.username || '').toLowerCase().includes(searchLower) ||
+                  (tx.id || '').toLowerCase().includes(searchLower) ||
+                  (tx.reference_id || '').toLowerCase().includes(searchLower) ||
+                  (tx.tx_id && String(tx.tx_id).includes(searchLower));
+
+                const matchesStatus = 
+                  statusFilterMidtrans === 'all' || 
+                  tx.status === statusFilterMidtrans;
+
+                return matchesSearch && matchesStatus;
+              });
+
+              const totalPages = Math.ceil(filtered.length / itemsPerPage);
+              const paginated = filtered.slice((midtransPage - 1) * itemsPerPage, midtransPage * itemsPerPage);
+
+              const handleExportCSV = () => {
+                const headers = ["ID Transaksi", "Email", "Username", "Nominal", "Metode", "Status", "Keterangan", "Tanggal"];
+                const rows = filtered.map(tx => [
+                  tx.tx_id ? `TRX-${tx.tx_id}` : tx.id,
+                  tx.email || "",
+                  tx.username || "",
+                  tx.amount,
+                  tx.payment_method || "",
+                  tx.status,
+                  `"${(tx.description || '').replace(/"/g, '""')}"`,
+                  new Date(tx.created_at).toISOString()
+                ]);
+                
+                const csvContent = "data:text/csv;charset=utf-8," 
+                  + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+                
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `laporan_midtrans_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              };
+
+              return (
+                <div className="space-y-8 animate-in fade-in duration-300">
+                  {/* Top Dribbble Grid: Main Balance Card & Stats */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Glassmorphism Balance Card */}
+                    <div className="lg:col-span-1 relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-3xl p-6 shadow-xl text-white flex flex-col justify-between min-h-[220px]">
+                      {/* Decorative background glow circles */}
+                      <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
+                      <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-pink-400/20 rounded-full blur-lg pointer-events-none" />
+                      
+                      <div className="relative z-10 flex justify-between items-start">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-100 opacity-90 block">Saldo Midtrans Terproses</span>
+                          <h2 className="text-3xl font-black mt-2 tracking-tight">
+                            {formatPrice(midtransStats?.totalVolume || 0)}
+                          </h2>
+                        </div>
+                        <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[9px] font-black tracking-wider uppercase border border-white/10">
+                          Live Volume
+                        </span>
+                      </div>
+
+                      <div className="relative z-10 space-y-4 mt-6">
+                        <p className="text-[10px] text-indigo-50 leading-relaxed max-w-[90%]">
+                          Representasi total volume pembayaran sukses melalui gerbang pembayaran Midtrans.
+                        </p>
+                        
+                        <div className="flex gap-2.5">
+                          <button
+                            onClick={handleSyncMidtrans}
+                            disabled={syncingMidtrans}
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-white text-indigo-700 hover:bg-indigo-50 text-xs font-black transition-all shadow-md active:scale-95 disabled:opacity-75"
+                          >
+                            {syncingMidtrans ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                                Syncing...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                Sinkronisasi Status
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Stats Dashboard Grid */}
+                    <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Stat 1 */}
+                      <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between hover:border-slate-700/80 transition-all duration-200 group">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400 font-bold text-xs">Transaksi Hari Ini</span>
+                          <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-black">
+                            {midtransStats?.todayCount || 0} Trx
+                          </span>
+                        </div>
+                        <div className="mt-4">
+                          <span className="text-[10px] text-slate-550 block">Volume hari ini</span>
+                          <span className="text-xl font-extrabold text-slate-200 block mt-1">
+                            {formatPrice(midtransStats?.todayVolume || 0)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Stat 2 */}
+                      <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between hover:border-slate-700/80 transition-all duration-200 group">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400 font-bold text-xs">Transaksi Bulan Ini</span>
+                          <span className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 text-xs font-black">
+                            {midtransStats?.monthCount || 0} Trx
+                          </span>
+                        </div>
+                        <div className="mt-4">
+                          <span className="text-[10px] text-slate-550 block">Volume bulan ini</span>
+                          <span className="text-xl font-extrabold text-slate-200 block mt-1">
+                            {formatPrice(midtransStats?.monthVolume || 0)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Stat 3 */}
+                      <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between hover:border-slate-700/80 transition-all duration-200 group">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400 font-bold text-xs">Pending Volume</span>
+                          <span className="p-2 rounded-xl bg-amber-500/10 text-amber-400 text-xs font-black">
+                            {midtransStats?.pendingCount || 0} Pending
+                          </span>
+                        </div>
+                        <div className="mt-4">
+                          <span className="text-[10px] text-slate-550 block">Nominal belum terbayar</span>
+                          <span className="text-xl font-extrabold text-slate-200 block mt-1">
+                            {formatPrice(midtransStats?.pendingVolume || 0)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Stat 4 */}
+                      <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between hover:border-slate-700/80 transition-all duration-200 group">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400 font-bold text-xs">Total Transaksi (All Time)</span>
+                          <span className="p-2 rounded-xl bg-pink-500/10 text-pink-400 text-xs font-black">
+                            {midtransStats?.totalCount || 0} Total
+                          </span>
+                        </div>
+                        <div className="mt-4">
+                          <span className="text-[10px] text-slate-550 block">Rasio Sukses</span>
+                          <span className="text-xl font-extrabold text-slate-200 block mt-1">
+                            {midtransStats?.totalCount > 0 
+                              ? `${Math.round((midtransStats.successCount / midtransStats.totalCount) * 100)}%`
+                              : '0%'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transaction Feed Section */}
+                  <div className="bg-slate-900 border border-slate-800/80 shadow-sm rounded-3xl p-6 sm:p-8 backdrop-blur-md">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-400">
+                          <TrendingUp className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-extrabold text-base text-slate-200">Riwayat Pembayaran Midtrans</h3>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Daftar transaksi deposit instan menggunakan gerbang pembayaran Midtrans.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        {/* Search Input */}
+                        <div className="relative w-full sm:w-60">
+                          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-550" />
+                          <input
+                            type="text"
+                            placeholder="Cari user email atau username..."
+                            value={searchTermMidtrans}
+                            onChange={(e) => setSearchTermMidtrans(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-indigo-500 pl-10 pr-4 py-2 rounded-2xl outline-none transition-all text-xs"
+                          />
+                        </div>
+
+                        {/* Status Filter */}
+                        <select
+                          value={statusFilterMidtrans}
+                          onChange={(e) => setStatusFilterMidtrans(e.target.value)}
+                          className="bg-slate-950 border border-slate-800 text-slate-300 px-3.5 py-2 rounded-2xl outline-none text-xs font-bold transition-all cursor-pointer"
+                        >
+                          <option value="all">Semua Status</option>
+                          <option value="success">Sukses</option>
+                          <option value="pending">Pending</option>
+                          <option value="failed">Gagal</option>
+                        </select>
+
+                        {/* Export Button */}
+                        <button
+                          onClick={handleExportCSV}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-850 hover:bg-slate-850 text-slate-205 text-xs font-bold transition-all cursor-pointer border border-slate-800"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>Export CSV</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {loadingMidtrans ? (
+                      <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
+                        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                        <span className="text-xs font-medium">Memuat data Midtrans...</span>
+                      </div>
+                    ) : paginated.length === 0 ? (
+                      <div className="py-20 text-center text-slate-550 text-xs border border-dashed border-slate-800 rounded-2xl">
+                        Tidak ada riwayat transaksi Midtrans ditemukan.
+                      </div>
+                    ) : (
+                      <>
+                        {/* Table layout for larger screens */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="border-b border-slate-850 text-slate-450 font-bold uppercase tracking-wider">
+                                <th className="py-4 px-4">User</th>
+                                <th className="py-4 px-4">ID Order</th>
+                                <th className="py-4 px-4">Nominal</th>
+                                <th className="py-4 px-4">Metode</th>
+                                <th className="py-4 px-4 text-center">Status</th>
+                                <th className="py-4 px-4">Keterangan</th>
+                                <th className="py-4 px-4">Tanggal & Waktu</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-850/30">
+                              {paginated.map(tx => (
+                                <tr key={tx.id} className="hover:bg-slate-850/15 transition-colors">
+                                  <td className="py-4 px-4">
+                                    <span className="font-extrabold text-slate-200 block">{tx.username || 'No Username'}</span>
+                                    <span className="text-[10px] text-slate-500 block mt-0.5">{tx.email}</span>
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    <span className="font-mono text-slate-400 bg-slate-950 px-2 py-1 rounded-md text-[10px]">
+                                      {tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 8)}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-4 font-bold text-slate-105">
+                                    {formatPrice(tx.amount)}
+                                  </td>
+                                  <td className="py-4 px-4 font-mono text-[10px] uppercase text-indigo-400 font-extrabold">
+                                    {tx.payment_method || 'midtrans'}
+                                  </td>
+                                  <td className="py-4 px-4 text-center">
+                                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider inline-block ${
+                                      tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm' :
+                                      tx.status === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                      'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                    }`}>
+                                      {tx.status === 'success' ? 'Sukses' : tx.status === 'failed' ? 'Gagal' : 'Pending'}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-4 max-w-xs text-slate-400" title={tx.description || '-'}>
+                                    <span className="block text-[11px] leading-relaxed whitespace-normal break-words line-clamp-3">
+                                      {tx.description || '-'}
+                                    </span>
+                                  </td>
+
+                                  <td className="py-4 px-4 text-slate-500">
+                                    {new Date(tx.created_at).toLocaleString('id-ID', {
+                                      dateStyle: 'medium',
+                                      timeStyle: 'short'
+                                    })}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile list view */}
+                        <div className="block md:hidden space-y-4">
+                          {paginated.map(tx => (
+                            <div key={tx.id} className="bg-slate-950/40 border border-slate-800 rounded-2xl p-4 space-y-3">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <span className="block font-bold text-slate-200">{tx.username || 'No Username'}</span>
+                                  <span className="block text-[10px] text-slate-550">{tx.email}</span>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                  tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-400' :
+                                  tx.status === 'failed' ? 'bg-red-500/10 text-red-400' :
+                                  'bg-amber-500/10 text-amber-400'
+                                }`}>
+                                  {tx.status}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-y-2 text-xs border-t border-slate-850 pt-2.5">
+                                <div>
+                                  <span className="text-slate-500 text-[10px] block">Order ID</span>
+                                  <span className="font-mono text-slate-300">{tx.tx_id ? `TRX-${tx.tx_id}` : tx.id.slice(0, 8)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500 text-[10px] block">Nominal</span>
+                                  <span className="font-extrabold text-slate-200">{formatPrice(tx.amount)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500 text-[10px] block">Metode</span>
+                                  <span className="font-mono text-indigo-400 font-bold uppercase">{tx.payment_method}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-550 text-[10px] block">Tanggal</span>
+                                  <span className="text-slate-400">
+                                    {new Date(tx.created_at).toLocaleString('id-ID', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination controls */}
+                        {totalPages > 1 && (
+                          <div className="flex justify-between items-center gap-2 pt-5 border-t border-slate-850 mt-5">
+                            <button
+                              disabled={midtransPage === 1}
+                              onClick={() => setMidtransPage(p => Math.max(1, p - 1))}
+                              className="bg-slate-950 hover:bg-slate-900 border border-slate-850 disabled:opacity-40 text-slate-350 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                              Sebelumnya
+                            </button>
+                            <span className="text-xs text-slate-400 font-medium">
+                              Halaman {midtransPage} dari {totalPages} ({filtered.length} transaksi)
+                            </span>
+                            <button
+                              disabled={midtransPage >= totalPages}
+                              onClick={() => setMidtransPage(p => p + 1)}
+                              className="bg-slate-950 hover:bg-slate-900 border border-slate-850 disabled:opacity-40 text-slate-350 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                              Selanjutnya
+                            </button>
                           </div>
                         )}
                       </>

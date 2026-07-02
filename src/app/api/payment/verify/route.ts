@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Process the successful payment securely on the server
-    const profileCheck = await query('SELECT balance FROM profiles WHERE id = $1', [tx.user_id]);
+    const profileCheck = await query('SELECT balance, username, email FROM profiles WHERE id = $1', [tx.user_id]);
     if (profileCheck.rows.length === 0) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
     }
@@ -94,11 +94,61 @@ export async function POST(request: Request) {
       creditedAmount = Math.round(baseAmount + (baseAmount * bonusPercent / 100));
     }
 
-    const currentBalance = Number(profileCheck.rows[0].balance || 0);
-    const newBalance = currentBalance + creditedAmount;
+    // Update profile balance atomically to prevent race condition
+    const updateProfileRes = await query(
+      'UPDATE profiles SET balance = balance + $1 WHERE id = $2 RETURNING balance',
+      [creditedAmount, tx.user_id]
+    );
+    const newBalance = parseFloat(updateProfileRes.rows[0]?.balance || '0');
 
-    // Update profile balance
-    await query('UPDATE profiles SET balance = $1 WHERE id = $2', [newBalance, tx.user_id]);
+    // Process referral commission if referrer exists and referral system is enabled
+    try {
+      const referralEnabledRes = await query("SELECT value FROM site_settings WHERE key = 'referral_enabled'");
+      const referralCommissionRes = await query("SELECT value FROM site_settings WHERE key = 'referral_commission_percent'");
+      
+      const refEnabled = referralEnabledRes.rows[0]?.value === 'true';
+      const refPercent = parseFloat(referralCommissionRes.rows[0]?.value || '5');
+
+      if (refEnabled && refPercent > 0) {
+        // Find if user has a referred_by link
+        const profileQuery = await query("SELECT referred_by FROM profiles WHERE id = $1", [tx.user_id]);
+        const referrerId = profileQuery.rows[0]?.referred_by;
+
+        if (referrerId) {
+          // Calculate commission
+          const commissionAmount = Math.round(baseAmount * (refPercent / 100));
+
+          if (commissionAmount > 0) {
+            // Get referrer username/email for logging
+            const referrerProfile = await query("SELECT username, email FROM profiles WHERE id = $1", [referrerId]);
+            if (referrerProfile.rows.length > 0) {
+              // 1. Update referrer balance atomically
+              await query(
+                "UPDATE profiles SET balance = balance + $1 WHERE id = $2",
+                [commissionAmount, referrerId]
+              );
+
+              // 2. Log in referral_logs
+              await query(
+                `INSERT INTO referral_logs (referrer_id, referred_id, deposit_id, deposit_amount, commission_amount)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [referrerId, tx.user_id, tx.id, baseAmount, commissionAmount]
+              );
+
+              // 3. Log in transactions for referrer
+              const referralDesc = `Komisi Referral dari deposit user @${profileCheck.rows[0].username || profileCheck.rows[0].email.split('@')[0]} sebesar Rp ${baseAmount.toLocaleString('id-ID')} (Komisi ${refPercent}%)`;
+              await query(
+                `INSERT INTO transactions (user_id, amount, type, status, description, payment_method)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [referrerId, commissionAmount, 'referral', 'success', referralDesc, 'REFERRAL']
+              );
+            }
+          }
+        }
+      }
+    } catch (refErr) {
+      console.error('Error processing referral commission:', refErr);
+    }
 
     // Update transaction status
     await query(

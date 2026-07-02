@@ -48,7 +48,9 @@ export default function DynamicBrandProvider({ children }: { children: React.Rea
           }
 
           // 4. Update Live Chat (Crisp)
-          const showLiveChat = settings.show_live_chat !== 'false';
+          const isAdminPath = typeof window !== 'undefined' && 
+            (window.location.pathname.includes('/sb-admin-panel') || window.location.pathname.includes('/sb-admin-login'));
+          const showLiveChat = !isAdminPath && (settings.show_live_chat !== 'false');
 
           // CSS Injection for absolute hide safety
           const styleId = 'crisp-custom-style';
